@@ -553,8 +553,16 @@
                               <span className="text-sm text-slate-400">
                                 {formatFileSize(series.size)}
                               </span>
+                              {series.sonarrPath && (
+                                <span className="px-2 py-1 bg-purple-500/20 text-purple-300 rounded-lg text-xs">
+                                  🔗 Sonarr connu
+                                </span>
+                              )}
                             </div>
-                            <p className="text-sm text-slate-400 mb-1">📁 {series.path}</p>
+                            <p className="text-sm text-slate-400 mb-1">📁 Check : {series.path}</p>
+                            {series.sonarrPath && (
+                              <p className="text-sm text-slate-500 mb-1">🎯 Sonarr : {series.sonarrPath}</p>
+                            )}
                             <p className="text-xs text-amber-400 mt-2">⚠️ {series.reason}</p>
                           </div>
                           <button onClick={() => deleteSeries(series.path)} className="px-6 py-3 bg-rose-500 hover:bg-rose-600 rounded-xl font-bold transition-all ml-4">
@@ -586,6 +594,20 @@
                           <div>
                             <label className="text-sm text-slate-400 block mb-2">Clé API</label>
                             <input type="password" value={config.apiKey} onChange={(e) => setConfig({...config, apiKey: e.target.value})} className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white" />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="glass-card rounded-xl p-6">
+                        <h3 className="text-lg font-bold mb-4">Sonarr</h3>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="text-sm text-slate-400 block mb-2">URL</label>
+                            <input type="text" value={config.sonarrUrl || ''} onChange={(e) => setConfig({...config, sonarrUrl: e.target.value})} className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white" placeholder="http://192.168.1.100:8989" />
+                          </div>
+                          <div>
+                            <label className="text-sm text-slate-400 block mb-2">Clé API</label>
+                            <input type="password" value={config.sonarrApiKey || ''} onChange={(e) => setConfig({...config, sonarrApiKey: e.target.value})} className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white" />
                           </div>
                         </div>
                       </div>
@@ -640,7 +662,7 @@
                           </div>
                           <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
                             <p className="text-xs text-blue-300">
-                              💡 Les séries présentes dans "Check" mais absentes de "Source" seront détectées comme orphelines et pourront être supprimées.
+                              💡 Les séries dans "Check" sont comparées à Sonarr via l'API. Une série est orpheline si son chemin Sonarr n'existe plus sur le disque ET qu'elle n'est pas en cours de téléchargement (activeDL).
                             </p>
                           </div>
                         </div>
