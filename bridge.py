@@ -275,120 +275,142 @@ initial_config = load_config()
 setup_cron_job(initial_config)
 
 def detect_series_issues(config):
-    """Détecte les séries qui ont des hardlinks dans Check mais pas dans Source via Sonarr API"""
+    """Détecte les séries orphelines dans Check via Sonarr API (path sur disque + file de téléchargement)"""
     issues = []
-    
+
     if not config.get('seriesCheck', {}).get('enabled', False):
         return issues
-    
+
     series_source = config.get('seriesSourceRoot', '')
     series_check = config.get('seriesCheckRoot', '')
     sonarr_url = config.get('sonarrUrl', '')
     sonarr_api_key = config.get('sonarrApiKey', '')
-    
-    if not series_source or not series_check:
+
+    if not series_check or not os.path.isdir(series_check):
         return issues
-    
-    if not os.path.isdir(series_check):
-        return issues
-    
+
     try:
-        # Récupérer toutes les séries depuis Sonarr
-        sonarr_series = {}
-        if sonarr_url and sonarr_api_key:
+        # --- 1. Récupérer les séries depuis Sonarr indexées par nom de dossier ---
+        # { folder_name: { 'id': int, 'path': str, 'title': str } }
+        sonarr_by_folder = {}
+        # ensemble des IDs de séries en cours de téléchargement
+        active_series_ids = set()
+        sonarr_available = bool(sonarr_url and sonarr_api_key)
+
+        if sonarr_available:
+            # Séries
             try:
                 print(f"[SERIES] Connexion à Sonarr : {sonarr_url}")
-                response = requests.get(
+                resp = requests.get(
                     f"{sonarr_url}/api/v3/series",
                     headers={"X-Api-Key": sonarr_api_key},
                     timeout=30
                 )
-                response.raise_for_status()
-                series_list = response.json()
-                
-                # Créer un mapping : nom de série -> path source
-                for series in series_list:
-                    series_path = series.get('path', '')
-                    series_title = series.get('title', '')
-                    if series_path:
-                        # Normaliser le nom pour la comparaison
-                        sonarr_series[series_title] = series_path
-                        # Ajouter aussi le nom du dossier
-                        folder_name = os.path.basename(series_path)
-                        sonarr_series[folder_name] = series_path
-                
-                print(f"[SERIES] {len(sonarr_series)} séries récupérées depuis Sonarr")
+                resp.raise_for_status()
+                for series in resp.json():
+                    s_path = series.get('path', '').rstrip('/')
+                    s_id = series.get('id')
+                    s_title = series.get('title', '')
+                    if s_path:
+                        folder = os.path.basename(s_path)
+                        sonarr_by_folder[folder] = {
+                            'id': s_id,
+                            'path': s_path,
+                            'title': s_title
+                        }
+                print(f"[SERIES] {len(sonarr_by_folder)} séries récupérées depuis Sonarr")
             except Exception as e:
-                print(f"[SERIES] Erreur API Sonarr: {str(e)}")
-                # Fallback : scan du filesystem
-                pass
-        
-        # Si pas de Sonarr ou erreur, fallback : scanner le filesystem
-        if not sonarr_series:
-            print(f"[SERIES] Fallback : scan filesystem de {series_source}")
-            if os.path.isdir(series_source):
-                for root, dirs, files in os.walk(series_source):
-                    for dir_name in dirs:
-                        full_path = os.path.join(root, dir_name)
-                        sonarr_series[dir_name] = full_path
-                print(f"[SERIES] {len(sonarr_series)} dossiers trouvés dans Source")
-        
-        # Parcourir Check pour trouver les séries orphelines
-        if os.path.isdir(series_check):
-            for series_folder in os.listdir(series_check):
-                series_path = os.path.join(series_check, series_folder)
-                
-                if not os.path.isdir(series_path):
-                    continue
-                
-                # Vérifier si la série existe dans Sonarr/Source
-                found = False
-                source_path = None
-                
-                # Comparer avec toutes les séries connues
-                for known_name, known_path in sonarr_series.items():
-                    # Comparaison directe du nom
-                    if series_folder == known_name or series_folder == os.path.basename(known_path):
-                        found = True
-                        source_path = known_path
-                        break
-                    
-                    # Comparaison normalisée (sans points, espaces, etc)
-                    normalized_check = series_folder.replace('.', ' ').replace('_', ' ').lower().strip()
-                    normalized_known = known_name.replace('.', ' ').replace('_', ' ').lower().strip()
+                print(f"[SERIES] Erreur API Sonarr (series): {str(e)}")
+
+            # File de téléchargement (activeDL)
+            try:
+                q_resp = requests.get(
+                    f"{sonarr_url}/api/v3/queue",
+                    headers={"X-Api-Key": sonarr_api_key},
+                    params={"pageSize": 1000},
+                    timeout=30
+                )
+                q_resp.raise_for_status()
+                q_data = q_resp.json()
+                records = q_data.get('records', q_data) if isinstance(q_data, dict) else q_data
+                for item in records:
+                    sid = item.get('seriesId') or (item.get('series') or {}).get('id')
+                    if sid:
+                        active_series_ids.add(sid)
+                print(f"[SERIES] {len(active_series_ids)} séries en téléchargement actif")
+            except Exception as e:
+                print(f"[SERIES] Erreur API Sonarr (queue): {str(e)}")
+
+        # --- 2. Parcourir le dossier Check ---
+        for series_folder in os.listdir(series_check):
+            check_path = os.path.join(series_check, series_folder)
+            if not os.path.isdir(check_path):
+                continue
+
+            # Trouver la correspondance dans Sonarr (par nom de dossier exact puis normalisé)
+            sonarr_info = sonarr_by_folder.get(series_folder)
+            if sonarr_info is None:
+                normalized_check = series_folder.replace('.', ' ').replace('_', ' ').lower().strip()
+                for known_folder, info in sonarr_by_folder.items():
+                    normalized_known = known_folder.replace('.', ' ').replace('_', ' ').lower().strip()
                     if normalized_check == normalized_known:
-                        found = True
-                        source_path = known_path
+                        sonarr_info = info
                         break
-                
-                if not found:
-                    # Compter les fichiers
-                    file_count = 0
-                    total_size = 0
-                    
-                    for root, dirs, files in os.walk(series_path):
-                        for file in files:
-                            if file.lower().endswith(('.mkv', '.mp4', '.avi')):
-                                file_count += 1
-                                file_path = os.path.join(root, file)
-                                try:
-                                    total_size += os.path.getsize(file_path)
-                                except:
-                                    pass
-                    
-                    reason = 'Série absente de Sonarr' if sonarr_url and sonarr_api_key else f'Série absente de "{os.path.basename(series_source)}"'
-                    
-                    issues.append({
-                        'series': series_folder,
-                        'path': series_path,
-                        'type': 'series_orphan',
-                        'reason': reason,
-                        'fileCount': file_count,
-                        'size': total_size
-                    })
+
+            is_orphan = False
+            reason = ''
+            sonarr_path = None
+            in_active_dl = False
+
+            if sonarr_info:
+                sonarr_path = sonarr_info['path']
+                series_id = sonarr_info['id']
+                in_active_dl = series_id in active_series_ids
+
+                if os.path.isdir(sonarr_path):
+                    # Le chemin Sonarr existe sur le disque → série toujours active
+                    print(f"[SERIES] {series_folder} → chemin OK: {sonarr_path}")
+                    continue
+                elif in_active_dl:
+                    # Chemin absent mais téléchargement en cours
+                    print(f"[SERIES] {series_folder} → téléchargement actif (ID={series_id}), ignorée")
+                    continue
                 else:
-                    print(f"[SERIES] {series_folder} trouvée → {source_path}")
-        
+                    # Chemin introuvable sur disque et pas en DL → orpheline
+                    is_orphan = True
+                    reason = f'Chemin Sonarr introuvable sur le disque : {sonarr_path}'
+            else:
+                # Série inconnue de Sonarr → vérifier le dossier Source comme fallback
+                if series_source and os.path.isdir(os.path.join(series_source, series_folder)):
+                    print(f"[SERIES] {series_folder} → trouvée dans Source (fallback)")
+                    continue
+                is_orphan = True
+                reason = 'Série absente de Sonarr' if sonarr_available else f'Série absente de "{os.path.basename(series_source)}"'
+
+            if is_orphan:
+                file_count = 0
+                total_size = 0
+                for root, dirs, files in os.walk(check_path):
+                    for file in files:
+                        if file.lower().endswith(('.mkv', '.mp4', '.avi')):
+                            file_count += 1
+                            fp = os.path.join(root, file)
+                            try:
+                                total_size += os.path.getsize(fp)
+                            except:
+                                pass
+
+                issues.append({
+                    'series': series_folder,
+                    'path': check_path,
+                    'type': 'series_orphan',
+                    'reason': reason,
+                    'fileCount': file_count,
+                    'size': total_size,
+                    'sonarrPath': sonarr_path,
+                    'inActiveDL': in_active_dl
+                })
+
         print(f"[SERIES] {len(issues)} séries orphelines détectées")
         return issues
     except Exception as e:
