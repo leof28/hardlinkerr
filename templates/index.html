@@ -48,6 +48,8 @@
         .spin { animation: spin 1s linear infinite; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
         .fade-in { animation: fadeIn 0.2s ease; }
+        .poster-card .movie-delete-btn { opacity: 0; transition: opacity 0.2s; }
+        .poster-card:hover .movie-delete-btn { opacity: 1; }
     </style>
 </head>
 <body>
@@ -386,6 +388,23 @@ const App = () => {
     finally { setLoading(false); }
   };
 
+  const deleteMovieWithHardlinks = async (movie) => {
+    const watchInfo = movie.watchCount > 0
+      ? `\n\n⚠ Ce film a été vu ${movie.watchCount} fois sur Jellyfin.`
+      : '';
+    if (!confirm(`Supprimer "${movie.title}" ?\n\nSource + tous les hardlinks genre seront supprimés. Irréversible.${watchInfo}`)) return;
+    try {
+      const data = await apiFetch('/api/delete-movie', {
+        method: 'POST',
+        body: { sourcePath: movie.path, folderName: movie.folderName, title: movie.title }
+      });
+      if (data.error) { showToast('Erreur: ' + data.error, 'error'); return; }
+      setMovies(prev => prev.filter(m => m.path !== movie.path));
+      const count = (data.deleted || []).length;
+      showToast(`"${movie.title}" supprimé (${count} dossier${count > 1 ? 's' : ''})`, 'success');
+    } catch { showToast('Erreur suppression', 'error'); }
+  };
+
   const deleteDuplicate = async (path) => {
     if (!confirm('Supprimer ce fichier ?')) return;
     try {
@@ -585,6 +604,9 @@ const App = () => {
                   const hasErrors = (movie.hardlinks || []).some(h => !h.exists);
                   const allOk = (movie.hardlinks || []).length > 0 && (movie.hardlinks || []).every(h => h.exists);
                   const isSelected = selectedMovies.has(movie.path);
+                  const addedRadarr = movie.addedToRadarr
+                    ? new Date(movie.addedToRadarr).toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit', year:'2-digit' })
+                    : null;
                   return (
                     <div key={idx} onClick={() => toggleMovieSelection(movie.path)}
                       className={`poster-card rounded-xl cursor-pointer overflow-hidden`}
@@ -594,17 +616,46 @@ const App = () => {
                           ? <img src={movie.poster} alt={movie.title} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
                           : <div style={{ width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(30,41,59,0.8)', fontSize:36 }}>🎬</div>
                         }
+                        {/* Bouton suppression (visible au survol) */}
+                        <button
+                          className="movie-delete-btn"
+                          onClick={e => { e.stopPropagation(); deleteMovieWithHardlinks(movie); }}
+                          title="Supprimer le film et ses hardlinks"
+                          style={{ position:'absolute', top:7, left:7, width:24, height:24, borderRadius:'50%', background:'rgba(239,68,68,0.9)', border:'none', cursor:'pointer', color:'white', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, lineHeight:1, zIndex:10 }}>
+                          🗑
+                        </button>
+                        {/* Indicateur sélection / liens OK */}
                         {isSelected && (
                           <div style={{ position:'absolute', top:8, right:8, width:22, height:22, borderRadius:'50%', background:'#3b82f6', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:700 }}>✓</div>
                         )}
                         {allOk && !isSelected && (
                           <div style={{ position:'absolute', top:8, right:8, width:22, height:22, borderRadius:'50%', background:'rgba(16,185,129,0.85)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11 }}>✓</div>
                         )}
-                        <div style={{ position:'absolute', bottom:0, left:0, right:0, padding:'10px 8px 8px', background:'linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0) 100%)' }}>
+                        {/* Badge vues Jellystat */}
+                        {movie.jellystatEnabled && movie.watchCount > 0 && (
+                          <div title={`Vu ${movie.watchCount} fois${movie.watchDates && movie.watchDates[0] ? ' · Dernière fois : ' + new Date(movie.watchDates[0]).toLocaleDateString('fr-FR') : ''}`}
+                            style={{ position:'absolute', top:8, right: isSelected || allOk ? 36 : 8, background:'rgba(59,130,246,0.85)', borderRadius:10, padding:'2px 6px', fontSize:9, fontWeight:700, color:'white', display:'flex', alignItems:'center', gap:3 }}>
+                            👁 {movie.watchCount}
+                          </div>
+                        )}
+                        {/* Overlay bas : titre + statut + méta */}
+                        <div style={{ position:'absolute', bottom:0, left:0, right:0, padding:'28px 8px 7px', background:'linear-gradient(to top, rgba(0,0,0,0.97) 0%, rgba(0,0,0,0.6) 60%, rgba(0,0,0,0) 100%)' }}>
                           <p style={{ fontSize:11, fontWeight:600, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{movie.title}</p>
                           {hasErrors && <p style={{ fontSize:10, color:'#f87171', marginTop:2 }}>⚠ Liens manquants</p>}
                           {allOk && <p style={{ fontSize:10, color:'#34d399', marginTop:2 }}>✓ OK</p>}
                           {(movie.hardlinks||[]).length === 0 && <p style={{ fontSize:10, color:'rgba(100,116,139,0.7)', marginTop:2 }}>— Aucun genre</p>}
+                          {/* Ligne méta : taille + date Radarr */}
+                          <div style={{ display:'flex', gap:5, marginTop:3, flexWrap:'wrap', alignItems:'center' }}>
+                            {movie.fileSize > 0 && (
+                              <span style={{ fontSize:9, color:'rgba(148,163,184,0.65)', fontWeight:500 }}>{formatSize(movie.fileSize)}</span>
+                            )}
+                            {addedRadarr && (
+                              <span style={{ fontSize:9, color:'rgba(100,116,139,0.55)' }}>· {addedRadarr}</span>
+                            )}
+                            {movie.jellystatEnabled && movie.watchCount === 0 && (
+                              <span style={{ fontSize:9, color:'rgba(100,116,139,0.45)' }}>· Non vu</span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -916,6 +967,20 @@ const App = () => {
                         <input type="password" value={config.sonarrApiKey || ''} onChange={e => setConfig({...config, sonarrApiKey: e.target.value})} className="input-field" placeholder="••••••••••••••••" />
                       </Field>
                     </div>
+                  </SectionCard>
+                  <SectionCard title="Jellystat" icon="📊">
+                    <div className="grid grid-cols-2 gap-3">
+                      <Field label="URL Jellystat" hint="ex: http://jellystat:3000">
+                        <input type="text" value={config.jellystatUrl || ''} onChange={e => setConfig({...config, jellystatUrl: e.target.value})} className="input-field" placeholder="http://jellystat:3000" />
+                      </Field>
+                      <Field label="Clé API Jellystat">
+                        <input type="password" value={config.jellystatApiKey || ''} onChange={e => setConfig({...config, jellystatApiKey: e.target.value})} className="input-field" placeholder="••••••••••••••••" />
+                      </Field>
+                    </div>
+                    <p className="text-xs" style={{ color: 'rgba(100,116,139,0.7)' }}>
+                      Affiche le nombre de vues et l'historique de visionnage dans la bibliothèque (via <code style={{ fontSize:10 }}>/api/getItemsPlaybackActivity</code>).
+                      La clé API se génère dans Jellystat → Paramètres → API Key.
+                    </p>
                   </SectionCard>
                   <SectionCard title="Propriétaire des fichiers" icon="👤">
                     <div className="grid grid-cols-2 gap-3">

@@ -56,7 +56,9 @@ def load_config():
         },
         "seriesCheck": {
             "enabled": False
-        }
+        },
+        "jellystatUrl": "",
+        "jellystatApiKey": ""
     }
     if os.path.exists(CONFIG_PATH):
         try:
@@ -646,6 +648,57 @@ def detect_duplicates(config):
         return []
 
 
+# --- JELLYSTAT ---
+
+def get_jellystat_history(config):
+    """Récupère tout l'historique de visionnage depuis Jellystat.
+    Retourne un dict { titre_lower: [date_str, ...] } pour les films."""
+    jellystat_url = config.get('jellystatUrl', '').rstrip('/')
+    jellystat_key = config.get('jellystatApiKey', '')
+    if not jellystat_url or not jellystat_key:
+        return {}
+    try:
+        resp = requests.get(
+            f"{jellystat_url}/api/getItemsPlaybackActivity",
+            headers={"api-key": jellystat_key},
+            timeout=30
+        )
+        resp.raise_for_status()
+        raw = resp.json()
+        # La réponse peut être une liste ou un dict avec une clé data/results
+        items = raw if isinstance(raw, list) else raw.get('data', raw.get('results', []))
+        history = {}
+        for item in items:
+            # Nom du film — plusieurs variantes de champ selon la version Jellystat
+            name = (
+                item.get('NomElement') or
+                item.get('ItemName') or
+                item.get('Name') or
+                item.get('EpisodeName') or ''
+            ).strip()
+            # Date de visionnage
+            date_str = (
+                item.get('ActivityDateInserted') or
+                item.get('DateEcoute') or
+                item.get('Date') or
+                item.get('PlaybackStart') or ''
+            )
+            # Type : on ne garde que les films
+            item_type = (
+                item.get('Type') or
+                item.get('ItemType') or
+                item.get('MediaType') or ''
+            ).lower()
+            if name and ('episode' not in item_type and 'series' not in item_type):
+                key = name.lower()
+                history.setdefault(key, []).append(date_str)
+        print(f"[JELLYSTAT] {len(history)} titre(s) avec historique")
+        return history
+    except Exception as e:
+        print(f"[JELLYSTAT] Erreur: {e}")
+        return {}
+
+
 # --- ROUTES ---
 
 @app.route('/')
@@ -713,6 +766,11 @@ def get_status():
         print(f"[SCAN] {len(all_movies)} films depuis Radarr")
         hardlink_status = get_hardlink_status(config)
         source_root = config['sourceRoot']
+
+        # Récupération Jellystat (une seule fois pour tous les films)
+        jellystat_history = get_jellystat_history(config)
+        jellystat_enabled = bool(config.get('jellystatUrl') and config.get('jellystatApiKey'))
+
         result = []
 
         for movie in all_movies:
@@ -732,14 +790,25 @@ def get_status():
             poster = next((img.get('remoteUrl') for img in movie.get('images', [])
                            if img.get('coverType') == 'poster'), None)
 
+            # Données Jellystat : matching par titre (insensible à la casse)
+            title_key = movie['title'].lower()
+            watch_dates_raw = jellystat_history.get(title_key, [])
+            watch_dates_sorted = sorted([d for d in watch_dates_raw if d], reverse=True)
+
             result.append({
                 "title": movie['title'],
                 "path": source_path,
+                "folderName": folder_name,
                 "poster": poster,
                 "genres": genres,
                 "hardlinks": hardlink_status.get(folder_name, []),
                 "addedTime": os.path.getmtime(source_path),
-                "tmdbId": movie.get('tmdbId')
+                "addedToRadarr": movie.get('added', ''),
+                "fileSize": movie.get('movieFile', {}).get('size', 0),
+                "tmdbId": movie.get('tmdbId'),
+                "watchCount": len(watch_dates_raw),
+                "watchDates": watch_dates_sorted[:10],
+                "jellystatEnabled": jellystat_enabled
             })
 
         result.sort(key=lambda x: x['addedTime'], reverse=True)
@@ -873,6 +942,54 @@ def delete_duplicates():
                    {"count": len(success), "errors": len(errors)})
     return jsonify({"status": "ok", "deleted": len(success), "errors": len(errors),
                     "details": {"success": success, "errors": errors}})
+
+
+@app.route('/api/delete-movie', methods=['POST'])
+def delete_movie():
+    """Supprime un film : dossier source (A trier) + tous les hardlinks dans les dossiers genre."""
+    import shutil
+    data = request.json or {}
+    source_path = data.get('sourcePath', '')
+    folder_name = data.get('folderName', '') or (os.path.basename(source_path) if source_path else '')
+    title = data.get('title', folder_name)
+    config = load_config()
+    media_root = config.get('mediaRoot', '')
+
+    deleted = []
+    errors = []
+
+    # 1. Suppression du dossier source
+    if source_path and os.path.isdir(source_path):
+        try:
+            shutil.rmtree(source_path)
+            deleted.append(source_path)
+        except Exception as e:
+            errors.append(f"Source '{source_path}': {e}")
+    elif source_path:
+        errors.append(f"Source non trouvée: {source_path}")
+
+    # 2. Suppression des hardlinks dans chaque sous-dossier genre de mediaRoot
+    if folder_name and media_root and os.path.isdir(media_root):
+        for genre_folder in os.listdir(media_root):
+            genre_path = os.path.join(media_root, genre_folder)
+            if not os.path.isdir(genre_path) or genre_folder == os.path.basename(config.get('sourceRoot', '')):
+                continue
+            movie_genre_path = os.path.join(genre_path, folder_name)
+            if os.path.isdir(movie_genre_path):
+                try:
+                    shutil.rmtree(movie_genre_path)
+                    deleted.append(movie_genre_path)
+                except Exception as e:
+                    errors.append(f"Hardlink '{genre_folder}/{folder_name}': {e}")
+
+    if deleted:
+        append_log("success", "delete",
+                   f"Film supprimé (source + hardlinks) : {title}",
+                   {"deleted": deleted, "errors": errors, "count": len(deleted)})
+        return jsonify({"status": "ok", "deleted": deleted, "errors": errors})
+
+    append_log("error", "delete", f"Suppression film échouée : {title}", {"errors": errors})
+    return jsonify({"error": "Aucun dossier supprimé", "errors": errors}), 404
 
 
 @app.route('/api/run', methods=['POST'])
