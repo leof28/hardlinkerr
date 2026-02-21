@@ -4,7 +4,6 @@ import subprocess
 import json
 import requests
 from datetime import datetime, timedelta
-import threading
 import time
 from apscheduler.schedulers.background import BackgroundScheduler
 
@@ -14,6 +13,8 @@ app = Flask(__name__)
 CONFIG_DIR = "/app/config"
 CONFIG_PATH = os.path.join(CONFIG_DIR, "config.json")
 CACHE_PATH = os.path.join(CONFIG_DIR, "scan_cache.json")
+LOGS_PATH = os.path.join(CONFIG_DIR, "logs.json")
+IGNORE_PATH = os.path.join(CONFIG_DIR, "ignored.json")
 SCRIPT_PATH = "./hardlink_manager.sh"
 TEMPLATE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates')
 
@@ -21,24 +22,30 @@ TEMPLATE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templat
 scheduler = BackgroundScheduler()
 scheduler.start()
 
+
 def load_config():
     defaults = {
-        "radarrUrl": "http://192.168.1.100:7878",
-        "apiKey": "b51d90f91eca475cb5cca7d84cc33a28",
+        "radarrUrl": "",
+        "apiKey": "",
         "sonarrUrl": "",
         "sonarrApiKey": "",
         "sourceRoot": "/media/movies/A trier",
         "mediaRoot": "/media/movies",
         "seriesSourceRoot": "/media/series/Source",
         "seriesCheckRoot": "/media/series/Check",
-        "ownerUser": "media",
-        "ownerGroup": "3001",
+        "ownerUser": "",
+        "ownerGroup": "",
         "genreMapping": {},
         "autoSync": {
             "enabled": False,
             "cronSchedule": "0 */6 * * *",
             "lastRun": None,
             "lastFullScan": None
+        },
+        "seriesAutoCheck": {
+            "enabled": False,
+            "cronSchedule": "0 */12 * * *",
+            "lastRun": None
         },
         "webhookEnabled": False,
         "webhookSecret": "",
@@ -54,81 +61,95 @@ def load_config():
     if os.path.exists(CONFIG_PATH):
         try:
             with open(CONFIG_PATH, 'r') as f:
-                return {**defaults, **json.load(f)}
-        except:
+                saved = json.load(f)
+                # Deep merge for nested dicts
+                result = {**defaults, **saved}
+                for key in ('autoSync', 'seriesAutoCheck', 'scanOptimization', 'seriesCheck'):
+                    if key in defaults and key in saved and isinstance(saved[key], dict):
+                        result[key] = {**defaults[key], **saved[key]}
+                return result
+        except Exception:
             return defaults
     return defaults
+
 
 def save_config(config):
     os.makedirs(CONFIG_DIR, exist_ok=True)
     with open(CONFIG_PATH, 'w') as f:
         json.dump(config, f, indent=4)
-    setup_cron_job(config)
+    setup_cron_jobs(config)
+
 
 def load_cache():
-    """Charge le cache des scans précédents"""
     if os.path.exists(CACHE_PATH):
         try:
             with open(CACHE_PATH, 'r') as f:
                 return json.load(f)
-        except:
+        except Exception:
             return {}
     return {}
 
+
 def save_cache(cache):
-    """Sauvegarde le cache"""
     with open(CACHE_PATH, 'w') as f:
         json.dump(cache, f, indent=4)
 
-def get_recent_movies(config):
-    """Récupère uniquement les films ajoutés récemment"""
-    source_root = config.get('sourceRoot', '')
-    recent_hours = config.get('scanOptimization', {}).get('recentHours', 3)
-    cutoff_time = datetime.now() - timedelta(hours=recent_hours)
-    
-    recent_movies = []
-    
-    try:
-        if not os.path.isdir(source_root):
-            return []
-        
-        for folder_name in os.listdir(source_root):
-            folder_path = os.path.join(source_root, folder_name)
-            if not os.path.isdir(folder_path):
-                continue
-            
-            # Vérifier la date de modification du dossier
-            mtime = datetime.fromtimestamp(os.path.getmtime(folder_path))
-            
-            if mtime > cutoff_time:
-                # Vérifier qu'il contient des MKV
-                has_mkv = any(f.lower().endswith('.mkv') for f in os.listdir(folder_path))
-                if has_mkv:
-                    recent_movies.append({
-                        'folder_name': folder_name,
-                        'path': folder_path,
-                        'mtime': mtime.isoformat()
-                    })
-    except Exception as e:
-        print(f"Erreur get_recent_movies: {str(e)}")
-    
-    return recent_movies
 
-def should_do_full_scan(config):
-    """Détermine si un scan complet est nécessaire"""
-    optimization = config.get('scanOptimization', {})
-    if not optimization.get('enabled', True):
-        return True
-    
-    last_full_scan = config.get('autoSync', {}).get('lastFullScan')
-    if not last_full_scan:
-        return True
-    
-    full_scan_interval = optimization.get('fullScanInterval', 24)
-    last_scan_time = datetime.fromisoformat(last_full_scan)
-    hours_since = (datetime.now() - last_scan_time).total_seconds() / 3600
-    
-    return hours_since >= full_scan_interval
+# --- LOGS ---
+
+def load_logs():
+    if os.path.exists(LOGS_PATH):
+        try:
+            with open(LOGS_PATH, 'r') as f:
+                return json.load(f)
+        except Exception:
+            return []
+    return []
+
+
+def save_logs(logs):
+    os.makedirs(CONFIG_DIR, exist_ok=True)
+    with open(LOGS_PATH, 'w') as f:
+        json.dump(logs, f)
+
+
+def append_log(level, category, message, details=None):
+    """Ajoute une entrée dans le journal persistant (max 1000 entrées)."""
+    logs = load_logs()
+    entry = {
+        "timestamp": datetime.now().isoformat(),
+        "level": level,       # "info" | "success" | "warning" | "error"
+        "category": category, # "hardlink" | "series" | "cron" | "delete" | "webhook" | "scan" | "ignore"
+        "message": message,
+    }
+    if details:
+        entry["details"] = details
+    logs.append(entry)
+    if len(logs) > 1000:
+        logs = logs[-1000:]
+    save_logs(logs)
+    return entry
+
+
+# --- IGNORE ---
+
+def load_ignored():
+    if os.path.exists(IGNORE_PATH):
+        try:
+            with open(IGNORE_PATH, 'r') as f:
+                return json.load(f)
+        except Exception:
+            return {"series": [], "movies": []}
+    return {"series": [], "movies": []}
+
+
+def save_ignored(ignored):
+    os.makedirs(CONFIG_DIR, exist_ok=True)
+    with open(IGNORE_PATH, 'w') as f:
+        json.dump(ignored, f, indent=2)
+
+
+# --- HARDLINK HELPERS ---
 
 def get_env(config, movie="", genres=""):
     mapping_str = "|".join([
@@ -136,7 +157,6 @@ def get_env(config, movie="", genres=""):
         for genre, settings in config.get('genreMapping', {}).items()
         if settings.get('enabled', False)
     ])
-    
     env = os.environ.copy()
     env.update({
         "RADARR_URL": config.get('radarrUrl', ''),
@@ -151,49 +171,67 @@ def get_env(config, movie="", genres=""):
     })
     return env
 
+
+def _parse_hardlink_summary(output):
+    """Parse le résumé de hardlink_manager.sh et retourne un dict."""
+    summary = {"total": 0, "linked": 0, "skipped": 0, "errors": 0}
+    for line in output.split('\n'):
+        if line.startswith("Films traités:"):
+            try: summary["total"] = int(line.split(":")[1].strip())
+            except: pass
+        elif line.startswith("Hardlinks créés:"):
+            try: summary["linked"] = int(line.split(":")[1].strip())
+            except: pass
+        elif line.startswith("Films ignorés:"):
+            try: summary["skipped"] = int(line.split(":")[1].strip())
+            except: pass
+        elif line.startswith("Erreurs:"):
+            try: summary["errors"] = int(line.split(":")[1].strip())
+            except: pass
+    return summary
+
+
 def execute_hardlinks(config, movie_path='', genres=''):
-    """Fonction helper pour exécuter la création de hardlinks"""
     env = get_env(config, movie_path, genres)
-    
+    label = os.path.basename(movie_path) if movie_path else ("genre=" + genres if genres else "tous")
     try:
         process = subprocess.run(
             [SCRIPT_PATH, "-y"],
-            capture_output=True,
-            text=True,
-            env=env,
-            timeout=600
+            capture_output=True, text=True, env=env, timeout=600
         )
-        return {
-            "status": "ok",
-            "output": process.stdout,
-            "errors": process.stderr
-        }
+        result = {"status": "ok", "output": process.stdout, "errors": process.stderr}
+
+        # Log the result
+        summary = _parse_hardlink_summary(process.stdout)
+        if process.returncode != 0 or process.stderr.strip():
+            append_log("error", "hardlink",
+                       f"Hardlinks [{label}] — erreurs détectées",
+                       {"summary": summary, "stderr": process.stderr[:500]})
+        elif summary["linked"] > 0:
+            append_log("success", "hardlink",
+                       f"Hardlinks créés [{label}] — {summary['linked']} lien(s), {summary['skipped']} ignoré(s)",
+                       {"summary": summary})
+        else:
+            append_log("info", "hardlink",
+                       f"Hardlinks [{label}] — rien de nouveau ({summary['skipped']} ignoré(s))",
+                       {"summary": summary})
+
+        return result
     except Exception as e:
-        return {
-            "status": "error",
-            "error": str(e)
-        }
+        append_log("error", "hardlink", f"Hardlinks [{label}] — exception: {e}")
+        return {"status": "error", "error": str(e)}
+
 
 def get_hardlink_status(config):
-    """Fonction helper pour récupérer l'état des hardlinks - SANS filtre"""
     env = get_env(config)
-    
     try:
-        # Appel au script bash pour vérifier l'état (-s = status only)
-        # IMPORTANT : Ne pas filtrer, laisser le script bash tout traiter
         process = subprocess.run(
             [SCRIPT_PATH, "-s"],
-            capture_output=True,
-            text=True,
-            env=env,
-            timeout=300
+            capture_output=True, text=True, env=env, timeout=300
         )
-        
-        # Parse la sortie du script
         hardlink_status = {}
         for line in process.stdout.split('\n'):
             if line.startswith("HARDLINK_STATUS"):
-                # Format: HARDLINK_STATUS|folder_name|genre|local_folder|found|total
                 parts = line.split('|')
                 if len(parts) >= 6:
                     folder_name = parts[1]
@@ -201,81 +239,151 @@ def get_hardlink_status(config):
                     local_folder = parts[3]
                     found = int(parts[4])
                     total = int(parts[5])
-                    
-                    if folder_name not in hardlink_status:
-                        hardlink_status[folder_name] = []
-                    
-                    hardlink_status[folder_name].append({
+                    hardlink_status.setdefault(folder_name, []).append({
                         "genre": genre,
                         "folder": local_folder,
                         "found": found,
                         "total": total,
                         "exists": found >= total and total > 0
                     })
-        
         return hardlink_status
     except Exception as e:
-        print(f"Erreur get_hardlink_status: {str(e)}")
+        print(f"Erreur get_hardlink_status: {e}")
         return {}
 
+
+# --- SCAN OPTIMIZATION ---
+
+def should_do_full_scan(config):
+    optimization = config.get('scanOptimization', {})
+    if not optimization.get('enabled', True):
+        return True
+    last_full_scan = config.get('autoSync', {}).get('lastFullScan')
+    if not last_full_scan:
+        return True
+    full_scan_interval = optimization.get('fullScanInterval', 24)
+    hours_since = (datetime.now() - datetime.fromisoformat(last_full_scan)).total_seconds() / 3600
+    return hours_since >= full_scan_interval
+
+
+def get_recent_movies(config):
+    source_root = config.get('sourceRoot', '')
+    recent_hours = config.get('scanOptimization', {}).get('recentHours', 3)
+    cutoff_time = datetime.now() - timedelta(hours=recent_hours)
+    recent_movies = []
+    try:
+        if not os.path.isdir(source_root):
+            return []
+        for folder_name in os.listdir(source_root):
+            folder_path = os.path.join(source_root, folder_name)
+            if not os.path.isdir(folder_path):
+                continue
+            mtime = datetime.fromtimestamp(os.path.getmtime(folder_path))
+            if mtime > cutoff_time:
+                if any(f.lower().endswith('.mkv') for f in os.listdir(folder_path)):
+                    recent_movies.append({'folder_name': folder_name, 'path': folder_path})
+    except Exception as e:
+        print(f"Erreur get_recent_movies: {e}")
+    return recent_movies
+
+
+# --- CRON HANDLERS ---
+
 def cron_job_handler():
-    """Fonction exécutée par le cron - optimisée"""
-    print(f"[{datetime.now()}] Cron job: Démarrage...")
-    
+    print(f"[{datetime.now()}] Cron films: Démarrage...")
+    append_log("info", "cron", "Cron films démarré")
     config = load_config()
-    
-    # Déterminer le type de scan
     do_full_scan = should_do_full_scan(config)
-    
+
     if do_full_scan:
-        print(f"[{datetime.now()}] Scan complet de tous les films")
-        result = execute_hardlinks(config)
+        print(f"[{datetime.now()}] Scan complet")
+        append_log("info", "cron", "Scan complet en cours...")
+        execute_hardlinks(config)
         config['autoSync']['lastFullScan'] = datetime.now().isoformat()
     else:
-        print(f"[{datetime.now()}] Scan optimisé (films récents uniquement)")
         recent_movies = get_recent_movies(config)
-        
         if recent_movies:
-            print(f"[{datetime.now()}] {len(recent_movies)} films récents détectés")
+            print(f"[{datetime.now()}] {len(recent_movies)} films récents")
+            append_log("info", "cron", f"Scan optimisé — {len(recent_movies)} film(s) récent(s)")
             for movie in recent_movies:
                 execute_hardlinks(config, movie['path'])
         else:
             print(f"[{datetime.now()}] Aucun film récent")
-    
+            append_log("info", "cron", "Scan optimisé — aucun film récent, rien à faire")
+
     config['autoSync']['lastRun'] = datetime.now().isoformat()
     save_config(config)
-    
-    print(f"[{datetime.now()}] Cron job terminé")
+    append_log("success", "cron", "Cron films terminé")
+    print(f"[{datetime.now()}] Cron films terminé")
 
-def setup_cron_job(config):
-    """Configure ou met à jour le cron job"""
+
+def series_cron_handler():
+    print(f"[{datetime.now()}] Cron séries: Démarrage...")
+    append_log("info", "cron", "Cron séries démarré")
+    config = load_config()
+    issues = detect_series_issues(config)
+    config.setdefault('seriesAutoCheck', {})['lastRun'] = datetime.now().isoformat()
+    save_config(config)
+    msg = f"Cron séries terminé — {len(issues)} orpheline(s) trouvée(s)"
+    append_log("success" if len(issues) == 0 else "warning", "cron", msg)
+    print(f"[{datetime.now()}] {msg}")
+
+
+def setup_cron_jobs(config):
     scheduler.remove_all_jobs()
-    
-    if config.get('autoSync', {}).get('enabled', False):
-        cron_schedule = config['autoSync'].get('cronSchedule', '0 */6 * * *')
-        parts = cron_schedule.split()
-        if len(parts) == 5:
-            try:
-                scheduler.add_job(
-                    cron_job_handler,
-                    'cron',
-                    minute=parts[0],
-                    hour=parts[1],
-                    day=parts[2],
-                    month=parts[3],
-                    day_of_week=parts[4],
-                    id='auto_hardlink'
-                )
-                print(f"Cron job configuré: {cron_schedule}")
-            except Exception as e:
-                print(f"Erreur configuration cron: {str(e)}")
 
-# Initialiser le cron au démarrage
-initial_config = load_config()
-setup_cron_job(initial_config)
+    # Cron films
+    if config.get('autoSync', {}).get('enabled', False):
+        _add_cron_job('auto_hardlink', cron_job_handler,
+                      config['autoSync'].get('cronSchedule', '0 */6 * * *'))
+
+    # Cron vérification séries
+    if config.get('seriesAutoCheck', {}).get('enabled', False):
+        _add_cron_job('auto_series_check', series_cron_handler,
+                      config['seriesAutoCheck'].get('cronSchedule', '0 */12 * * *'))
+
+
+def _add_cron_job(job_id, handler, cron_schedule):
+    parts = cron_schedule.split()
+    if len(parts) != 5:
+        print(f"Cron invalide pour {job_id}: {cron_schedule}")
+        return
+    try:
+        scheduler.add_job(
+            handler, 'cron',
+            minute=parts[0], hour=parts[1], day=parts[2],
+            month=parts[3], day_of_week=parts[4],
+            id=job_id
+        )
+        print(f"Cron {job_id}: {cron_schedule}")
+    except Exception as e:
+        print(f"Erreur cron {job_id}: {e}")
+
+
+# Init cron au démarrage
+setup_cron_jobs(load_config())
+
+
+# --- SERIES DETECTION ---
+
+def _sonarr_folder_name(raw_path):
+    """Extrait le nom du dossier depuis un chemin Sonarr (gère \ et /)."""
+    return os.path.basename(raw_path.replace('\\', '/').rstrip('/'))
+
 
 def detect_series_issues(config):
-    """Détecte les séries orphelines dans Check via Sonarr API (path sur disque + file de téléchargement)"""
+    """
+    Détecte les séries orphelines dans le dossier Check.
+
+    Logique :
+      - Récupère la liste des séries depuis Sonarr (episodeFileCount, monitored)
+      - Récupère la file de téléchargement Sonarr (activeDL)
+      - Pour chaque dossier dans Check :
+          • Trouvé dans Sonarr ET (a des fichiers OU est monitoré OU en DL) → pas orpheline
+          • Sinon → orpheline
+      - Fallback sans Sonarr : vérifie seriesSourceRoot sur le disque
+      - Les séries dans la liste d'ignorées sont exclues
+    """
     issues = []
 
     if not config.get('seriesCheck', {}).get('enabled', False):
@@ -283,53 +391,49 @@ def detect_series_issues(config):
 
     series_source = config.get('seriesSourceRoot', '')
     series_check = config.get('seriesCheckRoot', '')
-    sonarr_url = config.get('sonarrUrl', '')
+    sonarr_url = config.get('sonarrUrl', '').rstrip('/')
     sonarr_api_key = config.get('sonarrApiKey', '')
 
     if not series_check or not os.path.isdir(series_check):
         return issues
 
+    ignored = load_ignored()
+    ignored_series = set(ignored.get("series", []))
+
     try:
-        # --- 1. Récupérer les séries depuis Sonarr indexées par nom de dossier ---
-        # { folder_name: { 'id': int, 'path': str, 'title': str } }
-        sonarr_by_folder = {}
-        # ensemble des IDs de séries en cours de téléchargement
+        sonarr_by_folder = {}   # folder_name → {id, path, title, monitored, episodeFileCount}
         active_series_ids = set()
         sonarr_available = bool(sonarr_url and sonarr_api_key)
 
         if sonarr_available:
-            # Séries
-            try:
-                print(f"[SERIES] Connexion à Sonarr : {sonarr_url}")
-                resp = requests.get(
-                    f"{sonarr_url}/api/v3/series",
-                    headers={"X-Api-Key": sonarr_api_key},
-                    timeout=30
-                )
-                resp.raise_for_status()
-                for series in resp.json():
-                    s_path = series.get('path', '').rstrip('/')
-                    s_id = series.get('id')
-                    s_title = series.get('title', '')
-                    if s_path:
-                        folder = os.path.basename(s_path)
-                        sonarr_by_folder[folder] = {
-                            'id': s_id,
-                            'path': s_path,
-                            'title': s_title
-                        }
-                print(f"[SERIES] {len(sonarr_by_folder)} séries récupérées depuis Sonarr")
-            except Exception as e:
-                print(f"[SERIES] Erreur API Sonarr (series): {str(e)}")
+            headers = {"X-Api-Key": sonarr_api_key}
 
-            # File de téléchargement (activeDL)
+            # 1. Séries
             try:
-                q_resp = requests.get(
-                    f"{sonarr_url}/api/v3/queue",
-                    headers={"X-Api-Key": sonarr_api_key},
-                    params={"pageSize": 1000},
-                    timeout=30
-                )
+                resp = requests.get(f"{sonarr_url}/api/v3/series",
+                                    headers=headers, timeout=30)
+                resp.raise_for_status()
+                for s in resp.json():
+                    raw_path = s.get('path', '')
+                    folder = _sonarr_folder_name(raw_path)
+                    if folder:
+                        sonarr_by_folder[folder] = {
+                            'id': s.get('id'),
+                            'path': raw_path,
+                            'title': s.get('title', ''),
+                            'monitored': s.get('monitored', False),
+                            'episodeFileCount': s.get('statistics', {}).get('episodeFileCount', 0)
+                        }
+                print(f"[SERIES] {len(sonarr_by_folder)} séries dans Sonarr")
+            except Exception as e:
+                print(f"[SERIES] Erreur API séries: {e}")
+
+            # 2. File de téléchargement (activeDL)
+            try:
+                q_resp = requests.get(f"{sonarr_url}/api/v3/queue",
+                                      headers=headers,
+                                      params={"pageSize": 1000},
+                                      timeout=30)
                 q_resp.raise_for_status()
                 q_data = q_resp.json()
                 records = q_data.get('records', q_data) if isinstance(q_data, dict) else q_data
@@ -337,71 +441,79 @@ def detect_series_issues(config):
                     sid = item.get('seriesId') or (item.get('series') or {}).get('id')
                     if sid:
                         active_series_ids.add(sid)
-                print(f"[SERIES] {len(active_series_ids)} séries en téléchargement actif")
+                print(f"[SERIES] {len(active_series_ids)} séries en téléchargement")
             except Exception as e:
-                print(f"[SERIES] Erreur API Sonarr (queue): {str(e)}")
+                print(f"[SERIES] Erreur API queue: {e}")
 
-        # --- 2. Parcourir le dossier Check ---
-        for series_folder in os.listdir(series_check):
+        # 3. Scan du dossier Check
+        for series_folder in sorted(os.listdir(series_check)):
             check_path = os.path.join(series_check, series_folder)
             if not os.path.isdir(check_path):
                 continue
 
-            # Trouver la correspondance dans Sonarr (par nom de dossier exact puis normalisé)
+            # Vérifier si ignorée
+            if series_folder in ignored_series:
+                print(f"[SERIES] {series_folder} → ignorée (liste d'exclusion)")
+                continue
+
+            # Recherche dans Sonarr : exact d'abord, puis normalisé
             sonarr_info = sonarr_by_folder.get(series_folder)
             if sonarr_info is None:
-                normalized_check = series_folder.replace('.', ' ').replace('_', ' ').lower().strip()
-                for known_folder, info in sonarr_by_folder.items():
-                    normalized_known = known_folder.replace('.', ' ').replace('_', ' ').lower().strip()
-                    if normalized_check == normalized_known:
-                        sonarr_info = info
+                norm = series_folder.replace('.', ' ').replace('_', ' ').lower().strip()
+                for k, v in sonarr_by_folder.items():
+                    if k.replace('.', ' ').replace('_', ' ').lower().strip() == norm:
+                        sonarr_info = v
                         break
 
             is_orphan = False
             reason = ''
             sonarr_path = None
             in_active_dl = False
+            sonarr_title = None
 
             if sonarr_info:
                 sonarr_path = sonarr_info['path']
+                sonarr_title = sonarr_info['title']
                 series_id = sonarr_info['id']
                 in_active_dl = series_id in active_series_ids
+                has_files = sonarr_info['episodeFileCount'] > 0
+                monitored = sonarr_info['monitored']
 
-                if os.path.isdir(sonarr_path):
-                    # Le chemin Sonarr existe sur le disque → série toujours active
-                    print(f"[SERIES] {series_folder} → chemin OK: {sonarr_path}")
+                if has_files:
+                    print(f"[SERIES] {series_folder} → actif ({sonarr_info['episodeFileCount']} fichiers)")
+                    continue
+                elif monitored:
+                    print(f"[SERIES] {series_folder} → monitoré (0 fichiers pour l'instant)")
                     continue
                 elif in_active_dl:
-                    # Chemin absent mais téléchargement en cours
-                    print(f"[SERIES] {series_folder} → téléchargement actif (ID={series_id}), ignorée")
+                    print(f"[SERIES] {series_folder} → téléchargement actif (ID={series_id})")
                     continue
                 else:
-                    # Chemin introuvable sur disque et pas en DL → orpheline
                     is_orphan = True
-                    reason = f'Chemin Sonarr introuvable sur le disque : {sonarr_path}'
+                    reason = 'Série non monitorée sans fichiers dans Sonarr'
             else:
-                # Série inconnue de Sonarr → vérifier le dossier Source comme fallback
+                # Pas dans Sonarr → fallback filesystem
                 if series_source and os.path.isdir(os.path.join(series_source, series_folder)):
                     print(f"[SERIES] {series_folder} → trouvée dans Source (fallback)")
                     continue
                 is_orphan = True
-                reason = 'Série absente de Sonarr' if sonarr_available else f'Série absente de "{os.path.basename(series_source)}"'
+                reason = ('Série absente de Sonarr' if sonarr_available
+                          else f'Série absente de "{os.path.basename(series_source)}"')
 
             if is_orphan:
-                file_count = 0
-                total_size = 0
-                for root, dirs, files in os.walk(check_path):
-                    for file in files:
-                        if file.lower().endswith(('.mkv', '.mp4', '.avi')):
+                file_count, total_size = 0, 0
+                for root, _, files in os.walk(check_path):
+                    for f in files:
+                        if f.lower().endswith(('.mkv', '.mp4', '.avi')):
                             file_count += 1
-                            fp = os.path.join(root, file)
                             try:
-                                total_size += os.path.getsize(fp)
-                            except:
+                                total_size += os.path.getsize(os.path.join(root, f))
+                            except OSError:
                                 pass
 
                 issues.append({
                     'series': series_folder,
+                    'sonarrTitle': sonarr_title or series_folder,
                     'path': check_path,
                     'type': 'series_orphan',
                     'reason': reason,
@@ -413,16 +525,23 @@ def detect_series_issues(config):
 
         print(f"[SERIES] {len(issues)} séries orphelines détectées")
         return issues
+
     except Exception as e:
-        print(f"Erreur detect_series_issues: {str(e)}")
+        print(f"Erreur detect_series_issues: {e}")
         import traceback
         traceback.print_exc()
         return []
 
+
+# --- FILM DETECTION ---
+
 def detect_duplicates(config):
-    """Détecte les problèmes : doublons MKV, orphelins, genres incorrects"""
+    """Détecte doublons MKV, orphelins (source supprimée) et genres incorrects.
+    Les films dans la liste d'ignorées sont exclus."""
     duplicates = []
-    
+    ignored = load_ignored()
+    ignored_movies = set(ignored.get("movies", []))
+
     try:
         response = requests.get(
             f"{config['radarrUrl']}/api/v3/movie",
@@ -431,126 +550,101 @@ def detect_duplicates(config):
         )
         response.raise_for_status()
         movies = response.json()
-        
+
         movie_info = {}
         for movie in movies:
             if movie.get('hasFile'):
                 folder_name = os.path.basename(movie['path'])
                 file_path = movie.get('movieFile', {}).get('relativePath', '')
                 official_name = os.path.basename(file_path) if file_path else ''
-                
-                genres = []
-                for g in movie.get('genres', []):
-                    genre_name = g['name'] if isinstance(g, dict) else g
-                    genres.append(genre_name)
-                
+                genres = [g['name'] if isinstance(g, dict) else g for g in movie.get('genres', [])]
                 movie_info[folder_name] = {
                     'official': official_name,
                     'genres': genres,
                     'title': movie['title']
                 }
-        
-        genre_to_folder = {}
-        for genre, settings in config.get('genreMapping', {}).items():
-            if settings.get('enabled', False):
-                genre_to_folder[genre] = settings['folder']
-        
+
+        genre_to_folder = {
+            genre: settings['folder']
+            for genre, settings in config.get('genreMapping', {}).items()
+            if settings.get('enabled', False)
+        }
+
         media_root = config.get('mediaRoot', '')
         source_root = config.get('sourceRoot', '')
-        
+
         for genre_folder in os.listdir(media_root):
             genre_path = os.path.join(media_root, genre_folder)
             if not os.path.isdir(genre_path) or genre_folder == 'A trier':
                 continue
-            
+
             for movie_folder in os.listdir(genre_path):
                 movie_path = os.path.join(genre_path, movie_folder)
                 if not os.path.isdir(movie_path):
                     continue
-                
+
+                # Vérifier si ignoré
+                if movie_folder in ignored_movies:
+                    continue
+
                 source_path = os.path.join(source_root, movie_folder)
                 source_exists = os.path.isdir(source_path)
-                
                 info = movie_info.get(movie_folder, {})
                 official = info.get('official', '')
                 movie_genres = info.get('genres', [])
                 movie_title = info.get('title', movie_folder)
-                
+
                 if not source_exists:
-                    mkv_files = [f for f in os.listdir(movie_path) if f.lower().endswith('.mkv')]
-                    for mkv in mkv_files:
+                    for mkv in [f for f in os.listdir(movie_path) if f.lower().endswith('.mkv')]:
+                        full_path = os.path.join(movie_path, mkv)
                         duplicates.append({
-                            'movie': movie_folder,
-                            'title': movie_title,
-                            'genre': genre_folder,
-                            'file': mkv,
-                            'path': os.path.join(movie_path, mkv),
-                            'isOfficial': True,
-                            'inSource': False,
-                            'wrongGenre': False,
+                            'movie': movie_folder, 'title': movie_title,
+                            'genre': genre_folder, 'file': mkv, 'path': full_path,
+                            'isOfficial': True, 'inSource': False, 'wrongGenre': False,
                             'type': 'orphan',
                             'reason': 'Dossier source supprimé de "A trier"',
-                            'size': os.path.getsize(os.path.join(movie_path, mkv)) if os.path.exists(os.path.join(movie_path, mkv)) else 0
+                            'size': os.path.getsize(full_path) if os.path.exists(full_path) else 0
                         })
                     continue
-                
-                allowed_folders = set()
-                for genre in movie_genres:
-                    if genre in genre_to_folder:
-                        allowed_folders.add(genre_to_folder[genre])
-                
-                is_wrong_genre = len(allowed_folders) > 0 and genre_folder not in allowed_folders
-                
+
+                allowed_folders = {genre_to_folder[g] for g in movie_genres if g in genre_to_folder}
+                is_wrong_genre = bool(allowed_folders) and genre_folder not in allowed_folders
                 mkv_files = [f for f in os.listdir(movie_path) if f.lower().endswith('.mkv')]
-                
+
                 if len(mkv_files) > 1:
                     for mkv in mkv_files:
-                        is_official = (mkv == official)
-                        full_path = os.path.join(movie_path, mkv)
-                        source_file_path = os.path.join(source_path, mkv)
-                        in_source = os.path.exists(source_file_path)
-                        
-                        if not is_official:
+                        if mkv != official:
+                            full_path = os.path.join(movie_path, mkv)
                             duplicates.append({
-                                'movie': movie_folder,
-                                'title': movie_title,
-                                'genre': genre_folder,
-                                'file': mkv,
-                                'path': full_path,
+                                'movie': movie_folder, 'title': movie_title,
+                                'genre': genre_folder, 'file': mkv, 'path': full_path,
                                 'isOfficial': False,
-                                'inSource': in_source,
+                                'inSource': os.path.exists(os.path.join(source_path, mkv)),
                                 'wrongGenre': is_wrong_genre,
                                 'type': 'duplicate',
                                 'reason': 'Ancienne version (pas le fichier officiel Radarr)',
                                 'size': os.path.getsize(full_path) if os.path.exists(full_path) else 0
                             })
-                elif len(mkv_files) == 1:
-                    if is_wrong_genre:
-                        mkv = mkv_files[0]
-                        full_path = os.path.join(movie_path, mkv)
-                        correct_folders = ', '.join(sorted(allowed_folders))
-                        
-                        duplicates.append({
-                            'movie': movie_folder,
-                            'title': movie_title,
-                            'genre': genre_folder,
-                            'file': mkv,
-                            'path': full_path,
-                            'isOfficial': (mkv == official),
-                            'inSource': True,
-                            'wrongGenre': True,
-                            'type': 'wrong_genre',
-                            'reason': f'Mauvais genre ! Devrait être dans : {correct_folders}',
-                            'correctFolders': list(allowed_folders),
-                            'size': os.path.getsize(full_path) if os.path.exists(full_path) else 0
-                        })
-        
+                elif len(mkv_files) == 1 and is_wrong_genre:
+                    mkv = mkv_files[0]
+                    full_path = os.path.join(movie_path, mkv)
+                    duplicates.append({
+                        'movie': movie_folder, 'title': movie_title,
+                        'genre': genre_folder, 'file': mkv, 'path': full_path,
+                        'isOfficial': mkv == official, 'inSource': True, 'wrongGenre': True,
+                        'type': 'wrong_genre',
+                        'reason': f'Mauvais genre ! Devrait être dans : {", ".join(sorted(allowed_folders))}',
+                        'correctFolders': list(allowed_folders),
+                        'size': os.path.getsize(full_path) if os.path.exists(full_path) else 0
+                    })
+
         return duplicates
     except Exception as e:
-        print(f"Erreur detect_duplicates: {str(e)}")
+        print(f"Erreur detect_duplicates: {e}")
         import traceback
         traceback.print_exc()
         return []
+
 
 # --- ROUTES ---
 
@@ -558,18 +652,18 @@ def detect_duplicates(config):
 def index():
     return send_from_directory(TEMPLATE_DIR, 'index.html')
 
+
 @app.route('/api/settings', methods=['GET', 'POST'])
 def settings():
     if request.method == 'POST':
-        data = request.json
-        save_config(data)
+        save_config(request.json)
         return jsonify({"status": "ok"})
     return jsonify(load_config())
+
 
 @app.route('/api/genres', methods=['GET'])
 def get_all_genres():
     config = load_config()
-    
     try:
         response = requests.get(
             f"{config['radarrUrl']}/api/v3/movie",
@@ -577,53 +671,37 @@ def get_all_genres():
             timeout=30
         )
         response.raise_for_status()
-        movies = response.json()
-        
         all_genres = set()
-        for movie in movies:
+        for movie in response.json():
             for genre in movie.get('genres', []):
-                genre_name = genre['name'] if isinstance(genre, dict) else genre
-                all_genres.add(genre_name)
-        
+                all_genres.add(genre['name'] if isinstance(genre, dict) else genre)
+
         current_mapping = config.get('genreMapping', {})
-        
-        genres_list = []
-        for genre in sorted(all_genres):
-            if genre in current_mapping:
-                genres_list.append({
-                    'name': genre,
-                    'enabled': current_mapping[genre].get('enabled', False),
-                    'folder': current_mapping[genre].get('folder', genre)
-                })
-            else:
-                genres_list.append({
-                    'name': genre,
-                    'enabled': False,
-                    'folder': genre
-                })
-        
-        return jsonify(genres_list)
+        return jsonify([
+            {
+                'name': genre,
+                'enabled': current_mapping.get(genre, {}).get('enabled', False),
+                'folder': current_mapping.get(genre, {}).get('folder', genre)
+            }
+            for genre in sorted(all_genres)
+        ])
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 
 @app.route('/api/scan', methods=['POST'])
 def scan():
-    """Scan complet - toujours fiable"""
     config = load_config()
-    
     try:
-        hardlink_status = get_hardlink_status(config)
-        return jsonify({"status": "success", "hardlinks": hardlink_status})
+        return jsonify({"status": "success", "hardlinks": get_hardlink_status(config)})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+
 @app.route('/api/status', methods=['GET'])
 def get_status():
-    """Récupère la liste des films avec scan complet"""
     config = load_config()
-    
     try:
-        # Récupérer les films depuis Radarr
         response = requests.get(
             f"{config['radarrUrl']}/api/v3/movie",
             headers={"X-Api-Key": config['apiKey']},
@@ -631,296 +709,248 @@ def get_status():
         )
         response.raise_for_status()
         all_movies = response.json()
-        
-        # Scanner TOUS les films - le script bash le fait lui-même
-        print(f"[SCAN] Début du scan de {len(all_movies)} films...")
+
+        print(f"[SCAN] {len(all_movies)} films depuis Radarr")
         hardlink_status = get_hardlink_status(config)
-        print(f"[SCAN] Statuts récupérés pour {len(hardlink_status)} films")
-        
-        # Construire la réponse
-        result = []
         source_root = config['sourceRoot']
-        
+        result = []
+
         for movie in all_movies:
             if not movie.get('hasFile'):
                 continue
-                
             folder_name = os.path.basename(movie['path'])
             source_path = os.path.join(source_root, folder_name)
-            
             if not os.path.isdir(source_path):
                 continue
-            
             try:
-                has_mkv = any(f.lower().endswith('.mkv') for f in os.listdir(source_path))
-            except:
+                if not any(f.lower().endswith('.mkv') for f in os.listdir(source_path)):
+                    continue
+            except OSError:
                 continue
-                
-            if not has_mkv:
-                continue
-            
-            try:
-                added_time = os.path.getmtime(source_path)
-            except:
-                added_time = 0
-            
-            genres = []
-            for g in movie.get('genres', []):
-                genre_name = g['name'] if isinstance(g, dict) else g
-                genres.append(genre_name)
-            
-            poster = None
-            for img in movie.get('images', []):
-                if img.get('coverType') == 'poster':
-                    poster = img.get('remoteUrl')
-                    break
-            
-            # Utiliser les données du scan
-            hardlinks = hardlink_status.get(folder_name, [])
-            
+
+            genres = [g['name'] if isinstance(g, dict) else g for g in movie.get('genres', [])]
+            poster = next((img.get('remoteUrl') for img in movie.get('images', [])
+                           if img.get('coverType') == 'poster'), None)
+
             result.append({
                 "title": movie['title'],
                 "path": source_path,
                 "poster": poster,
                 "genres": genres,
-                "hardlinks": hardlinks,
-                "addedTime": added_time,
+                "hardlinks": hardlink_status.get(folder_name, []),
+                "addedTime": os.path.getmtime(source_path),
                 "tmdbId": movie.get('tmdbId')
             })
-        
+
         result.sort(key=lambda x: x['addedTime'], reverse=True)
-        
-        print(f"[SCAN] Retour de {len(result)} films")
+        append_log("info", "scan", f"Scan bibliothèque — {len(result)} film(s) trouvé(s)")
+        print(f"[SCAN] {len(result)} films retournés")
         return jsonify(result)
     except Exception as e:
-        print(f"[ERREUR] {str(e)}")
+        print(f"[ERREUR] {e}")
         return jsonify({"error": str(e)}), 500
+
 
 @app.route('/api/series-issues', methods=['GET'])
 def get_series_issues():
-    """Récupère les problèmes de séries"""
     config = load_config()
-    
     try:
         issues = detect_series_issues(config)
+        if issues:
+            append_log("warning", "series",
+                       f"Scan séries — {len(issues)} orpheline(s) détectée(s)",
+                       {"series": [i["series"] for i in issues]})
+        else:
+            append_log("success", "series", "Scan séries — aucune orpheline détectée")
         return jsonify(issues)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+
 @app.route('/api/delete-series', methods=['POST'])
 def delete_series():
-    """Supprime un dossier de série complet"""
+    import shutil
     data = request.json or {}
     series_path = data.get('path', '')
-    
+    series_name = data.get('name', os.path.basename(series_path))
     try:
         if series_path and os.path.isdir(series_path):
-            import shutil
             shutil.rmtree(series_path)
-            return jsonify({"status": "ok", "message": f"Série supprimée: {series_path}"})
-        else:
-            return jsonify({"error": "Dossier non trouvé"}), 404
+            append_log("success", "delete", f"Série supprimée : {series_name}", {"path": series_path})
+            return jsonify({"status": "ok", "message": f"Supprimé: {series_path}"})
+        return jsonify({"error": "Dossier non trouvé"}), 404
     except Exception as e:
+        append_log("error", "delete", f"Erreur suppression série {series_name}: {e}")
         return jsonify({"error": str(e)}), 500
+
 
 @app.route('/api/delete-all-series', methods=['POST'])
 def delete_all_series():
-    """Supprime toutes les séries orphelines"""
+    import shutil
     config = load_config()
-    
     try:
         issues = detect_series_issues(config)
-        results = {'success': [], 'errors': []}
-        
-        import shutil
+        success, errors = [], []
         for issue in issues:
             try:
-                series_path = issue['path']
-                if os.path.isdir(series_path):
-                    shutil.rmtree(series_path)
-                    results['success'].append(issue['series'])
+                if os.path.isdir(issue['path']):
+                    shutil.rmtree(issue['path'])
+                    success.append(issue['series'])
                 else:
-                    results['errors'].append(f"Non trouvé: {issue['series']}")
+                    errors.append(f"Non trouvé: {issue['series']}")
             except Exception as e:
-                results['errors'].append(f"Erreur {issue['series']}: {str(e)}")
-        
-        return jsonify({
-            "status": "ok",
-            "deleted": len(results['success']),
-            "errors": len(results['errors']),
-            "details": results
-        })
+                errors.append(f"Erreur {issue['series']}: {e}")
+        if success:
+            append_log("success", "delete",
+                       f"{len(success)} série(s) orpheline(s) supprimée(s)",
+                       {"deleted": success, "errors": errors})
+        return jsonify({"status": "ok", "deleted": len(success),
+                        "errors": len(errors), "details": {"success": success, "errors": errors}})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 
 @app.route('/api/duplicates', methods=['GET'])
 def get_duplicates():
     config = load_config()
-    
     try:
-        duplicates = detect_duplicates(config)
-        return jsonify(duplicates)
+        dups = detect_duplicates(config)
+        if dups:
+            append_log("warning", "scan",
+                       f"Scan films — {len(dups)} problème(s) détecté(s)",
+                       {"orphans": sum(1 for d in dups if d["type"] == "orphan"),
+                        "duplicates": sum(1 for d in dups if d["type"] == "duplicate"),
+                        "wrong_genre": sum(1 for d in dups if d["type"] == "wrong_genre")})
+        else:
+            append_log("success", "scan", "Scan films — aucun problème détecté")
+        return jsonify(dups)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 
 @app.route('/api/delete-file', methods=['POST'])
 def delete_file():
     data = request.json or {}
     file_path = data.get('path', '')
-    
     try:
         if file_path and os.path.exists(file_path):
             os.remove(file_path)
-            parent_dir = os.path.dirname(file_path)
-            if os.path.isdir(parent_dir) and not os.listdir(parent_dir):
-                os.rmdir(parent_dir)
+            parent = os.path.dirname(file_path)
+            if os.path.isdir(parent) and not os.listdir(parent):
+                os.rmdir(parent)
+            append_log("success", "delete", f"Fichier supprimé : {os.path.basename(file_path)}", {"path": file_path})
             return jsonify({"status": "ok"})
-        else:
-            return jsonify({"error": "Fichier non trouvé"}), 404
+        return jsonify({"error": "Fichier non trouvé"}), 404
     except Exception as e:
+        append_log("error", "delete", f"Erreur suppression fichier: {e}")
         return jsonify({"error": str(e)}), 500
+
 
 @app.route('/api/delete-duplicates', methods=['POST'])
 def delete_duplicates():
     data = request.json or {}
     file_paths = data.get('paths', [])
-    
     if not file_paths:
         return jsonify({"error": "Aucun fichier"}), 400
-    
-    results = {'success': [], 'errors': []}
-    
+
+    success, errors = [], []
     for file_path in file_paths:
         try:
             if file_path and os.path.exists(file_path):
                 os.remove(file_path)
-                results['success'].append(file_path)
-                parent_dir = os.path.dirname(file_path)
-                if os.path.isdir(parent_dir) and not os.listdir(parent_dir):
-                    os.rmdir(parent_dir)
+                success.append(file_path)
+                parent = os.path.dirname(file_path)
+                if os.path.isdir(parent) and not os.listdir(parent):
+                    os.rmdir(parent)
             else:
-                results['errors'].append(f"Non trouvé: {file_path}")
+                errors.append(f"Non trouvé: {file_path}")
         except Exception as e:
-            results['errors'].append(f"Erreur {file_path}: {str(e)}")
-    
-    return jsonify({
-        "status": "ok",
-        "deleted": len(results['success']),
-        "errors": len(results['errors']),
-        "details": results
-    })
+            errors.append(f"Erreur {file_path}: {e}")
+
+    if success:
+        append_log("success", "delete",
+                   f"{len(success)} fichier(s) supprimé(s)",
+                   {"count": len(success), "errors": len(errors)})
+    return jsonify({"status": "ok", "deleted": len(success), "errors": len(errors),
+                    "details": {"success": success, "errors": errors}})
+
 
 @app.route('/api/run', methods=['POST'])
 def run_action():
     data = request.json or {}
     config = load_config()
-    
     movie_paths = data.get('movie_paths', [])
-    
+
     if not movie_paths:
-        movie_path = data.get('movie_path', '')
-        genres = data.get('genres', '')
-        return jsonify(execute_hardlinks(config, movie_path, genres))
-    else:
-        results = []
-        for movie_path in movie_paths:
-            result = execute_hardlinks(config, movie_path, '')
-            results.append({
-                "movie": os.path.basename(movie_path),
-                **result
-            })
-        return jsonify({"status": "ok", "results": results})
+        return jsonify(execute_hardlinks(config, data.get('movie_path', ''), data.get('genres', '')))
+
+    results = [{"movie": os.path.basename(mp), **execute_hardlinks(config, mp)}
+               for mp in movie_paths]
+    return jsonify({"status": "ok", "results": results})
+
 
 @app.route('/api/run-all', methods=['POST'])
 def run_all():
-    config = load_config()
-    return jsonify(execute_hardlinks(config))
+    return jsonify(execute_hardlinks(load_config()))
+
 
 @app.route('/api/run-by-genre', methods=['POST'])
 def run_by_genre():
     data = request.json or {}
     genres = data.get('genres', [])
-    
     if not genres:
         return jsonify({"error": "Aucun genre"}), 400
-    
     config = load_config()
-    results = []
-    
-    for genre in genres:
-        result = execute_hardlinks(config, '', genre)
-        results.append({"genre": genre, **result})
-    
+    results = [{"genre": g, **execute_hardlinks(config, '', g)} for g in genres]
     return jsonify({"status": "ok", "results": results})
+
 
 @app.route('/api/webhook/jellyfin', methods=['POST'])
 def jellyfin_webhook():
     config = load_config()
-    
     if not config.get('webhookEnabled', False):
         return jsonify({"error": "Webhook désactivé"}), 403
-    
-    webhook_secret = config.get('webhookSecret', '')
-    if webhook_secret:
-        provided_secret = request.headers.get('X-Webhook-Secret', '')
-        if provided_secret != webhook_secret:
-            return jsonify({"error": "Secret invalide"}), 403
-    
+    secret = config.get('webhookSecret', '')
+    if secret and request.headers.get('X-Webhook-Secret', '') != secret:
+        return jsonify({"error": "Secret invalide"}), 403
     try:
         data = request.json
-        notification_type = data.get('NotificationType', '')
-        
-        if notification_type in ['ItemAdded', 'MovieAdded']:
+        notif_type = data.get('NotificationType', '')
+        if notif_type in ['ItemAdded', 'MovieAdded']:
             item = data.get('Item', {})
-            item_name = item.get('Name', '')
             item_path = item.get('Path', '')
-            
-            print(f"Webhook Jellyfin: {item_name}")
+            append_log("info", "webhook", f"Webhook Jellyfin reçu : {item.get('Name', '?')} ({notif_type})")
             time.sleep(5)
-            
-            if item_path:
-                folder_name = os.path.basename(os.path.dirname(item_path))
-                movie_path = os.path.join(config['sourceRoot'], folder_name)
-            else:
-                movie_path = ''
-            
+            movie_path = os.path.join(config['sourceRoot'],
+                                      os.path.basename(os.path.dirname(item_path))) if item_path else ''
             result = execute_hardlinks(config, movie_path)
-            return jsonify({"status": "ok", "message": f"Hardlinks créés pour {item_name}", "result": result})
-        else:
-            return jsonify({"status": "ignored", "type": notification_type})
-            
+            return jsonify({"status": "ok", "message": f"Hardlinks créés pour {item.get('Name','')}", "result": result})
+        return jsonify({"status": "ignored"})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 
 @app.route('/api/webhook/radarr', methods=['POST'])
 def radarr_webhook():
     config = load_config()
-    
     if not config.get('webhookEnabled', False):
         return jsonify({"error": "Webhook désactivé"}), 403
-    
     try:
         data = request.json
         event_type = data.get('eventType', '')
-        
         if event_type in ['Download', 'Rename', 'MovieFileDelete']:
             movie = data.get('movie', {})
-            movie_title = movie.get('title', '')
-            movie_folder = movie.get('folderPath', '')
-            
-            print(f"Webhook Radarr: {event_type} - {movie_title}")
+            append_log("info", "webhook",
+                       f"Webhook Radarr reçu : {movie.get('title', '?')} ({event_type})")
             time.sleep(5)
-            
-            folder_name = os.path.basename(movie_folder)
+            folder_name = os.path.basename(movie.get('folderPath', ''))
             movie_path = os.path.join(config['sourceRoot'], folder_name)
-            
             result = execute_hardlinks(config, movie_path)
-            return jsonify({"status": "ok", "message": f"Hardlinks créés pour {movie_title}", "result": result})
-        else:
-            return jsonify({"status": "ignored", "type": event_type})
-            
+            return jsonify({"status": "ok", "message": f"Hardlinks créés pour {movie.get('title','')}", "result": result})
+        return jsonify({"status": "ignored"})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 
 @app.route('/api/cron/status', methods=['GET'])
 def cron_status():
@@ -934,6 +964,7 @@ def cron_status():
         } for job in jobs]
     })
 
+
 @app.route('/api/cron/trigger', methods=['POST'])
 def trigger_cron():
     try:
@@ -941,6 +972,80 @@ def trigger_cron():
         return jsonify({"status": "ok"})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/cron/series-trigger', methods=['POST'])
+def trigger_series_cron():
+    try:
+        series_cron_handler()
+        return jsonify({"status": "ok"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# --- LOGS API ---
+
+@app.route('/api/logs', methods=['GET'])
+def get_logs():
+    logs = load_logs()
+    level = request.args.get('level', '')
+    category = request.args.get('category', '')
+    limit = min(int(request.args.get('limit', 200)), 1000)
+
+    if level:
+        logs = [l for l in logs if l.get('level') == level]
+    if category:
+        logs = [l for l in logs if l.get('category') == category]
+
+    # Most recent first
+    return jsonify(list(reversed(logs[-limit:])))
+
+
+@app.route('/api/logs', methods=['DELETE'])
+def clear_logs():
+    save_logs([])
+    append_log("info", "scan", "Journal effacé")
+    return jsonify({"status": "ok"})
+
+
+# --- IGNORE API ---
+
+@app.route('/api/ignore', methods=['GET'])
+def get_ignored():
+    return jsonify(load_ignored())
+
+
+@app.route('/api/ignore', methods=['POST'])
+def add_ignored():
+    data = request.json or {}
+    item_type = data.get('type', '')   # "series" or "movies"
+    item_name = data.get('name', '')
+    label = data.get('label', item_name)
+
+    if not item_type or not item_name:
+        return jsonify({"error": "type et name requis"}), 400
+
+    ignored = load_ignored()
+    if item_type not in ignored:
+        ignored[item_type] = []
+    if item_name not in ignored[item_type]:
+        ignored[item_type].append(item_name)
+        save_ignored(ignored)
+        append_log("info", "ignore",
+                   f"{'Série' if item_type == 'series' else 'Film'} ignoré(e) : {label}")
+    return jsonify({"status": "ok", "ignored": ignored})
+
+
+@app.route('/api/ignore/<item_type>/<path:item_name>', methods=['DELETE'])
+def remove_ignored(item_type, item_name):
+    ignored = load_ignored()
+    if item_type in ignored and item_name in ignored[item_type]:
+        ignored[item_type].remove(item_name)
+        save_ignored(ignored)
+        append_log("info", "ignore",
+                   f"{'Série' if item_type == 'series' else 'Film'} retiré(e) de la liste d'exclusion : {item_name}")
+    return jsonify({"status": "ok", "ignored": ignored})
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
