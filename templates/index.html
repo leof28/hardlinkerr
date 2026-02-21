@@ -9,38 +9,195 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
-        * { font-family: 'Poppins', sans-serif; }
-        body { background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%); min-height: 100vh; }
-        .glass-card { background: rgba(30, 41, 59, 0.4); backdrop-filter: blur(20px); border: 1px solid rgba(148, 163, 184, 0.1); box-shadow: 0 8px 32px 0 rgba(0,0,0,0.37); }
-        .glass-card-hover { background: rgba(30, 41, 59, 0.4); backdrop-filter: blur(20px); border: 1px solid rgba(148, 163, 184, 0.1); box-shadow: 0 8px 32px 0 rgba(0,0,0,0.37); transition: all 0.2s; }
-        .glass-card-hover:hover { border-color: rgba(148, 163, 184, 0.25); box-shadow: 0 12px 40px 0 rgba(0,0,0,0.5); }
-        .gradient-text { background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-        .poster-card { position: relative; overflow: hidden; transition: all 0.3s ease; }
-        .poster-card:hover { transform: translateY(-8px); box-shadow: 0 20px 40px rgba(59,130,246,0.3); }
-        .nav-link { position: relative; transition: all 0.3s; }
-        .nav-link.active::after { content: ''; position: absolute; bottom: -2px; left: 50%; transform: translateX(-50%); width: 24px; height: 3px; background: linear-gradient(90deg, #3b82f6, #8b5cf6); border-radius: 2px; }
-        .badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 9999px; font-size: 11px; font-weight: 700; }
-        .input-field { width: 100%; padding: 12px 16px; background: rgba(15,23,42,0.6); border: 1px solid rgba(100,116,139,0.4); border-radius: 12px; color: white; outline: none; transition: border-color 0.2s; }
-        .input-field:focus { border-color: #3b82f6; }
-        .btn-primary { padding: 10px 20px; background: linear-gradient(135deg, #3b82f6, #8b5cf6); border-radius: 12px; font-weight: 600; transition: all 0.2s; }
-        .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
-        .btn-danger { padding: 10px 20px; background: linear-gradient(135deg, #ef4444, #dc2626); border-radius: 12px; font-weight: 600; transition: all 0.2s; }
-        .btn-danger:hover { opacity: 0.9; }
-        .section-header { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid rgba(100,116,139,0.2); }
-        .toggle-switch { position: relative; width: 44px; height: 24px; }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        * { font-family: 'Inter', sans-serif; }
+        body { background: #0a0f1e; min-height: 100vh; }
+        .glass { background: rgba(15,23,42,0.7); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.07); }
+        .glass-hover { background: rgba(15,23,42,0.7); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.07); transition: all 0.2s; }
+        .glass-hover:hover { border-color: rgba(255,255,255,0.15); background: rgba(15,23,42,0.85); }
+        .gradient-text { background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .btn-primary { background: linear-gradient(135deg, #3b82f6, #7c3aed); border-radius: 10px; font-weight: 600; transition: all 0.2s; padding: 9px 18px; font-size: 13px; }
+        .btn-primary:hover { opacity: 0.88; transform: translateY(-1px); box-shadow: 0 4px 20px rgba(59,130,246,0.3); }
+        .btn-primary:disabled { opacity: 0.4; transform: none; cursor: not-allowed; }
+        .btn-danger { background: linear-gradient(135deg, #ef4444, #b91c1c); border-radius: 10px; font-weight: 600; transition: all 0.2s; padding: 9px 18px; font-size: 13px; }
+        .btn-danger:hover { opacity: 0.88; }
+        .btn-ghost { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; transition: all 0.2s; padding: 9px 18px; font-size: 13px; font-weight: 500; }
+        .btn-ghost:hover { background: rgba(255,255,255,0.1); }
+        .input-field { width: 100%; padding: 10px 14px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; color: white; outline: none; transition: border-color 0.2s; font-size: 13px; }
+        .input-field:focus { border-color: #3b82f6; background: rgba(255,255,255,0.07); }
+        .input-field::placeholder { color: rgba(255,255,255,0.25); }
+        .input-field:disabled { opacity: 0.4; cursor: not-allowed; }
+        .nav-tab { padding: 10px 4px; font-size: 13px; font-weight: 500; color: #64748b; border-bottom: 2px solid transparent; transition: all 0.2s; cursor: pointer; white-space: nowrap; }
+        .nav-tab:hover { color: #94a3b8; }
+        .nav-tab.active { color: white; border-color: #3b82f6; }
+        .poster-card { transition: transform 0.25s, box-shadow 0.25s; }
+        .poster-card:hover { transform: translateY(-6px); box-shadow: 0 16px 40px rgba(59,130,246,0.25); }
+        .badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; letter-spacing: 0.01em; }
+        .toggle-switch { position: relative; width: 40px; height: 22px; flex-shrink: 0; }
         .toggle-switch input { opacity: 0; width: 0; height: 0; }
-        .toggle-slider { position: absolute; inset: 0; background: rgba(100,116,139,0.4); border-radius: 24px; cursor: pointer; transition: 0.3s; }
-        .toggle-slider::before { content: ''; position: absolute; width: 18px; height: 18px; left: 3px; bottom: 3px; background: white; border-radius: 50%; transition: 0.3s; }
-        input:checked + .toggle-slider { background: linear-gradient(135deg, #3b82f6, #8b5cf6); }
-        input:checked + .toggle-slider::before { transform: translateX(20px); }
+        .toggle-slider { position: absolute; inset: 0; background: rgba(100,116,139,0.35); border-radius: 22px; cursor: pointer; transition: 0.25s; }
+        .toggle-slider::before { content: ''; position: absolute; width: 16px; height: 16px; left: 3px; bottom: 3px; background: white; border-radius: 50%; transition: 0.25s; }
+        input:checked + .toggle-slider { background: linear-gradient(135deg, #3b82f6, #7c3aed); }
+        input:checked + .toggle-slider::before { transform: translateX(18px); }
+        .log-row:nth-child(even) { background: rgba(255,255,255,0.015); }
+        .scrollbar-thin::-webkit-scrollbar { width: 5px; height: 5px; }
+        .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+        .scrollbar-thin::-webkit-scrollbar-thumb { background: rgba(100,116,139,0.3); border-radius: 3px; }
+        .scrollbar-thin::-webkit-scrollbar-thumb:hover { background: rgba(100,116,139,0.5); }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .spin { animation: spin 1s linear infinite; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+        .fade-in { animation: fadeIn 0.2s ease; }
     </style>
 </head>
 <body>
 <div id="root"></div>
 <script type="text/babel">
-const { useState, useEffect, useCallback } = React;
+const { useState, useEffect, useCallback, useRef } = React;
 
+// ─── API helper ───────────────────────────────────────────────────────────────
+const apiFetch = async (url, opts = {}) => {
+  const res = await fetch(url, {
+    method: opts.method || 'GET',
+    headers: opts.body ? { 'Content-Type': 'application/json' } : {},
+    body: opts.body ? JSON.stringify(opts.body) : undefined
+  });
+  return res.json();
+};
+
+// ─── Toast notifications ──────────────────────────────────────────────────────
+const toastColors = {
+  success: '#10b981',
+  error:   '#ef4444',
+  warning: '#f59e0b',
+  info:    '#3b82f6'
+};
+const toastIcons = { success: '✓', error: '✕', warning: '⚠', info: 'ℹ' };
+
+const showToast = (message, type = 'info') => {
+  const el = document.createElement('div');
+  el.style.cssText = `
+    position:fixed;top:20px;right:20px;z-index:9999;
+    display:flex;align-items:center;gap:10px;
+    padding:12px 18px;border-radius:12px;
+    background:rgba(10,15,30,0.95);border:1px solid ${toastColors[type]}40;
+    box-shadow:0 8px 32px rgba(0,0,0,0.5);
+    font-size:13px;font-weight:500;color:white;
+    animation:fadeIn 0.2s ease;max-width:360px;
+  `;
+  el.innerHTML = `<span style="color:${toastColors[type]};font-size:16px">${toastIcons[type]}</span><span>${message}</span>`;
+  document.body.appendChild(el);
+  setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity 0.3s'; setTimeout(() => el.remove(), 300); }, 3500);
+};
+
+// ─── Utilities ────────────────────────────────────────────────────────────────
+const formatSize = (b) => {
+  if (!b) return '0 B';
+  if (b < 1024) return b + ' B';
+  if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
+  if (b < 1073741824) return (b/1048576).toFixed(1) + ' MB';
+  return (b/1073741824).toFixed(2) + ' GB';
+};
+const formatDate = (iso) => {
+  if (!iso) return 'Jamais';
+  try { return new Date(iso).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }); }
+  catch { return iso; }
+};
+const formatDateFull = (iso) => {
+  if (!iso) return '—';
+  try { return new Date(iso).toLocaleString('fr-FR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit', second:'2-digit' }); }
+  catch { return iso; }
+};
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
+const Spinner = ({ size = 18 }) => (
+  <svg className="spin" style={{ width: size, height: size }} viewBox="0 0 24 24" fill="none">
+    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="40" strokeDashoffset="10" strokeLinecap="round"/>
+  </svg>
+);
+
+const StatCard = ({ icon, label, value, sub, color, onClick }) => {
+  const colors = {
+    blue:   { bg: 'rgba(59,130,246,0.12)',  text: '#60a5fa' },
+    green:  { bg: 'rgba(16,185,129,0.12)', text: '#34d399' },
+    red:    { bg: 'rgba(239,68,68,0.12)',   text: '#f87171' },
+    purple: { bg: 'rgba(139,92,246,0.12)', text: '#a78bfa' },
+    amber:  { bg: 'rgba(245,158,11,0.12)', text: '#fbbf24' },
+  };
+  const c = colors[color] || colors.blue;
+  return (
+    <div onClick={onClick}
+      className={`glass rounded-2xl p-5 ${onClick ? 'cursor-pointer hover:border-white/20 transition-all' : ''}`}
+      style={{ borderColor: onClick ? undefined : 'rgba(255,255,255,0.07)' }}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-medium uppercase tracking-wider mb-2" style={{ color: 'rgba(148,163,184,0.7)' }}>{label}</p>
+          <p className="text-3xl font-bold" style={{ color: c.text }}>{value}</p>
+          {sub && <p className="text-xs mt-1" style={{ color: 'rgba(148,163,184,0.5)' }}>{sub}</p>}
+        </div>
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg flex-shrink-0" style={{ background: c.bg }}>
+          {icon}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const ToggleSwitch = ({ checked, onChange }) => (
+  <label className="toggle-switch">
+    <input type="checkbox" checked={checked} onChange={e => onChange(e.target.checked)} />
+    <span className="toggle-slider" />
+  </label>
+);
+
+const SectionCard = ({ title, icon, children, action, toggle, onToggle }) => (
+  <div className="glass rounded-xl p-5">
+    <div className="flex items-center gap-2 mb-4 pb-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+      {icon && <span className="text-base">{icon}</span>}
+      <h3 className="text-sm font-semibold flex-1 text-white/90">{title}</h3>
+      {action}
+      {onToggle !== undefined && <ToggleSwitch checked={toggle} onChange={onToggle} />}
+    </div>
+    <div className="space-y-4">{children}</div>
+  </div>
+);
+
+const Field = ({ label, hint, children }) => (
+  <div>
+    <label className="text-xs font-medium block mb-1.5" style={{ color: 'rgba(148,163,184,0.8)' }}>{label}</label>
+    {hint && <p className="text-xs mb-2" style={{ color: 'rgba(100,116,139,0.8)' }}>{hint}</p>}
+    {children}
+  </div>
+);
+
+// ─── Level badge for logs ──────────────────────────────────────────────────────
+const LevelBadge = ({ level }) => {
+  const styles = {
+    success: { bg: 'rgba(16,185,129,0.15)', color: '#34d399', label: 'Succès' },
+    error:   { bg: 'rgba(239,68,68,0.15)',  color: '#f87171', label: 'Erreur' },
+    warning: { bg: 'rgba(245,158,11,0.15)', color: '#fbbf24', label: 'Avert.' },
+    info:    { bg: 'rgba(59,130,246,0.15)', color: '#60a5fa', label: 'Info'   },
+  };
+  const s = styles[level] || styles.info;
+  return <span className="badge" style={{ background: s.bg, color: s.color }}>{s.label}</span>;
+};
+
+const CategoryBadge = ({ category }) => {
+  const styles = {
+    hardlink: { bg: 'rgba(139,92,246,0.15)', color: '#a78bfa' },
+    series:   { bg: 'rgba(245,158,11,0.15)', color: '#fbbf24' },
+    cron:     { bg: 'rgba(16,185,129,0.15)', color: '#34d399' },
+    delete:   { bg: 'rgba(239,68,68,0.15)',  color: '#f87171' },
+    webhook:  { bg: 'rgba(59,130,246,0.15)', color: '#60a5fa' },
+    scan:     { bg: 'rgba(99,102,241,0.15)', color: '#818cf8' },
+    ignore:   { bg: 'rgba(100,116,139,0.2)', color: '#94a3b8' },
+  };
+  const s = styles[category] || { bg: 'rgba(100,116,139,0.15)', color: '#94a3b8' };
+  const labels = { hardlink: 'Hardlink', series: 'Séries', cron: 'Cron', delete: 'Suppression', webhook: 'Webhook', scan: 'Scan', ignore: 'Ignoré' };
+  return <span className="badge" style={{ background: s.bg, color: s.color }}>{labels[category] || category}</span>;
+};
+
+// ─── Main App ─────────────────────────────────────────────────────────────────
 const App = () => {
   const [activeView, setActiveView] = useState('library');
   const [config, setConfig] = useState(null);
@@ -48,6 +205,8 @@ const App = () => {
   const [duplicates, setDuplicates] = useState([]);
   const [seriesIssues, setSeriesIssues] = useState([]);
   const [allGenres, setAllGenres] = useState([]);
+  const [logs, setLogs] = useState([]);
+  const [ignored, setIgnored] = useState({ series: [], movies: [] });
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [genreFilter, setGenreFilter] = useState('');
@@ -57,8 +216,26 @@ const App = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [settingsTab, setSettingsTab] = useState('general');
   const [cronStatus, setCronStatus] = useState(null);
+  const [logLevel, setLogLevel] = useState('');
+  const [logCategory, setLogCategory] = useState('');
+  const [logAutoRefresh, setLogAutoRefresh] = useState(false);
+  const logRefreshRef = useRef(null);
 
-  useEffect(() => { fetchConfig(); fetchCronStatus(); }, []);
+  useEffect(() => { fetchConfig(); fetchCronStatus(); fetchIgnored(); }, []);
+
+  // Auto-refresh logs
+  useEffect(() => {
+    if (logAutoRefresh && activeView === 'logs') {
+      logRefreshRef.current = setInterval(fetchLogs, 5000);
+    } else {
+      clearInterval(logRefreshRef.current);
+    }
+    return () => clearInterval(logRefreshRef.current);
+  }, [logAutoRefresh, activeView]);
+
+  useEffect(() => {
+    if (activeView === 'logs') fetchLogs();
+  }, [activeView]);
 
   const fetchConfig = async () => {
     try {
@@ -68,21 +245,38 @@ const App = () => {
         ...prev,
         activeGenres: Object.values(data.genreMapping || {}).filter(g => g.enabled).length
       }));
-    } catch { showNotif('Erreur config', 'error'); }
+    } catch { showToast('Erreur chargement config', 'error'); }
   };
 
   const fetchCronStatus = async () => {
-    try {
-      const data = await apiFetch('/api/cron/status');
-      setCronStatus(data);
-    } catch { /* silently ignore */ }
+    try { setCronStatus(await apiFetch('/api/cron/status')); } catch {}
   };
 
   const fetchAllGenres = async () => {
     try {
       const data = await apiFetch('/api/genres');
       if (Array.isArray(data)) setAllGenres(data);
-    } catch { showNotif('Erreur genres', 'error'); }
+    } catch { showToast('Erreur genres', 'error'); }
+  };
+
+  const fetchIgnored = async () => {
+    try { setIgnored(await apiFetch('/api/ignore')); } catch {}
+  };
+
+  const fetchLogs = async () => {
+    try {
+      const params = new URLSearchParams({ limit: 300 });
+      if (logLevel) params.set('level', logLevel);
+      if (logCategory) params.set('category', logCategory);
+      setLogs(await apiFetch('/api/logs?' + params));
+    } catch { showToast('Erreur chargement logs', 'error'); }
+  };
+
+  const clearLogs = async () => {
+    if (!confirm('Effacer tous les logs ?')) return;
+    await apiFetch('/api/logs', { method: 'DELETE' });
+    setLogs([]);
+    showToast('Logs effacés', 'success');
   };
 
   const fetchSeriesIssues = async () => {
@@ -91,30 +285,56 @@ const App = () => {
       const data = await apiFetch('/api/series-issues');
       if (Array.isArray(data)) {
         setSeriesIssues(data);
-        showNotif(`${data.length} série${data.length !== 1 ? 's' : ''} orpheline${data.length !== 1 ? 's' : ''}`, 'info');
+        showToast(`${data.length} série(s) orpheline(s)`, data.length ? 'warning' : 'success');
       }
-    } catch { showNotif('Erreur scan séries', 'error'); }
+    } catch { showToast('Erreur scan séries', 'error'); }
     finally { setLoading(false); }
   };
 
-  const deleteSeries = async (path, name) => {
-    if (!confirm(`Supprimer définitivement "${name}" ?\nCette action est irréversible.`)) return;
+  const ignoreSeries = async (seriesName) => {
     try {
-      await apiFetch('/api/delete-series', { method: 'POST', body: { path } });
+      const res = await apiFetch('/api/ignore', { method: 'POST', body: { type: 'series', name: seriesName, label: seriesName } });
+      setIgnored(res.ignored || await apiFetch('/api/ignore'));
+      setSeriesIssues(prev => prev.filter(s => s.series !== seriesName));
+      showToast(`"${seriesName}" ignorée`, 'info');
+    } catch { showToast('Erreur', 'error'); }
+  };
+
+  const ignoreMovie = async (movieFolder, movieTitle) => {
+    try {
+      const res = await apiFetch('/api/ignore', { method: 'POST', body: { type: 'movies', name: movieFolder, label: movieTitle } });
+      setIgnored(res.ignored || await apiFetch('/api/ignore'));
+      setDuplicates(prev => prev.filter(d => d.movie !== movieFolder));
+      showToast(`"${movieTitle}" ignoré`, 'info');
+    } catch { showToast('Erreur', 'error'); }
+  };
+
+  const removeIgnored = async (type, name) => {
+    try {
+      await apiFetch(`/api/ignore/${type}/${encodeURIComponent(name)}`, { method: 'DELETE' });
+      await fetchIgnored();
+      showToast('Retiré de la liste d\'exclusion', 'success');
+    } catch { showToast('Erreur', 'error'); }
+  };
+
+  const deleteSeries = async (path, name) => {
+    if (!confirm(`Supprimer définitivement "${name}" ?\nIrréversible.`)) return;
+    try {
+      await apiFetch('/api/delete-series', { method: 'POST', body: { path, name } });
       setSeriesIssues(prev => prev.filter(s => s.path !== path));
-      showNotif('Série supprimée', 'success');
-    } catch { showNotif('Erreur suppression', 'error'); }
+      showToast('Série supprimée', 'success');
+    } catch { showToast('Erreur suppression', 'error'); }
   };
 
   const deleteAllSeries = async () => {
     if (!seriesIssues.length) return;
-    if (!confirm(`Supprimer définitivement ${seriesIssues.length} série(s) orpheline(s) ?\nCette action est irréversible.`)) return;
+    if (!confirm(`Supprimer ${seriesIssues.length} série(s) orpheline(s) ?\nIrréversible.`)) return;
     setLoading(true);
     try {
       const data = await apiFetch('/api/delete-all-series', { method: 'POST' });
-      showNotif(`${data.deleted} série(s) supprimée(s)`, 'success');
+      showToast(`${data.deleted} série(s) supprimée(s)`, 'success');
       fetchSeriesIssues();
-    } catch { showNotif('Erreur', 'error'); }
+    } catch { showToast('Erreur', 'error'); }
     finally { setLoading(false); }
   };
 
@@ -124,9 +344,9 @@ const App = () => {
       const data = await apiFetch('/api/duplicates');
       if (Array.isArray(data)) {
         setDuplicates(data);
-        showNotif(`${data.length} problème${data.length !== 1 ? 's' : ''} détecté${data.length !== 1 ? 's' : ''}`, 'info');
+        showToast(`${data.length} problème(s) détecté(s)`, data.length ? 'warning' : 'success');
       }
-    } catch { showNotif('Erreur scan', 'error'); }
+    } catch { showToast('Erreur scan', 'error'); }
     finally { setLoading(false); }
   };
 
@@ -134,25 +354,25 @@ const App = () => {
     setLoading(true);
     try {
       const data = await apiFetch('/api/status');
-      if (data.error) { showNotif('Erreur: ' + data.error, 'error'); return; }
-      if (!Array.isArray(data)) { showNotif('Format incorrect', 'error'); return; }
+      if (data.error) { showToast('Erreur: ' + data.error, 'error'); return; }
+      if (!Array.isArray(data)) { showToast('Format incorrect', 'error'); return; }
       setMovies(data);
       let linked = 0, errors = 0;
       data.forEach(m => (m.hardlinks || []).forEach(h => h.exists ? linked++ : errors++));
       setStats(prev => ({ ...prev, total: data.length, linked, errors }));
-      showNotif(`${data.length} films scannés`, 'success');
-    } catch (e) { showNotif('Erreur: ' + e.message, 'error'); }
+      showToast(`${data.length} films scannés`, 'success');
+    } catch (e) { showToast('Erreur: ' + e.message, 'error'); }
     finally { setLoading(false); }
   };
 
   const createSelectedLinks = async () => {
-    if (!selectedMovies.size) { showNotif('Sélectionnez des films', 'warning'); return; }
+    if (!selectedMovies.size) { showToast('Sélectionnez des films', 'warning'); return; }
     setLoading(true);
     try {
       await apiFetch('/api/run', { method: 'POST', body: { movie_paths: Array.from(selectedMovies) } });
       setSelectedMovies(new Set());
-      showNotif(`${selectedMovies.size} films traités`, 'success');
-    } catch { showNotif('Erreur', 'error'); }
+      showToast(`${selectedMovies.size} films traités`, 'success');
+    } catch { showToast('Erreur', 'error'); }
     finally { setLoading(false); }
   };
 
@@ -161,8 +381,8 @@ const App = () => {
     setLoading(true);
     try {
       await apiFetch('/api/run-all', { method: 'POST' });
-      showNotif('Tous les hardlinks créés', 'success');
-    } catch { showNotif('Erreur', 'error'); }
+      showToast('Hardlinks créés', 'success');
+    } catch { showToast('Erreur', 'error'); }
     finally { setLoading(false); }
   };
 
@@ -171,8 +391,8 @@ const App = () => {
     try {
       await apiFetch('/api/delete-file', { method: 'POST', body: { path } });
       setDuplicates(prev => prev.filter(d => d.path !== path));
-      showNotif('Fichier supprimé', 'success');
-    } catch { showNotif('Erreur', 'error'); }
+      showToast('Fichier supprimé', 'success');
+    } catch { showToast('Erreur', 'error'); }
   };
 
   const deleteAllByType = async (type) => {
@@ -182,9 +402,9 @@ const App = () => {
     setLoading(true);
     try {
       const data = await apiFetch('/api/delete-duplicates', { method: 'POST', body: { paths: filtered.map(d => d.path) } });
-      showNotif(`${data.deleted} fichier(s) supprimé(s)`, 'success');
+      showToast(`${data.deleted} fichier(s) supprimé(s)`, 'success');
       fetchDuplicates();
-    } catch { showNotif('Erreur', 'error'); }
+    } catch { showToast('Erreur', 'error'); }
     finally { setLoading(false); }
   };
 
@@ -196,8 +416,8 @@ const App = () => {
         activeGenres: Object.values(config.genreMapping || {}).filter(g => g.enabled).length
       }));
       await fetchCronStatus();
-      showNotif('Configuration sauvegardée', 'success');
-    } catch { showNotif('Erreur sauvegarde', 'error'); }
+      showToast('Configuration sauvegardée', 'success');
+    } catch { showToast('Erreur sauvegarde', 'error'); }
   };
 
   const updateGenreMapping = (genre, field, value) => {
@@ -217,50 +437,6 @@ const App = () => {
     });
   };
 
-  const toggleSelectAll = () => {
-    setSelectedMovies(selectedMovies.size === filteredMovies.length
-      ? new Set()
-      : new Set(filteredMovies.map(m => m.path)));
-  };
-
-  // --- helpers ---
-  const apiFetch = async (url, opts = {}) => {
-    const res = await fetch(url, {
-      method: opts.method || 'GET',
-      headers: opts.body ? { 'Content-Type': 'application/json' } : {},
-      body: opts.body ? JSON.stringify(opts.body) : undefined
-    });
-    return res.json();
-  };
-
-  const showNotif = (message, type = 'info') => {
-    const colors = {
-      success: 'from-emerald-500 to-teal-600',
-      error: 'from-rose-500 to-red-600',
-      warning: 'from-amber-500 to-orange-600',
-      info: 'from-blue-500 to-cyan-600'
-    };
-    const el = document.createElement('div');
-    el.className = `fixed top-6 right-6 px-5 py-3 bg-gradient-to-r ${colors[type]} text-white rounded-xl shadow-2xl text-sm font-medium z-[100] transition-all`;
-    el.textContent = message;
-    document.body.appendChild(el);
-    setTimeout(() => el.remove(), 3000);
-  };
-
-  const formatSize = (bytes) => {
-    if (!bytes) return '0 B';
-    if (bytes < 1024) return bytes + ' B';
-    if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
-    if (bytes < 1073741824) return (bytes / 1048576).toFixed(1) + ' MB';
-    return (bytes / 1073741824).toFixed(2) + ' GB';
-  };
-
-  const formatDate = (iso) => {
-    if (!iso) return 'Jamais';
-    try { return new Date(iso).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }); }
-    catch { return iso; }
-  };
-
   const filteredMovies = movies.filter(m => {
     const s = m.title.toLowerCase().includes(search.toLowerCase());
     const g = !genreFilter || (m.hardlinks || []).some(h => h.folder === genreFilter);
@@ -268,111 +444,124 @@ const App = () => {
     return s && g && miss;
   });
 
+  const filteredLogs = logs.filter(l => {
+    const lv = !logLevel || l.level === logLevel;
+    const ct = !logCategory || l.category === logCategory;
+    return lv && ct;
+  });
+
   const uniqueFolders = [...new Set(movies.flatMap(m => (m.hardlinks || []).map(h => h.folder)))].sort();
   const seriesEnabled = config?.seriesCheck?.enabled;
+  const totalIgnored = (ignored.series || []).length + (ignored.movies || []).length;
 
   if (!config) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-white text-lg font-medium">Chargement...</p>
+          <Spinner size={40} />
+          <p className="text-white/60 text-sm mt-4">Chargement...</p>
         </div>
       </div>
     );
   }
 
-  return (
-    <div className="min-h-screen text-white p-6 max-w-[1600px] mx-auto">
+  const navTabs = [
+    { id: 'library', label: 'Bibliothèque' },
+    { id: 'issues', label: 'Films', badge: duplicates.length || null, badgeColor: '#ef4444' },
+    ...(seriesEnabled ? [{ id: 'series', label: 'Séries', badge: seriesIssues.length || null, badgeColor: '#f59e0b' }] : []),
+    { id: 'logs', label: 'Journaux', badge: null },
+  ];
 
-      {/* HEADER */}
-      <header className="mb-8">
-        <div className="flex items-center justify-between">
+  return (
+    <div className="min-h-screen text-white" style={{ padding: '24px', maxWidth: 1700, margin: '0 auto' }}>
+
+      {/* ── HEADER ── */}
+      <header className="mb-7">
+        <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/20">
-              <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+            <div className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
+              style={{ background: 'linear-gradient(135deg,#3b82f6,#7c3aed)', boxShadow: '0 4px 20px rgba(59,130,246,0.3)' }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101"/>
+                <path d="M10.172 13.828a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
               </svg>
             </div>
             <div>
-              <h1 className="text-3xl font-bold gradient-text">Hardlink Manager</h1>
-              <p className="text-slate-400 text-sm">Films &amp; Séries — Radarr / Sonarr</p>
+              <h1 className="text-2xl font-bold gradient-text">Hardlink Manager</h1>
+              <p className="text-xs" style={{ color: 'rgba(100,116,139,0.9)' }}>Radarr · Sonarr · Bibliothèque média</p>
             </div>
           </div>
-          <div className="flex gap-3">
-            <button onClick={() => { setShowSettings(true); setSettingsTab('general'); }}
-              className="px-5 py-2.5 glass-card rounded-xl hover:bg-slate-700/50 transition-all text-sm font-medium">
-              ⚙️ Paramètres
+          <div className="flex items-center gap-2">
+            <button onClick={scanMovies} disabled={loading} className="btn-primary flex items-center gap-2 text-white">
+              {loading ? <Spinner size={14}/> : <span>⟳</span>} Scanner
             </button>
-            <button onClick={scanMovies} disabled={loading}
-              className="px-5 py-2.5 btn-primary text-sm disabled:opacity-50">
-              {loading ? '⏳' : '🔄'} Scanner
+            <button onClick={() => { setShowSettings(true); setSettingsTab('general'); }} className="btn-ghost text-white/80">
+              ⚙ Paramètres
             </button>
           </div>
         </div>
 
         {/* NAV */}
-        <nav className="flex gap-8 mt-8 border-b border-slate-700/50 pb-px">
-          {[
-            { id: 'library', label: 'Bibliothèque', badge: null },
-            { id: 'issues', label: 'Films', badge: duplicates.length || null, color: 'bg-rose-500' },
-            ...(seriesEnabled ? [{ id: 'series', label: 'Séries', badge: seriesIssues.length || null, color: 'bg-amber-500' }] : [])
-          ].map(tab => (
+        <nav className="flex gap-6 mt-6" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+          {navTabs.map(tab => (
             <button key={tab.id} onClick={() => setActiveView(tab.id)}
-              className={`nav-link py-3 px-1 font-medium text-sm flex items-center gap-2 ${activeView === tab.id ? 'text-white active' : 'text-slate-400 hover:text-slate-200'}`}>
+              className={`nav-tab flex items-center gap-2 ${activeView === tab.id ? 'active' : ''}`}>
               {tab.label}
               {tab.badge > 0 && (
-                <span className={`${tab.color} text-white text-xs px-2 py-0.5 rounded-full font-bold`}>{tab.badge}</span>
+                <span style={{ background: tab.badgeColor, fontSize: 10, padding: '1px 7px', borderRadius: 20, fontWeight: 700 }}>
+                  {tab.badge}
+                </span>
               )}
             </button>
           ))}
         </nav>
       </header>
 
-      {/* STATS */}
-      <div className={`grid gap-4 mb-8 ${seriesEnabled ? 'grid-cols-5' : 'grid-cols-4'}`}>
+      {/* ── STATS ── */}
+      <div className={`grid gap-4 mb-7 ${seriesEnabled ? 'grid-cols-5' : 'grid-cols-4'}`}>
         <StatCard icon="🎬" label="Films" value={stats.total} color="blue" />
-        <StatCard icon="✓" label="Liens OK" value={stats.linked} color="emerald" />
-        <StatCard icon="⚠️" label="Manquants" value={stats.errors} color="rose" />
+        <StatCard icon="✓" label="Liens OK" value={stats.linked} color="green" />
+        <StatCard icon="⚠" label="Manquants" value={stats.errors} color="red" />
         <StatCard icon="🎭" label="Genres actifs" value={stats.activeGenres} color="purple" />
         {seriesEnabled && (
-          <StatCard icon="📺" label="Séries orphelines" value={seriesIssues.length} color="amber"
-            onClick={() => setActiveView('series')} clickable />
+          <StatCard icon="📺" label="Séries orphelines" value={seriesIssues.length}
+            color="amber" onClick={() => setActiveView('series')} />
         )}
       </div>
 
+      {/* ═══════════════════════════════════════════════════════════════ */}
       {/* LIBRARY VIEW */}
+      {/* ═══════════════════════════════════════════════════════════════ */}
       {activeView === 'library' && (
-        <div className="glass-card rounded-2xl p-6">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex gap-3 flex-wrap">
+        <div className="glass rounded-2xl p-6">
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+            <div className="flex gap-2 flex-wrap">
               <input type="text" value={search} onChange={e => setSearch(e.target.value)}
-                placeholder="🔍 Rechercher un film..."
-                className="input-field w-64" />
+                placeholder="Rechercher un film..." className="input-field" style={{ width: 240 }} />
               <select value={genreFilter} onChange={e => setGenreFilter(e.target.value)}
-                className="input-field w-44">
+                className="input-field" style={{ width: 170 }}>
                 <option value="">Tous les genres</option>
                 {uniqueFolders.map(g => <option key={g} value={g}>{g}</option>)}
               </select>
               <button onClick={() => setShowOnlyMissing(!showOnlyMissing)}
-                className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${showOnlyMissing ? 'bg-rose-500 text-white' : 'glass-card text-slate-300 hover:text-white'}`}>
-                {showOnlyMissing ? '✓ Sans liens seulement' : 'Tous les films'}
+                className={showOnlyMissing ? 'btn-danger text-white' : 'btn-ghost text-white/70'}>
+                {showOnlyMissing ? '⚠ Sans liens' : 'Tous'}
               </button>
             </div>
             {filteredMovies.length > 0 && (
-              <div className="flex gap-3">
-                <button onClick={toggleSelectAll}
-                  className="px-4 py-2.5 glass-card hover:bg-slate-700/50 rounded-xl text-sm transition-all">
-                  {selectedMovies.size === filteredMovies.length ? 'Tout désélectionner' : 'Tout sélectionner'}
+              <div className="flex gap-2">
+                <button onClick={() => setSelectedMovies(selectedMovies.size === filteredMovies.length ? new Set() : new Set(filteredMovies.map(m => m.path)))}
+                  className="btn-ghost text-white/70">
+                  {selectedMovies.size === filteredMovies.length ? 'Désélectionner' : 'Tout sélect.'}
                 </button>
                 {selectedMovies.size > 0 && (
-                  <button onClick={createSelectedLinks} disabled={loading}
-                    className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 rounded-xl text-sm font-medium disabled:opacity-50">
+                  <button onClick={createSelectedLinks} disabled={loading} className="btn-primary text-white">
                     🔗 Créer ({selectedMovies.size})
                   </button>
                 )}
                 <button onClick={createAllLinks} disabled={loading}
-                  className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 rounded-xl text-sm font-medium disabled:opacity-50">
+                  className="text-white font-semibold text-sm px-4 py-2 rounded-xl transition-all"
+                  style={{ background: 'rgba(16,185,129,0.2)', border: '1px solid rgba(16,185,129,0.3)' }}>
                   ⚡ Tout créer
                 </button>
               </div>
@@ -380,167 +569,213 @@ const App = () => {
           </div>
 
           {movies.length === 0 ? (
-            <div className="text-center py-20 text-slate-400">
-              <p className="text-5xl mb-4">🎬</p>
-              <p className="text-lg">Aucun film scanné</p>
-              <p className="text-sm mt-2">Cliquez sur "Scanner" pour démarrer</p>
+            <div className="text-center py-24" style={{ color: 'rgba(100,116,139,0.7)' }}>
+              <div className="text-5xl mb-4">🎬</div>
+              <p className="text-base font-medium">Bibliothèque vide</p>
+              <p className="text-sm mt-1">Cliquez sur "Scanner" pour charger les films</p>
             </div>
           ) : (
-            <div className="grid grid-cols-6 gap-4">
-              {filteredMovies.map((movie, idx) => {
-                const hasErrors = (movie.hardlinks || []).some(h => !h.exists);
-                const allOk = (movie.hardlinks || []).length > 0 && (movie.hardlinks || []).every(h => h.exists);
-                const isSelected = selectedMovies.has(movie.path);
-                return (
-                  <div key={idx} onClick={() => toggleMovieSelection(movie.path)}
-                    className={`poster-card glass-card rounded-xl cursor-pointer ${isSelected ? 'ring-2 ring-blue-500' : ''}`}>
-                    <div className="aspect-[2/3] relative">
-                      {movie.poster
-                        ? <img src={movie.poster} alt={movie.title} className="w-full h-full object-cover rounded-xl" />
-                        : <div className="w-full h-full flex items-center justify-center bg-slate-800 rounded-xl text-4xl">🎬</div>
-                      }
-                      {isSelected && (
-                        <div className="absolute top-2 right-2 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-xs font-bold">✓</div>
-                      )}
-                      {allOk && !isSelected && (
-                        <div className="absolute top-2 right-2 w-6 h-6 bg-emerald-500/80 rounded-full flex items-center justify-center text-xs">✓</div>
-                      )}
-                      <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/90 via-black/50 to-transparent rounded-b-xl">
-                        <p className="text-xs font-bold truncate">{movie.title}</p>
-                        {hasErrors && <p className="text-xs text-rose-400 mt-0.5">⚠️ Liens manquants</p>}
-                        {allOk && <p className="text-xs text-emerald-400 mt-0.5">✓ Liens OK</p>}
+            <>
+              <p className="text-xs mb-4" style={{ color: 'rgba(100,116,139,0.7)' }}>
+                {filteredMovies.length} film{filteredMovies.length !== 1 ? 's' : ''}
+                {search || genreFilter || showOnlyMissing ? ' (filtrés)' : ''}
+              </p>
+              <div className="grid grid-cols-6 gap-3">
+                {filteredMovies.map((movie, idx) => {
+                  const hasErrors = (movie.hardlinks || []).some(h => !h.exists);
+                  const allOk = (movie.hardlinks || []).length > 0 && (movie.hardlinks || []).every(h => h.exists);
+                  const isSelected = selectedMovies.has(movie.path);
+                  return (
+                    <div key={idx} onClick={() => toggleMovieSelection(movie.path)}
+                      className={`poster-card rounded-xl cursor-pointer overflow-hidden`}
+                      style={{ border: isSelected ? '2px solid #3b82f6' : '1px solid rgba(255,255,255,0.07)', background: 'rgba(15,23,42,0.6)' }}>
+                      <div style={{ aspectRatio: '2/3', position: 'relative' }}>
+                        {movie.poster
+                          ? <img src={movie.poster} alt={movie.title} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+                          : <div style={{ width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(30,41,59,0.8)', fontSize:36 }}>🎬</div>
+                        }
+                        {isSelected && (
+                          <div style={{ position:'absolute', top:8, right:8, width:22, height:22, borderRadius:'50%', background:'#3b82f6', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:700 }}>✓</div>
+                        )}
+                        {allOk && !isSelected && (
+                          <div style={{ position:'absolute', top:8, right:8, width:22, height:22, borderRadius:'50%', background:'rgba(16,185,129,0.85)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11 }}>✓</div>
+                        )}
+                        <div style={{ position:'absolute', bottom:0, left:0, right:0, padding:'10px 8px 8px', background:'linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0) 100%)' }}>
+                          <p style={{ fontSize:11, fontWeight:600, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{movie.title}</p>
+                          {hasErrors && <p style={{ fontSize:10, color:'#f87171', marginTop:2 }}>⚠ Liens manquants</p>}
+                          {allOk && <p style={{ fontSize:10, color:'#34d399', marginTop:2 }}>✓ OK</p>}
+                          {(movie.hardlinks||[]).length === 0 && <p style={{ fontSize:10, color:'rgba(100,116,139,0.7)', marginTop:2 }}>— Aucun genre</p>}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            </>
           )}
         </div>
       )}
 
+      {/* ═══════════════════════════════════════════════════════════════ */}
       {/* ISSUES VIEW (films) */}
+      {/* ═══════════════════════════════════════════════════════════════ */}
       {activeView === 'issues' && (
-        <div className="glass-card rounded-2xl p-6">
-          <div className="flex items-center justify-between mb-6">
+        <div className="glass rounded-2xl p-6">
+          <div className="flex items-center justify-between mb-6 gap-4">
             <div>
-              <h2 className="text-xl font-bold">Problèmes Films</h2>
-              <p className="text-sm text-slate-400 mt-1">Orphelins, doublons et mauvais genres détectés via Radarr</p>
+              <h2 className="text-lg font-bold">Problèmes Films</h2>
+              <p className="text-xs mt-1" style={{ color: 'rgba(100,116,139,0.8)' }}>Orphelins, doublons et mauvais genres — via Radarr</p>
             </div>
             <button onClick={fetchDuplicates} disabled={loading}
-              className="px-4 py-2.5 bg-rose-600 hover:bg-rose-700 rounded-xl text-sm font-medium disabled:opacity-50">
-              🔍 Scanner
+              className="btn-primary flex items-center gap-2 text-white">
+              {loading ? <Spinner size={14}/> : '🔍'} Scanner
             </button>
           </div>
 
           {duplicates.length === 0 ? (
-            <div className="text-center py-20 text-slate-400">
-              <p className="text-5xl mb-4">👻</p>
-              <p className="text-lg">Aucun problème détecté</p>
-              <p className="text-sm mt-2">Cliquez sur "Scanner" pour analyser votre bibliothèque</p>
+            <div className="text-center py-20" style={{ color: 'rgba(100,116,139,0.7)' }}>
+              <div className="text-5xl mb-4">✓</div>
+              <p className="text-base font-medium">Aucun problème détecté</p>
+              <p className="text-sm mt-1">Cliquez sur "Scanner" pour analyser la bibliothèque</p>
             </div>
           ) : (
-            <>
+            <div className="space-y-8">
               {[
-                { type: 'orphan', icon: '👻', label: 'Orphelins', desc: 'Source supprimée de "A trier"', color: 'rose' },
-                { type: 'duplicate', icon: '🔄', label: 'Doublons', desc: 'Ancienne version non officielle', color: 'orange' },
-                { type: 'wrong_genre', icon: '🎭', label: 'Mauvais genre', desc: 'Placé dans le mauvais dossier', color: 'yellow' }
-              ].map(({ type, icon, label, desc, color }) => {
+                { type: 'orphan',     icon: '👻', label: 'Orphelins',    desc: 'Source supprimée de "A trier"',       color: 'rgba(239,68,68,0.1)',   border: 'rgba(239,68,68,0.25)' },
+                { type: 'duplicate',  icon: '📄', label: 'Doublons',     desc: 'Ancienne version non officielle',     color: 'rgba(245,158,11,0.1)',  border: 'rgba(245,158,11,0.25)' },
+                { type: 'wrong_genre',icon: '🎭', label: 'Mauvais genre', desc: 'Film dans le mauvais dossier genre', color: 'rgba(139,92,246,0.1)', border: 'rgba(139,92,246,0.25)' }
+              ].map(({ type, icon, label, desc, color, border }) => {
                 const items = duplicates.filter(d => d.type === type);
                 if (!items.length) return null;
+                // Group by movie for ignore button
+                const movieNames = [...new Set(items.map(d => d.movie))];
                 return (
-                  <div key={type} className="mb-8">
-                    <div className="flex justify-between items-center mb-4">
+                  <div key={type}>
+                    <div className="flex justify-between items-start mb-3 gap-4">
                       <div>
-                        <h3 className="text-base font-bold">{icon} {label} <span className="text-slate-400 font-normal">({items.length})</span></h3>
-                        <p className="text-xs text-slate-500 mt-0.5">{desc}</p>
+                        <h3 className="text-sm font-bold">{icon} {label}
+                          <span style={{ color: 'rgba(100,116,139,0.7)', fontWeight: 400 }}> ({items.length})</span>
+                        </h3>
+                        <p className="text-xs mt-0.5" style={{ color: 'rgba(100,116,139,0.7)' }}>{desc}</p>
                       </div>
-                      <button onClick={() => deleteAllByType(type)}
-                        className="px-4 py-2 btn-danger text-sm">
-                        🗑️ Tout supprimer
+                      <button onClick={() => deleteAllByType(type)} className="btn-danger text-white flex-shrink-0">
+                        🗑 Tout supprimer
                       </button>
                     </div>
                     <div className="space-y-2">
                       {items.map((dup, idx) => (
-                        <div key={idx} className="glass-card-hover rounded-xl p-4 flex justify-between items-center gap-4">
+                        <div key={idx} className="rounded-xl p-4 flex items-center gap-4"
+                          style={{ background: color, border: `1px solid ${border}` }}>
                           <div className="flex-1 min-w-0">
-                            <p className="font-semibold truncate">{dup.title || dup.movie}</p>
-                            <p className="text-sm text-slate-400 truncate mt-0.5">{dup.genre} / {dup.file}</p>
+                            <p className="text-sm font-semibold truncate">{dup.title || dup.movie}</p>
+                            <p className="text-xs truncate mt-0.5" style={{ color: 'rgba(148,163,184,0.7)' }}>
+                              {dup.genre} / {dup.file}
+                            </p>
                             <div className="flex items-center gap-3 mt-1.5">
-                              <span className="text-xs text-amber-400">{dup.reason}</span>
-                              <span className="text-xs text-slate-500">{formatSize(dup.size)}</span>
+                              <span className="text-xs" style={{ color: '#fbbf24' }}>{dup.reason}</span>
+                              <span className="text-xs" style={{ color: 'rgba(100,116,139,0.7)' }}>{formatSize(dup.size)}</span>
                             </div>
                           </div>
-                          <button onClick={() => deleteDuplicate(dup.path)}
-                            className="shrink-0 px-4 py-2 bg-rose-600 hover:bg-rose-700 rounded-lg text-sm transition-all">
-                            🗑️
-                          </button>
+                          <div className="flex gap-2 flex-shrink-0">
+                            <button onClick={() => ignoreMovie(dup.movie, dup.title || dup.movie)}
+                              title="Ne plus afficher ce film dans les problèmes"
+                              className="btn-ghost text-white/60" style={{ padding: '7px 12px' }}>
+                              🚫 Ignorer
+                            </button>
+                            <button onClick={() => deleteDuplicate(dup.path)}
+                              className="btn-danger text-white" style={{ padding: '7px 12px' }}>
+                              🗑
+                            </button>
+                          </div>
                         </div>
                       ))}
                     </div>
                   </div>
                 );
               })}
-            </>
+            </div>
           )}
         </div>
       )}
 
+      {/* ═══════════════════════════════════════════════════════════════ */}
       {/* SERIES VIEW */}
+      {/* ═══════════════════════════════════════════════════════════════ */}
       {activeView === 'series' && (
-        <div className="glass-card rounded-2xl p-6">
-          <div className="flex items-center justify-between mb-6">
+        <div className="glass rounded-2xl p-6">
+          <div className="flex items-center justify-between mb-6 gap-4">
             <div>
-              <h2 className="text-xl font-bold">Séries orphelines</h2>
-              <p className="text-sm text-slate-400 mt-1">Séries présentes dans Check mais sans fichiers actifs dans Sonarr</p>
+              <h2 className="text-lg font-bold">Séries orphelines</h2>
+              <p className="text-xs mt-1" style={{ color: 'rgba(100,116,139,0.8)' }}>
+                Séries dans Check sans fichiers actifs dans Sonarr
+              </p>
             </div>
-            <div className="flex gap-3">
+            <div className="flex gap-2">
               <button onClick={fetchSeriesIssues} disabled={loading}
-                className="px-4 py-2.5 bg-amber-600 hover:bg-amber-700 rounded-xl text-sm font-medium disabled:opacity-50">
-                🔍 Scanner
+                className="btn-primary flex items-center gap-2 text-white">
+                {loading ? <Spinner size={14}/> : '🔍'} Scanner
               </button>
               {seriesIssues.length > 0 && (
-                <button onClick={deleteAllSeries} disabled={loading}
-                  className="px-4 py-2.5 btn-danger text-sm disabled:opacity-50">
-                  🗑️ Tout supprimer ({seriesIssues.length})
+                <button onClick={deleteAllSeries} disabled={loading} className="btn-danger text-white">
+                  🗑 Tout supprimer ({seriesIssues.length})
                 </button>
               )}
             </div>
           </div>
 
           {seriesIssues.length === 0 ? (
-            <div className="text-center py-20 text-slate-400">
-              <p className="text-5xl mb-4">📺</p>
-              <p className="text-lg">Aucune série orpheline</p>
-              <p className="text-sm mt-2">Une série est orpheline si Sonarr n'a plus de fichiers pour elle et ne la monitore plus</p>
+            <div className="text-center py-20" style={{ color: 'rgba(100,116,139,0.7)' }}>
+              <div className="text-5xl mb-4">📺</div>
+              <p className="text-base font-medium">Aucune série orpheline</p>
+              <p className="text-sm mt-1">
+                Une série est orpheline si Sonarr indique 0 fichier, non monitorée, et non en téléchargement
+              </p>
             </div>
           ) : (
             <div className="space-y-3">
               {seriesIssues.map((series, idx) => (
-                <div key={idx} className="glass-card-hover rounded-xl p-5 flex justify-between items-start gap-4">
+                <div key={idx} className="rounded-xl p-5 flex items-start gap-4"
+                  style={{ background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.2)' }}>
                   <div className="flex-1 min-w-0">
                     <div className="flex flex-wrap items-center gap-2 mb-2">
-                      <h3 className="text-base font-bold">📺 {series.series}</h3>
+                      <h3 className="text-sm font-bold">📺 {series.series}</h3>
                       {series.fileCount > 0 && (
-                        <span className="badge bg-amber-500/20 text-amber-400">{series.fileCount} épisodes</span>
+                        <span className="badge" style={{ background: 'rgba(245,158,11,0.15)', color: '#fbbf24' }}>
+                          {series.fileCount} épisodes
+                        </span>
                       )}
                       {series.size > 0 && (
-                        <span className="badge bg-slate-700/50 text-slate-300">{formatSize(series.size)}</span>
+                        <span className="badge" style={{ background: 'rgba(100,116,139,0.2)', color: '#94a3b8' }}>
+                          {formatSize(series.size)}
+                        </span>
                       )}
                       {series.sonarrPath && (
-                        <span className="badge bg-purple-500/20 text-purple-300">🔗 Connu de Sonarr</span>
+                        <span className="badge" style={{ background: 'rgba(139,92,246,0.15)', color: '#a78bfa' }}>
+                          ↗ Connu de Sonarr
+                        </span>
                       )}
                     </div>
-                    <p className="text-sm text-slate-400 font-mono truncate">📁 {series.path}</p>
+                    <p className="text-xs font-mono truncate" style={{ color: 'rgba(100,116,139,0.8)' }}>
+                      📁 {series.path}
+                    </p>
                     {series.sonarrPath && (
-                      <p className="text-sm text-slate-500 font-mono truncate mt-0.5">🎯 Sonarr : {series.sonarrPath}</p>
+                      <p className="text-xs font-mono truncate mt-0.5" style={{ color: 'rgba(100,116,139,0.6)' }}>
+                        🎯 {series.sonarrPath}
+                      </p>
                     )}
-                    <p className="text-xs text-amber-400 mt-2">⚠️ {series.reason}</p>
+                    <p className="text-xs mt-2" style={{ color: '#fbbf24' }}>⚠ {series.reason}</p>
                   </div>
-                  <button onClick={() => deleteSeries(series.path, series.series)}
-                    className="shrink-0 px-5 py-2.5 btn-danger text-sm">
-                    🗑️ Supprimer
-                  </button>
+                  <div className="flex gap-2 flex-shrink-0">
+                    <button onClick={() => ignoreSeries(series.series)}
+                      title="Ne plus afficher cette série dans les orphelines"
+                      className="btn-ghost text-white/60" style={{ padding: '7px 12px' }}>
+                      🚫 Ignorer
+                    </button>
+                    <button onClick={() => deleteSeries(series.path, series.series)}
+                      className="btn-danger text-white" style={{ padding: '7px 12px' }}>
+                      🗑 Supprimer
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -548,221 +783,291 @@ const App = () => {
         </div>
       )}
 
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      {/* LOGS VIEW */}
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      {activeView === 'logs' && (
+        <div className="glass rounded-2xl p-6">
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
+            <div>
+              <h2 className="text-lg font-bold">Journal d'activité</h2>
+              <p className="text-xs mt-1" style={{ color: 'rgba(100,116,139,0.8)' }}>
+                {filteredLogs.length} entrée{filteredLogs.length !== 1 ? 's' : ''}
+                {logLevel || logCategory ? ' (filtrées)' : ''}
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Filters */}
+              <select value={logLevel} onChange={e => setLogLevel(e.target.value)}
+                className="input-field" style={{ width: 130 }}>
+                <option value="">Tous niveaux</option>
+                <option value="success">Succès</option>
+                <option value="info">Info</option>
+                <option value="warning">Avertissement</option>
+                <option value="error">Erreur</option>
+              </select>
+              <select value={logCategory} onChange={e => setLogCategory(e.target.value)}
+                className="input-field" style={{ width: 140 }}>
+                <option value="">Toutes catégories</option>
+                <option value="hardlink">Hardlink</option>
+                <option value="series">Séries</option>
+                <option value="cron">Cron</option>
+                <option value="delete">Suppression</option>
+                <option value="webhook">Webhook</option>
+                <option value="scan">Scan</option>
+                <option value="ignore">Ignoré</option>
+              </select>
+              <button onClick={fetchLogs} className="btn-ghost text-white/70">⟳ Rafraîchir</button>
+              <label className="flex items-center gap-2 text-xs cursor-pointer select-none" style={{ color: 'rgba(148,163,184,0.8)' }}>
+                <ToggleSwitch checked={logAutoRefresh} onChange={setLogAutoRefresh} />
+                Auto 5s
+              </label>
+              <button onClick={clearLogs} className="btn-danger text-white" style={{ padding: '7px 14px' }}>
+                🗑 Effacer
+              </button>
+            </div>
+          </div>
+
+          {filteredLogs.length === 0 ? (
+            <div className="text-center py-20" style={{ color: 'rgba(100,116,139,0.7)' }}>
+              <div className="text-5xl mb-4">📋</div>
+              <p className="text-base font-medium">Aucun log</p>
+              <p className="text-sm mt-1">Les actions (hardlinks, scans, suppressions…) apparaîtront ici</p>
+            </div>
+          ) : (
+            <div className="rounded-xl overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.07)' }}>
+              {/* Header */}
+              <div className="grid px-4 py-2.5" style={{ gridTemplateColumns: '155px 80px 100px 1fr', gap: 12, background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(255,255,255,0.07)', fontSize: 11, fontWeight: 600, color: 'rgba(100,116,139,0.8)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                <span>Horodatage</span>
+                <span>Niveau</span>
+                <span>Catégorie</span>
+                <span>Message</span>
+              </div>
+              {/* Rows */}
+              <div className="overflow-y-auto scrollbar-thin" style={{ maxHeight: 600 }}>
+                {filteredLogs.map((log, idx) => (
+                  <LogRow key={idx} log={log} />
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════════ */}
       {/* SETTINGS MODAL */}
+      {/* ═══════════════════════════════════════════════════════════════ */}
       {showSettings && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4"
+          style={{ background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)' }}
           onClick={() => setShowSettings(false)}>
-          <div className="glass-card rounded-2xl w-full max-w-4xl max-h-[92vh] flex flex-col"
+          <div className="glass rounded-2xl w-full max-w-4xl flex flex-col" style={{ maxHeight: '92vh' }}
             onClick={e => e.stopPropagation()}>
 
             {/* Modal header */}
-            <div className="flex justify-between items-center p-6 border-b border-slate-700/50">
-              <h2 className="text-xl font-bold">Paramètres</h2>
+            <div className="flex justify-between items-center p-6" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+              <h2 className="text-lg font-bold">Paramètres</h2>
               <button onClick={() => setShowSettings(false)}
-                className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-700/50 text-slate-400 hover:text-white transition-all">
-                ✕
+                className="w-8 h-8 flex items-center justify-center rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition-all text-xl">
+                ×
               </button>
             </div>
 
             {/* Tabs */}
-            <div className="flex gap-1 px-6 pt-4 border-b border-slate-700/50">
+            <div className="flex gap-1 px-6 pt-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
               {[
-                { id: 'general', label: '🔗 Connexions' },
-                { id: 'paths', label: '📁 Chemins' },
-                { id: 'series', label: '📺 Séries' },
+                { id: 'general',    label: '🔗 Connexions' },
+                { id: 'paths',      label: '📁 Chemins' },
+                { id: 'series',     label: '📺 Séries' },
                 { id: 'automation', label: '⏰ Automatisation' },
-                { id: 'genres', label: '🎭 Genres' }
+                { id: 'genres',     label: '🎭 Genres' },
+                { id: 'ignored',    label: `🚫 Exclusions${totalIgnored > 0 ? ` (${totalIgnored})` : ''}` },
               ].map(t => (
                 <button key={t.id} onClick={() => setSettingsTab(t.id)}
-                  className={`px-4 py-2.5 text-sm font-medium rounded-t-lg transition-all ${settingsTab === t.id ? 'bg-blue-600/20 text-blue-400 border-b-2 border-blue-500' : 'text-slate-400 hover:text-slate-200'}`}>
+                  className="px-4 py-2 text-xs font-medium rounded-t-lg transition-all"
+                  style={{ color: settingsTab === t.id ? '#60a5fa' : 'rgba(100,116,139,0.8)', borderBottom: settingsTab === t.id ? '2px solid #3b82f6' : '2px solid transparent', background: settingsTab === t.id ? 'rgba(59,130,246,0.08)' : 'transparent' }}>
                   {t.label}
                 </button>
               ))}
             </div>
 
             {/* Tab content */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-5">
+            <div className="flex-1 overflow-y-auto p-6 space-y-4 scrollbar-thin">
 
               {/* CONNEXIONS */}
               {settingsTab === 'general' && (
                 <>
-                  <SettingsSection title="Radarr" icon="🎬">
-                    <div className="grid grid-cols-2 gap-4">
+                  <SectionCard title="Radarr" icon="🎬">
+                    <div className="grid grid-cols-2 gap-3">
                       <Field label="URL">
-                        <input type="text" value={config.radarrUrl} onChange={e => setConfig({...config, radarrUrl: e.target.value})} className="input-field" placeholder="http://192.168.1.100:7878" />
+                        <input type="text" value={config.radarrUrl} onChange={e => setConfig({...config, radarrUrl: e.target.value})} className="input-field" placeholder="http://radarr:7878" />
                       </Field>
                       <Field label="Clé API">
-                        <input type="password" value={config.apiKey} onChange={e => setConfig({...config, apiKey: e.target.value})} className="input-field" />
+                        <input type="password" value={config.apiKey} onChange={e => setConfig({...config, apiKey: e.target.value})} className="input-field" placeholder="••••••••••••••••" />
                       </Field>
                     </div>
-                  </SettingsSection>
-                  <SettingsSection title="Sonarr" icon="📺">
-                    <div className="grid grid-cols-2 gap-4">
+                  </SectionCard>
+                  <SectionCard title="Sonarr" icon="📺">
+                    <div className="grid grid-cols-2 gap-3">
                       <Field label="URL">
-                        <input type="text" value={config.sonarrUrl || ''} onChange={e => setConfig({...config, sonarrUrl: e.target.value})} className="input-field" placeholder="http://192.168.1.100:8989" />
+                        <input type="text" value={config.sonarrUrl || ''} onChange={e => setConfig({...config, sonarrUrl: e.target.value})} className="input-field" placeholder="http://sonarr:8989" />
                       </Field>
                       <Field label="Clé API">
-                        <input type="password" value={config.sonarrApiKey || ''} onChange={e => setConfig({...config, sonarrApiKey: e.target.value})} className="input-field" />
+                        <input type="password" value={config.sonarrApiKey || ''} onChange={e => setConfig({...config, sonarrApiKey: e.target.value})} className="input-field" placeholder="••••••••••••••••" />
                       </Field>
                     </div>
-                  </SettingsSection>
-                  <SettingsSection title="Propriétaire des fichiers" icon="👤">
-                    <div className="grid grid-cols-2 gap-4">
-                      <Field label="Utilisateur">
-                        <input type="text" value={config.ownerUser} onChange={e => setConfig({...config, ownerUser: e.target.value})} className="input-field" />
+                  </SectionCard>
+                  <SectionCard title="Propriétaire des fichiers" icon="👤">
+                    <div className="grid grid-cols-2 gap-3">
+                      <Field label="Utilisateur (chown)" hint="Laissez vide pour ne pas modifier">
+                        <input type="text" value={config.ownerUser} onChange={e => setConfig({...config, ownerUser: e.target.value})} className="input-field" placeholder="media" />
                       </Field>
-                      <Field label="Groupe">
-                        <input type="text" value={config.ownerGroup} onChange={e => setConfig({...config, ownerGroup: e.target.value})} className="input-field" />
+                      <Field label="Groupe (GID ou nom)" hint="Laissez vide pour ne pas modifier">
+                        <input type="text" value={config.ownerGroup} onChange={e => setConfig({...config, ownerGroup: e.target.value})} className="input-field" placeholder="1000" />
                       </Field>
                     </div>
-                  </SettingsSection>
+                  </SectionCard>
                 </>
               )}
 
               {/* CHEMINS */}
               {settingsTab === 'paths' && (
-                <SettingsSection title="Chemins Films" icon="🎬">
-                  <Field label="Source (A trier)" hint="Dossier où arrivent les fichiers originaux">
-                    <input type="text" value={config.sourceRoot} onChange={e => setConfig({...config, sourceRoot: e.target.value})} className="input-field font-mono text-sm" />
+                <SectionCard title="Chemins Films" icon="🎬">
+                  <Field label='Source "A trier"' hint="Dossier où arrivent les fichiers originaux">
+                    <input type="text" value={config.sourceRoot} onChange={e => setConfig({...config, sourceRoot: e.target.value})} className="input-field font-mono text-xs" />
                   </Field>
-                  <Field label="Destination (bibliothèque)" hint="Racine des dossiers par genre">
-                    <input type="text" value={config.mediaRoot} onChange={e => setConfig({...config, mediaRoot: e.target.value})} className="input-field font-mono text-sm" />
+                  <Field label="Destination (racine bibliothèque)" hint="Racine des dossiers par genre">
+                    <input type="text" value={config.mediaRoot} onChange={e => setConfig({...config, mediaRoot: e.target.value})} className="input-field font-mono text-xs" />
                   </Field>
-                </SettingsSection>
+                </SectionCard>
               )}
 
               {/* SÉRIES */}
               {settingsTab === 'series' && (
-                <>
-                  <SettingsSection title="Vérification des séries orphelines" icon="📺"
-                    toggle={config.seriesCheck?.enabled || false}
-                    onToggle={v => setConfig({...config, seriesCheck: {...config.seriesCheck, enabled: v}})}>
-                    <Field label="Dossier Source (géré par Sonarr)" hint="Référence optionnelle si Sonarr n'est pas configuré">
-                      <input type="text" value={config.seriesSourceRoot || ''} onChange={e => setConfig({...config, seriesSourceRoot: e.target.value})} className="input-field font-mono text-sm" placeholder="/media/series/Source" />
-                    </Field>
-                    <Field label="Dossier Check (hardlinks à vérifier)" hint="Ce dossier est scanné pour détecter les orphelines">
-                      <input type="text" value={config.seriesCheckRoot || ''} onChange={e => setConfig({...config, seriesCheckRoot: e.target.value})} className="input-field font-mono text-sm" placeholder="/media/series/Check" />
-                    </Field>
-                    <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 mt-2">
-                      <p className="text-xs text-blue-300 leading-relaxed">
-                        <strong>Logique de détection :</strong> Pour chaque dossier dans Check, l'API Sonarr est consultée.
-                        Une série est marquée <strong>orpheline</strong> uniquement si Sonarr indique 0 fichier ET qu'elle n'est pas monitorée ET pas en téléchargement actif.
-                        Cela évite les faux positifs liés aux chemins Docker ou Windows.
-                      </p>
-                    </div>
-                  </SettingsSection>
-                </>
+                <SectionCard title="Vérification des séries orphelines" icon="📺"
+                  toggle={config.seriesCheck?.enabled || false}
+                  onToggle={v => setConfig({...config, seriesCheck: {...config.seriesCheck, enabled: v}})}>
+                  <Field label="Dossier Source (géré par Sonarr)" hint="Référence optionnelle si Sonarr n'est pas configuré">
+                    <input type="text" value={config.seriesSourceRoot || ''} onChange={e => setConfig({...config, seriesSourceRoot: e.target.value})} className="input-field font-mono text-xs" placeholder="/media/series/Source" />
+                  </Field>
+                  <Field label="Dossier Check (à vérifier)" hint="Ce dossier est scanné pour détecter les orphelines">
+                    <input type="text" value={config.seriesCheckRoot || ''} onChange={e => setConfig({...config, seriesCheckRoot: e.target.value})} className="input-field font-mono text-xs" placeholder="/media/series/Check" />
+                  </Field>
+                  <div className="rounded-xl p-4" style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)' }}>
+                    <p className="text-xs leading-relaxed" style={{ color: 'rgba(147,197,253,0.9)' }}>
+                      <strong>Détection :</strong> Pour chaque dossier dans Check, l'API Sonarr est consultée.
+                      Une série est <strong>orpheline</strong> uniquement si Sonarr indique 0 fichier,
+                      non monitorée, et non en téléchargement. Utilisez le bouton <strong>Ignorer</strong> pour
+                      exclure une série de cette liste sans la supprimer.
+                    </p>
+                  </div>
+                </SectionCard>
               )}
 
               {/* AUTOMATISATION */}
               {settingsTab === 'automation' && (
                 <>
-                  <SettingsSection title="Hardlinks Films (auto)" icon="🎬"
+                  <SectionCard title="Hardlinks Films (automatique)" icon="🎬"
                     toggle={config.autoSync?.enabled || false}
                     onToggle={v => setConfig({...config, autoSync: {...config.autoSync, enabled: v}})}>
-                    <Field label="Planification cron" hint="Ex: 0 */6 * * * = toutes les 6h">
-                      <input type="text" value={config.autoSync?.cronSchedule || '0 */6 * * *'} onChange={e => setConfig({...config, autoSync: {...config.autoSync, cronSchedule: e.target.value}})} className="input-field font-mono text-sm" />
+                    <Field label="Planification cron" hint="Exemple : 0 */6 * * * = toutes les 6h">
+                      <input type="text" value={config.autoSync?.cronSchedule || '0 */6 * * *'} onChange={e => setConfig({...config, autoSync: {...config.autoSync, cronSchedule: e.target.value}})} className="input-field font-mono text-xs" />
                     </Field>
-                    <div className="grid grid-cols-2 gap-4 mt-1">
+                    <div className="grid grid-cols-2 gap-3">
                       <Field label="Dernier run">
-                        <p className="text-sm text-slate-400 px-4 py-3">{formatDate(config.autoSync?.lastRun)}</p>
+                        <p className="text-xs px-3 py-2.5 rounded-lg" style={{ background: 'rgba(255,255,255,0.04)', color: 'rgba(148,163,184,0.8)' }}>{formatDate(config.autoSync?.lastRun)}</p>
                       </Field>
                       <Field label="Dernier scan complet">
-                        <p className="text-sm text-slate-400 px-4 py-3">{formatDate(config.autoSync?.lastFullScan)}</p>
+                        <p className="text-xs px-3 py-2.5 rounded-lg" style={{ background: 'rgba(255,255,255,0.04)', color: 'rgba(148,163,184,0.8)' }}>{formatDate(config.autoSync?.lastFullScan)}</p>
                       </Field>
                     </div>
-                    <div className="mt-2">
-                      <label className="flex items-center gap-3 cursor-pointer">
-                        <label className="toggle-switch">
-                          <input type="checkbox" checked={config.scanOptimization?.enabled !== false} onChange={e => setConfig({...config, scanOptimization: {...config.scanOptimization, enabled: e.target.checked}})} />
-                          <span className="toggle-slider"></span>
-                        </label>
-                        <div>
-                          <p className="text-sm font-medium">Scan optimisé</p>
-                          <p className="text-xs text-slate-400">Scan uniquement les films récents entre les scans complets</p>
-                        </div>
-                      </label>
-                      {config.scanOptimization?.enabled !== false && (
-                        <div className="grid grid-cols-2 gap-4 mt-3 ml-14">
-                          <Field label="Fenêtre récents (h)">
-                            <input type="number" value={config.scanOptimization?.recentHours || 3} onChange={e => setConfig({...config, scanOptimization: {...config.scanOptimization, recentHours: parseInt(e.target.value)}})} className="input-field text-sm" min="1" />
-                          </Field>
-                          <Field label="Scan complet toutes les (h)">
-                            <input type="number" value={config.scanOptimization?.fullScanInterval || 24} onChange={e => setConfig({...config, scanOptimization: {...config.scanOptimization, fullScanInterval: parseInt(e.target.value)}})} className="input-field text-sm" min="1" />
-                          </Field>
-                        </div>
-                      )}
-                    </div>
-                  </SettingsSection>
+                    <label className="flex items-center gap-3 cursor-pointer">
+                      <ToggleSwitch checked={config.scanOptimization?.enabled !== false} onChange={v => setConfig({...config, scanOptimization: {...config.scanOptimization, enabled: v}})} />
+                      <div>
+                        <p className="text-xs font-medium">Scan optimisé</p>
+                        <p className="text-xs" style={{ color: 'rgba(100,116,139,0.7)' }}>Scanne uniquement les films récents entre les scans complets</p>
+                      </div>
+                    </label>
+                    {config.scanOptimization?.enabled !== false && (
+                      <div className="grid grid-cols-2 gap-3 ml-12">
+                        <Field label="Fenêtre récents (heures)">
+                          <input type="number" value={config.scanOptimization?.recentHours || 3} onChange={e => setConfig({...config, scanOptimization: {...config.scanOptimization, recentHours: parseInt(e.target.value)}})} className="input-field text-sm" min="1" />
+                        </Field>
+                        <Field label="Scan complet toutes les (heures)">
+                          <input type="number" value={config.scanOptimization?.fullScanInterval || 24} onChange={e => setConfig({...config, scanOptimization: {...config.scanOptimization, fullScanInterval: parseInt(e.target.value)}})} className="input-field text-sm" min="1" />
+                        </Field>
+                      </div>
+                    )}
+                  </SectionCard>
 
-                  <SettingsSection title="Vérification Séries (auto)" icon="📺"
+                  <SectionCard title="Vérification Séries (automatique)" icon="📺"
                     toggle={config.seriesAutoCheck?.enabled || false}
                     onToggle={v => setConfig({...config, seriesAutoCheck: {...config.seriesAutoCheck, enabled: v}})}>
-                    <Field label="Planification cron" hint="Ex: 0 */12 * * * = toutes les 12h">
-                      <input type="text" value={config.seriesAutoCheck?.cronSchedule || '0 */12 * * *'} onChange={e => setConfig({...config, seriesAutoCheck: {...config.seriesAutoCheck, cronSchedule: e.target.value}})} className="input-field font-mono text-sm" />
+                    <Field label="Planification cron" hint="Exemple : 0 */12 * * * = toutes les 12h">
+                      <input type="text" value={config.seriesAutoCheck?.cronSchedule || '0 */12 * * *'} onChange={e => setConfig({...config, seriesAutoCheck: {...config.seriesAutoCheck, cronSchedule: e.target.value}})} className="input-field font-mono text-xs" />
                     </Field>
                     <Field label="Dernier run">
-                      <p className="text-sm text-slate-400 px-4 py-3">{formatDate(config.seriesAutoCheck?.lastRun)}</p>
+                      <p className="text-xs px-3 py-2.5 rounded-lg" style={{ background: 'rgba(255,255,255,0.04)', color: 'rgba(148,163,184,0.8)' }}>{formatDate(config.seriesAutoCheck?.lastRun)}</p>
                     </Field>
-                  </SettingsSection>
+                  </SectionCard>
 
                   {cronStatus && (
-                    <SettingsSection title="Jobs actifs" icon="⏰">
-                      {cronStatus.jobs?.length === 0 ? (
-                        <p className="text-sm text-slate-400">Aucun job planifié</p>
+                    <SectionCard title="Jobs planifiés actifs" icon="⏰">
+                      {!cronStatus.jobs?.length ? (
+                        <p className="text-xs" style={{ color: 'rgba(100,116,139,0.7)' }}>Aucun job actif</p>
                       ) : (
                         <div className="space-y-2">
                           {(cronStatus.jobs || []).map((job, i) => (
-                            <div key={i} className="flex justify-between items-center p-3 bg-slate-800/40 rounded-lg">
+                            <div key={i} className="flex justify-between items-center p-3 rounded-lg" style={{ background: 'rgba(255,255,255,0.04)' }}>
                               <div>
-                                <p className="text-sm font-medium">{job.id === 'auto_hardlink' ? '🎬 Films' : '📺 Séries'}</p>
-                                <p className="text-xs text-slate-400 mt-0.5">{job.trigger}</p>
+                                <p className="text-xs font-semibold">{job.id === 'auto_hardlink' ? '🎬 Films' : '📺 Séries'}</p>
+                                <p className="text-xs mt-0.5" style={{ color: 'rgba(100,116,139,0.7)' }}>{job.trigger}</p>
                               </div>
                               <div className="text-right">
-                                <p className="text-xs text-slate-400">Prochain run</p>
-                                <p className="text-xs text-emerald-400 font-mono">{job.next_run ? formatDate(job.next_run) : '—'}</p>
+                                <p className="text-xs" style={{ color: 'rgba(100,116,139,0.7)' }}>Prochain</p>
+                                <p className="text-xs font-mono mt-0.5" style={{ color: '#34d399' }}>{job.next_run ? formatDate(job.next_run) : '—'}</p>
                               </div>
                             </div>
                           ))}
                         </div>
                       )}
-                    </SettingsSection>
+                    </SectionCard>
                   )}
 
-                  <SettingsSection title="Webhooks" icon="🔔"
+                  <SectionCard title="Webhooks" icon="🔔"
                     toggle={config.webhookEnabled || false}
                     onToggle={v => setConfig({...config, webhookEnabled: v})}>
-                    <Field label="Secret (optionnel)">
-                      <input type="password" value={config.webhookSecret || ''} onChange={e => setConfig({...config, webhookSecret: e.target.value})} className="input-field text-sm" placeholder="Laisser vide pour désactiver" />
+                    <Field label="Secret (optionnel)" hint="Laissez vide pour désactiver la vérification">
+                      <input type="password" value={config.webhookSecret || ''} onChange={e => setConfig({...config, webhookSecret: e.target.value})} className="input-field text-xs" placeholder="secret" />
                     </Field>
-                    <div className="bg-slate-800/40 rounded-xl p-4 mt-1 space-y-1">
-                      <p className="text-xs text-slate-400">Endpoints disponibles :</p>
-                      <p className="text-xs text-blue-400 font-mono">POST /api/webhook/radarr</p>
-                      <p className="text-xs text-blue-400 font-mono">POST /api/webhook/jellyfin</p>
+                    <div className="rounded-lg p-3 space-y-1" style={{ background: 'rgba(255,255,255,0.04)' }}>
+                      <p className="text-xs" style={{ color: 'rgba(100,116,139,0.7)' }}>Endpoints disponibles :</p>
+                      <p className="text-xs font-mono" style={{ color: '#60a5fa' }}>POST /api/webhook/radarr</p>
+                      <p className="text-xs font-mono" style={{ color: '#60a5fa' }}>POST /api/webhook/jellyfin</p>
                     </div>
-                  </SettingsSection>
+                  </SectionCard>
                 </>
               )}
 
               {/* GENRES */}
               {settingsTab === 'genres' && (
-                <SettingsSection title="Mapping Genres → Dossiers" icon="🎭"
-                  action={<button onClick={fetchAllGenres} className="px-4 py-2 btn-primary text-xs">Charger depuis Radarr</button>}>
+                <SectionCard title="Mapping Genres → Dossiers" icon="🎭"
+                  action={<button onClick={fetchAllGenres} className="btn-primary text-white text-xs px-3 py-1.5">Charger depuis Radarr</button>}>
                   {allGenres.length === 0 ? (
-                    <p className="text-sm text-slate-400 text-center py-6">Cliquez sur "Charger depuis Radarr" pour obtenir la liste des genres</p>
+                    <p className="text-xs text-center py-6" style={{ color: 'rgba(100,116,139,0.7)' }}>
+                      Cliquez sur "Charger depuis Radarr" pour obtenir la liste des genres
+                    </p>
                   ) : (
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-2 gap-2">
                       {allGenres.map(genre => (
-                        <div key={genre.name} className={`p-4 rounded-xl border transition-all ${genre.enabled ? 'bg-slate-800/60 border-blue-500/40' : 'bg-slate-900/20 border-slate-700/30 opacity-60'}`}>
-                          <div className="flex items-center gap-3 mb-3">
-                            <label className="toggle-switch">
-                              <input type="checkbox" checked={genre.enabled} onChange={e => {
-                                updateGenreMapping(genre.name, 'enabled', e.target.checked);
-                                setAllGenres(allGenres.map(g => g.name === genre.name ? {...g, enabled: e.target.checked} : g));
-                              }} />
-                              <span className="toggle-slider"></span>
-                            </label>
-                            <span className="text-sm font-semibold">{genre.name}</span>
+                        <div key={genre.name} className="p-3 rounded-xl transition-all"
+                          style={{ background: genre.enabled ? 'rgba(59,130,246,0.08)' : 'rgba(255,255,255,0.03)', border: `1px solid ${genre.enabled ? 'rgba(59,130,246,0.3)' : 'rgba(255,255,255,0.06)'}`, opacity: genre.enabled ? 1 : 0.55 }}>
+                          <div className="flex items-center gap-2 mb-2">
+                            <ToggleSwitch checked={genre.enabled} onChange={v => {
+                              updateGenreMapping(genre.name, 'enabled', v);
+                              setAllGenres(allGenres.map(g => g.name === genre.name ? {...g, enabled: v} : g));
+                            }} />
+                            <span className="text-xs font-semibold">{genre.name}</span>
                           </div>
                           <input type="text" value={genre.folder} onChange={e => {
                             updateGenreMapping(genre.name, 'folder', e.target.value);
@@ -772,14 +1077,61 @@ const App = () => {
                       ))}
                     </div>
                   )}
-                </SettingsSection>
+                </SectionCard>
+              )}
+
+              {/* EXCLUSIONS */}
+              {settingsTab === 'ignored' && (
+                <div className="space-y-4">
+                  <div className="rounded-xl p-4" style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)' }}>
+                    <p className="text-xs leading-relaxed" style={{ color: 'rgba(147,197,253,0.9)' }}>
+                      Les éléments exclus n'apparaissent plus dans les listes d'orphelins et de problèmes.
+                      Aucun fichier n'est supprimé. Pour les retirer de l'exclusion, cliquez sur <strong>×</strong>.
+                    </p>
+                  </div>
+
+                  <SectionCard title="Séries exclues" icon="📺">
+                    {!(ignored.series || []).length ? (
+                      <p className="text-xs" style={{ color: 'rgba(100,116,139,0.6)' }}>Aucune série exclue</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {(ignored.series || []).map((name, i) => (
+                          <div key={i} className="flex items-center justify-between p-3 rounded-lg" style={{ background: 'rgba(255,255,255,0.04)' }}>
+                            <span className="text-xs font-medium">📺 {name}</span>
+                            <button onClick={() => removeIgnored('series', name)}
+                              className="text-xs px-2 py-1 rounded transition-all hover:bg-white/10" style={{ color: 'rgba(239,68,68,0.8)' }}>
+                              × Retirer
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </SectionCard>
+
+                  <SectionCard title="Films exclus" icon="🎬">
+                    {!(ignored.movies || []).length ? (
+                      <p className="text-xs" style={{ color: 'rgba(100,116,139,0.6)' }}>Aucun film exclu</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {(ignored.movies || []).map((name, i) => (
+                          <div key={i} className="flex items-center justify-between p-3 rounded-lg" style={{ background: 'rgba(255,255,255,0.04)' }}>
+                            <span className="text-xs font-medium">🎬 {name}</span>
+                            <button onClick={() => removeIgnored('movies', name)}
+                              className="text-xs px-2 py-1 rounded transition-all hover:bg-white/10" style={{ color: 'rgba(239,68,68,0.8)' }}>
+                              × Retirer
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </SectionCard>
+                </div>
               )}
             </div>
 
             {/* Footer */}
-            <div className="p-6 border-t border-slate-700/50">
-              <button onClick={saveConfig}
-                className="w-full py-3.5 btn-primary font-bold text-base">
+            <div className="p-5" style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+              <button onClick={saveConfig} className="btn-primary w-full text-white text-sm font-bold py-3">
                 💾 Sauvegarder la configuration
               </button>
             </div>
@@ -790,54 +1142,44 @@ const App = () => {
   );
 };
 
-// --- SUB-COMPONENTS ---
+// ─── Log Row component ────────────────────────────────────────────────────────
+const LogRow = ({ log }) => {
+  const [expanded, setExpanded] = useState(false);
+  const levelColors = { success: '#34d399', error: '#f87171', warning: '#fbbf24', info: '#60a5fa' };
+  const lc = levelColors[log.level] || '#94a3b8';
 
-const StatCard = ({ icon, label, value, color, onClick, clickable }) => {
-  const colors = {
-    blue: 'bg-blue-500/15 text-blue-400',
-    emerald: 'bg-emerald-500/15 text-emerald-400',
-    rose: 'bg-rose-500/15 text-rose-400',
-    purple: 'bg-purple-500/15 text-purple-400',
-    amber: 'bg-amber-500/15 text-amber-400'
-  };
-  const textColors = { blue: 'text-white', emerald: 'text-emerald-400', rose: 'text-rose-400', purple: 'text-purple-400', amber: 'text-amber-400' };
   return (
-    <div onClick={onClick} className={`glass-card rounded-2xl p-5 ${clickable ? 'cursor-pointer hover:bg-slate-700/30 transition-all' : ''}`}>
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-slate-400 text-xs mb-1 font-medium uppercase tracking-wide">{label}</p>
-          <p className={`text-3xl font-bold ${textColors[color]}`}>{value}</p>
+    <div className="log-row" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+      <div className="grid px-4 py-2.5 items-center"
+        style={{ gridTemplateColumns: '155px 80px 100px 1fr', gap: 12, cursor: log.details ? 'pointer' : 'default' }}
+        onClick={() => log.details && setExpanded(!expanded)}>
+        <span className="text-xs font-mono" style={{ color: 'rgba(100,116,139,0.7)' }}>
+          {new Date(log.timestamp).toLocaleString('fr-FR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit', second:'2-digit' })}
+        </span>
+        <span>
+          <span className="badge text-xs" style={{ background: `${lc}18`, color: lc }}>
+            {log.level === 'success' ? '✓ OK' : log.level === 'error' ? '✕ Err' : log.level === 'warning' ? '⚠ Avert' : 'ℹ Info'}
+          </span>
+        </span>
+        <span><CategoryBadge category={log.category} /></span>
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-xs truncate" style={{ color: 'rgba(203,213,225,0.9)' }}>{log.message}</span>
+          {log.details && (
+            <span style={{ color: 'rgba(100,116,139,0.5)', fontSize: 10 }}>{expanded ? '▲' : '▼'}</span>
+          )}
         </div>
-        <div className={`w-11 h-11 ${colors[color]} rounded-xl flex items-center justify-center text-xl`}>{icon}</div>
       </div>
+      {expanded && log.details && (
+        <div className="px-4 pb-3">
+          <pre className="text-xs rounded-lg p-3 overflow-x-auto scrollbar-thin"
+            style={{ background: 'rgba(0,0,0,0.3)', color: 'rgba(148,163,184,0.8)', fontFamily: 'monospace', fontSize: 11 }}>
+            {JSON.stringify(log.details, null, 2)}
+          </pre>
+        </div>
+      )}
     </div>
   );
 };
-
-const SettingsSection = ({ title, icon, toggle, onToggle, action, children }) => (
-  <div className="bg-slate-800/30 rounded-xl p-5 border border-slate-700/30">
-    <div className="section-header">
-      <span className="text-lg">{icon}</span>
-      <h3 className="text-base font-bold flex-1">{title}</h3>
-      {action}
-      {onToggle !== undefined && (
-        <label className="toggle-switch">
-          <input type="checkbox" checked={toggle} onChange={e => onToggle(e.target.checked)} />
-          <span className="toggle-slider"></span>
-        </label>
-      )}
-    </div>
-    <div className="space-y-4">{children}</div>
-  </div>
-);
-
-const Field = ({ label, hint, children }) => (
-  <div>
-    <label className="text-sm text-slate-400 block mb-1.5 font-medium">{label}</label>
-    {hint && <p className="text-xs text-slate-500 mb-2">{hint}</p>}
-    {children}
-  </div>
-);
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(<App />);

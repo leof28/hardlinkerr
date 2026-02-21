@@ -13,6 +13,8 @@ app = Flask(__name__)
 CONFIG_DIR = "/app/config"
 CONFIG_PATH = os.path.join(CONFIG_DIR, "config.json")
 CACHE_PATH = os.path.join(CONFIG_DIR, "scan_cache.json")
+LOGS_PATH = os.path.join(CONFIG_DIR, "logs.json")
+IGNORE_PATH = os.path.join(CONFIG_DIR, "ignored.json")
 SCRIPT_PATH = "./hardlink_manager.sh"
 TEMPLATE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates')
 
@@ -23,7 +25,7 @@ scheduler.start()
 
 def load_config():
     defaults = {
-        "radarrUrl": "http://192.168.1.100:7878",
+        "radarrUrl": "",
         "apiKey": "",
         "sonarrUrl": "",
         "sonarrApiKey": "",
@@ -31,8 +33,8 @@ def load_config():
         "mediaRoot": "/media/movies",
         "seriesSourceRoot": "/media/series/Source",
         "seriesCheckRoot": "/media/series/Check",
-        "ownerUser": "media",
-        "ownerGroup": "3001",
+        "ownerUser": "",
+        "ownerGroup": "",
         "genreMapping": {},
         "autoSync": {
             "enabled": False,
@@ -93,6 +95,60 @@ def save_cache(cache):
         json.dump(cache, f, indent=4)
 
 
+# --- LOGS ---
+
+def load_logs():
+    if os.path.exists(LOGS_PATH):
+        try:
+            with open(LOGS_PATH, 'r') as f:
+                return json.load(f)
+        except Exception:
+            return []
+    return []
+
+
+def save_logs(logs):
+    os.makedirs(CONFIG_DIR, exist_ok=True)
+    with open(LOGS_PATH, 'w') as f:
+        json.dump(logs, f)
+
+
+def append_log(level, category, message, details=None):
+    """Ajoute une entrée dans le journal persistant (max 1000 entrées)."""
+    logs = load_logs()
+    entry = {
+        "timestamp": datetime.now().isoformat(),
+        "level": level,       # "info" | "success" | "warning" | "error"
+        "category": category, # "hardlink" | "series" | "cron" | "delete" | "webhook" | "scan" | "ignore"
+        "message": message,
+    }
+    if details:
+        entry["details"] = details
+    logs.append(entry)
+    if len(logs) > 1000:
+        logs = logs[-1000:]
+    save_logs(logs)
+    return entry
+
+
+# --- IGNORE ---
+
+def load_ignored():
+    if os.path.exists(IGNORE_PATH):
+        try:
+            with open(IGNORE_PATH, 'r') as f:
+                return json.load(f)
+        except Exception:
+            return {"series": [], "movies": []}
+    return {"series": [], "movies": []}
+
+
+def save_ignored(ignored):
+    os.makedirs(CONFIG_DIR, exist_ok=True)
+    with open(IGNORE_PATH, 'w') as f:
+        json.dump(ignored, f, indent=2)
+
+
 # --- HARDLINK HELPERS ---
 
 def get_env(config, movie="", genres=""):
@@ -116,15 +172,53 @@ def get_env(config, movie="", genres=""):
     return env
 
 
+def _parse_hardlink_summary(output):
+    """Parse le résumé de hardlink_manager.sh et retourne un dict."""
+    summary = {"total": 0, "linked": 0, "skipped": 0, "errors": 0}
+    for line in output.split('\n'):
+        if line.startswith("Films traités:"):
+            try: summary["total"] = int(line.split(":")[1].strip())
+            except: pass
+        elif line.startswith("Hardlinks créés:"):
+            try: summary["linked"] = int(line.split(":")[1].strip())
+            except: pass
+        elif line.startswith("Films ignorés:"):
+            try: summary["skipped"] = int(line.split(":")[1].strip())
+            except: pass
+        elif line.startswith("Erreurs:"):
+            try: summary["errors"] = int(line.split(":")[1].strip())
+            except: pass
+    return summary
+
+
 def execute_hardlinks(config, movie_path='', genres=''):
     env = get_env(config, movie_path, genres)
+    label = os.path.basename(movie_path) if movie_path else ("genre=" + genres if genres else "tous")
     try:
         process = subprocess.run(
             [SCRIPT_PATH, "-y"],
             capture_output=True, text=True, env=env, timeout=600
         )
-        return {"status": "ok", "output": process.stdout, "errors": process.stderr}
+        result = {"status": "ok", "output": process.stdout, "errors": process.stderr}
+
+        # Log the result
+        summary = _parse_hardlink_summary(process.stdout)
+        if process.returncode != 0 or process.stderr.strip():
+            append_log("error", "hardlink",
+                       f"Hardlinks [{label}] — erreurs détectées",
+                       {"summary": summary, "stderr": process.stderr[:500]})
+        elif summary["linked"] > 0:
+            append_log("success", "hardlink",
+                       f"Hardlinks créés [{label}] — {summary['linked']} lien(s), {summary['skipped']} ignoré(s)",
+                       {"summary": summary})
+        else:
+            append_log("info", "hardlink",
+                       f"Hardlinks [{label}] — rien de nouveau ({summary['skipped']} ignoré(s))",
+                       {"summary": summary})
+
+        return result
     except Exception as e:
+        append_log("error", "hardlink", f"Hardlinks [{label}] — exception: {e}")
         return {"status": "error", "error": str(e)}
 
 
@@ -197,34 +291,42 @@ def get_recent_movies(config):
 
 def cron_job_handler():
     print(f"[{datetime.now()}] Cron films: Démarrage...")
+    append_log("info", "cron", "Cron films démarré")
     config = load_config()
     do_full_scan = should_do_full_scan(config)
 
     if do_full_scan:
         print(f"[{datetime.now()}] Scan complet")
+        append_log("info", "cron", "Scan complet en cours...")
         execute_hardlinks(config)
         config['autoSync']['lastFullScan'] = datetime.now().isoformat()
     else:
         recent_movies = get_recent_movies(config)
         if recent_movies:
             print(f"[{datetime.now()}] {len(recent_movies)} films récents")
+            append_log("info", "cron", f"Scan optimisé — {len(recent_movies)} film(s) récent(s)")
             for movie in recent_movies:
                 execute_hardlinks(config, movie['path'])
         else:
             print(f"[{datetime.now()}] Aucun film récent")
+            append_log("info", "cron", "Scan optimisé — aucun film récent, rien à faire")
 
     config['autoSync']['lastRun'] = datetime.now().isoformat()
     save_config(config)
+    append_log("success", "cron", "Cron films terminé")
     print(f"[{datetime.now()}] Cron films terminé")
 
 
 def series_cron_handler():
     print(f"[{datetime.now()}] Cron séries: Démarrage...")
+    append_log("info", "cron", "Cron séries démarré")
     config = load_config()
     issues = detect_series_issues(config)
     config.setdefault('seriesAutoCheck', {})['lastRun'] = datetime.now().isoformat()
     save_config(config)
-    print(f"[{datetime.now()}] Cron séries terminé — {len(issues)} orphelines trouvées")
+    msg = f"Cron séries terminé — {len(issues)} orpheline(s) trouvée(s)"
+    append_log("success" if len(issues) == 0 else "warning", "cron", msg)
+    print(f"[{datetime.now()}] {msg}")
 
 
 def setup_cron_jobs(config):
@@ -280,6 +382,7 @@ def detect_series_issues(config):
           • Trouvé dans Sonarr ET (a des fichiers OU est monitoré OU en DL) → pas orpheline
           • Sinon → orpheline
       - Fallback sans Sonarr : vérifie seriesSourceRoot sur le disque
+      - Les séries dans la liste d'ignorées sont exclues
     """
     issues = []
 
@@ -293,6 +396,9 @@ def detect_series_issues(config):
 
     if not series_check or not os.path.isdir(series_check):
         return issues
+
+    ignored = load_ignored()
+    ignored_series = set(ignored.get("series", []))
 
     try:
         sonarr_by_folder = {}   # folder_name → {id, path, title, monitored, episodeFileCount}
@@ -343,6 +449,11 @@ def detect_series_issues(config):
         for series_folder in sorted(os.listdir(series_check)):
             check_path = os.path.join(series_check, series_folder)
             if not os.path.isdir(check_path):
+                continue
+
+            # Vérifier si ignorée
+            if series_folder in ignored_series:
+                print(f"[SERIES] {series_folder} → ignorée (liste d'exclusion)")
                 continue
 
             # Recherche dans Sonarr : exact d'abord, puis normalisé
@@ -425,8 +536,12 @@ def detect_series_issues(config):
 # --- FILM DETECTION ---
 
 def detect_duplicates(config):
-    """Détecte doublons MKV, orphelins (source supprimée) et genres incorrects."""
+    """Détecte doublons MKV, orphelins (source supprimée) et genres incorrects.
+    Les films dans la liste d'ignorées sont exclus."""
     duplicates = []
+    ignored = load_ignored()
+    ignored_movies = set(ignored.get("movies", []))
+
     try:
         response = requests.get(
             f"{config['radarrUrl']}/api/v3/movie",
@@ -466,6 +581,10 @@ def detect_duplicates(config):
             for movie_folder in os.listdir(genre_path):
                 movie_path = os.path.join(genre_path, movie_folder)
                 if not os.path.isdir(movie_path):
+                    continue
+
+                # Vérifier si ignoré
+                if movie_folder in ignored_movies:
                     continue
 
                 source_path = os.path.join(source_root, movie_folder)
@@ -624,6 +743,7 @@ def get_status():
             })
 
         result.sort(key=lambda x: x['addedTime'], reverse=True)
+        append_log("info", "scan", f"Scan bibliothèque — {len(result)} film(s) trouvé(s)")
         print(f"[SCAN] {len(result)} films retournés")
         return jsonify(result)
     except Exception as e:
@@ -635,7 +755,14 @@ def get_status():
 def get_series_issues():
     config = load_config()
     try:
-        return jsonify(detect_series_issues(config))
+        issues = detect_series_issues(config)
+        if issues:
+            append_log("warning", "series",
+                       f"Scan séries — {len(issues)} orpheline(s) détectée(s)",
+                       {"series": [i["series"] for i in issues]})
+        else:
+            append_log("success", "series", "Scan séries — aucune orpheline détectée")
+        return jsonify(issues)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -645,12 +772,15 @@ def delete_series():
     import shutil
     data = request.json or {}
     series_path = data.get('path', '')
+    series_name = data.get('name', os.path.basename(series_path))
     try:
         if series_path and os.path.isdir(series_path):
             shutil.rmtree(series_path)
+            append_log("success", "delete", f"Série supprimée : {series_name}", {"path": series_path})
             return jsonify({"status": "ok", "message": f"Supprimé: {series_path}"})
         return jsonify({"error": "Dossier non trouvé"}), 404
     except Exception as e:
+        append_log("error", "delete", f"Erreur suppression série {series_name}: {e}")
         return jsonify({"error": str(e)}), 500
 
 
@@ -670,6 +800,10 @@ def delete_all_series():
                     errors.append(f"Non trouvé: {issue['series']}")
             except Exception as e:
                 errors.append(f"Erreur {issue['series']}: {e}")
+        if success:
+            append_log("success", "delete",
+                       f"{len(success)} série(s) orpheline(s) supprimée(s)",
+                       {"deleted": success, "errors": errors})
         return jsonify({"status": "ok", "deleted": len(success),
                         "errors": len(errors), "details": {"success": success, "errors": errors}})
     except Exception as e:
@@ -680,7 +814,16 @@ def delete_all_series():
 def get_duplicates():
     config = load_config()
     try:
-        return jsonify(detect_duplicates(config))
+        dups = detect_duplicates(config)
+        if dups:
+            append_log("warning", "scan",
+                       f"Scan films — {len(dups)} problème(s) détecté(s)",
+                       {"orphans": sum(1 for d in dups if d["type"] == "orphan"),
+                        "duplicates": sum(1 for d in dups if d["type"] == "duplicate"),
+                        "wrong_genre": sum(1 for d in dups if d["type"] == "wrong_genre")})
+        else:
+            append_log("success", "scan", "Scan films — aucun problème détecté")
+        return jsonify(dups)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -695,9 +838,11 @@ def delete_file():
             parent = os.path.dirname(file_path)
             if os.path.isdir(parent) and not os.listdir(parent):
                 os.rmdir(parent)
+            append_log("success", "delete", f"Fichier supprimé : {os.path.basename(file_path)}", {"path": file_path})
             return jsonify({"status": "ok"})
         return jsonify({"error": "Fichier non trouvé"}), 404
     except Exception as e:
+        append_log("error", "delete", f"Erreur suppression fichier: {e}")
         return jsonify({"error": str(e)}), 500
 
 
@@ -722,6 +867,10 @@ def delete_duplicates():
         except Exception as e:
             errors.append(f"Erreur {file_path}: {e}")
 
+    if success:
+        append_log("success", "delete",
+                   f"{len(success)} fichier(s) supprimé(s)",
+                   {"count": len(success), "errors": len(errors)})
     return jsonify({"status": "ok", "deleted": len(success), "errors": len(errors),
                     "details": {"success": success, "errors": errors}})
 
@@ -766,9 +915,11 @@ def jellyfin_webhook():
         return jsonify({"error": "Secret invalide"}), 403
     try:
         data = request.json
-        if data.get('NotificationType', '') in ['ItemAdded', 'MovieAdded']:
+        notif_type = data.get('NotificationType', '')
+        if notif_type in ['ItemAdded', 'MovieAdded']:
             item = data.get('Item', {})
             item_path = item.get('Path', '')
+            append_log("info", "webhook", f"Webhook Jellyfin reçu : {item.get('Name', '?')} ({notif_type})")
             time.sleep(5)
             movie_path = os.path.join(config['sourceRoot'],
                                       os.path.basename(os.path.dirname(item_path))) if item_path else ''
@@ -786,8 +937,11 @@ def radarr_webhook():
         return jsonify({"error": "Webhook désactivé"}), 403
     try:
         data = request.json
-        if data.get('eventType', '') in ['Download', 'Rename', 'MovieFileDelete']:
+        event_type = data.get('eventType', '')
+        if event_type in ['Download', 'Rename', 'MovieFileDelete']:
             movie = data.get('movie', {})
+            append_log("info", "webhook",
+                       f"Webhook Radarr reçu : {movie.get('title', '?')} ({event_type})")
             time.sleep(5)
             folder_name = os.path.basename(movie.get('folderPath', ''))
             movie_path = os.path.join(config['sourceRoot'], folder_name)
@@ -827,6 +981,70 @@ def trigger_series_cron():
         return jsonify({"status": "ok"})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+# --- LOGS API ---
+
+@app.route('/api/logs', methods=['GET'])
+def get_logs():
+    logs = load_logs()
+    level = request.args.get('level', '')
+    category = request.args.get('category', '')
+    limit = min(int(request.args.get('limit', 200)), 1000)
+
+    if level:
+        logs = [l for l in logs if l.get('level') == level]
+    if category:
+        logs = [l for l in logs if l.get('category') == category]
+
+    # Most recent first
+    return jsonify(list(reversed(logs[-limit:])))
+
+
+@app.route('/api/logs', methods=['DELETE'])
+def clear_logs():
+    save_logs([])
+    append_log("info", "scan", "Journal effacé")
+    return jsonify({"status": "ok"})
+
+
+# --- IGNORE API ---
+
+@app.route('/api/ignore', methods=['GET'])
+def get_ignored():
+    return jsonify(load_ignored())
+
+
+@app.route('/api/ignore', methods=['POST'])
+def add_ignored():
+    data = request.json or {}
+    item_type = data.get('type', '')   # "series" or "movies"
+    item_name = data.get('name', '')
+    label = data.get('label', item_name)
+
+    if not item_type or not item_name:
+        return jsonify({"error": "type et name requis"}), 400
+
+    ignored = load_ignored()
+    if item_type not in ignored:
+        ignored[item_type] = []
+    if item_name not in ignored[item_type]:
+        ignored[item_type].append(item_name)
+        save_ignored(ignored)
+        append_log("info", "ignore",
+                   f"{'Série' if item_type == 'series' else 'Film'} ignoré(e) : {label}")
+    return jsonify({"status": "ok", "ignored": ignored})
+
+
+@app.route('/api/ignore/<item_type>/<path:item_name>', methods=['DELETE'])
+def remove_ignored(item_type, item_name):
+    ignored = load_ignored()
+    if item_type in ignored and item_name in ignored[item_type]:
+        ignored[item_type].remove(item_name)
+        save_ignored(ignored)
+        append_log("info", "ignore",
+                   f"{'Série' if item_type == 'series' else 'Film'} retiré(e) de la liste d'exclusion : {item_name}")
+    return jsonify({"status": "ok", "ignored": ignored})
 
 
 if __name__ == '__main__':
