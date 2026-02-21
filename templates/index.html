@@ -12,705 +12,835 @@
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
         * { font-family: 'Poppins', sans-serif; }
         body { background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%); min-height: 100vh; }
-        .glass-card { background: rgba(30, 41, 59, 0.4); backdrop-filter: blur(20px); border: 1px solid rgba(148, 163, 184, 0.1); box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37); }
+        .glass-card { background: rgba(30, 41, 59, 0.4); backdrop-filter: blur(20px); border: 1px solid rgba(148, 163, 184, 0.1); box-shadow: 0 8px 32px 0 rgba(0,0,0,0.37); }
+        .glass-card-hover { background: rgba(30, 41, 59, 0.4); backdrop-filter: blur(20px); border: 1px solid rgba(148, 163, 184, 0.1); box-shadow: 0 8px 32px 0 rgba(0,0,0,0.37); transition: all 0.2s; }
+        .glass-card-hover:hover { border-color: rgba(148, 163, 184, 0.25); box-shadow: 0 12px 40px 0 rgba(0,0,0,0.5); }
         .gradient-text { background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
         .poster-card { position: relative; overflow: hidden; transition: all 0.3s ease; }
-        .poster-card:hover { transform: translateY(-8px); box-shadow: 0 20px 40px rgba(59, 130, 246, 0.3); }
-        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .poster-card:hover { transform: translateY(-8px); box-shadow: 0 20px 40px rgba(59,130,246,0.3); }
         .nav-link { position: relative; transition: all 0.3s; }
         .nav-link.active::after { content: ''; position: absolute; bottom: -2px; left: 50%; transform: translateX(-50%); width: 24px; height: 3px; background: linear-gradient(90deg, #3b82f6, #8b5cf6); border-radius: 2px; }
+        .badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 9999px; font-size: 11px; font-weight: 700; }
+        .input-field { width: 100%; padding: 12px 16px; background: rgba(15,23,42,0.6); border: 1px solid rgba(100,116,139,0.4); border-radius: 12px; color: white; outline: none; transition: border-color 0.2s; }
+        .input-field:focus { border-color: #3b82f6; }
+        .btn-primary { padding: 10px 20px; background: linear-gradient(135deg, #3b82f6, #8b5cf6); border-radius: 12px; font-weight: 600; transition: all 0.2s; }
+        .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+        .btn-danger { padding: 10px 20px; background: linear-gradient(135deg, #ef4444, #dc2626); border-radius: 12px; font-weight: 600; transition: all 0.2s; }
+        .btn-danger:hover { opacity: 0.9; }
+        .section-header { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid rgba(100,116,139,0.2); }
+        .toggle-switch { position: relative; width: 44px; height: 24px; }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .toggle-slider { position: absolute; inset: 0; background: rgba(100,116,139,0.4); border-radius: 24px; cursor: pointer; transition: 0.3s; }
+        .toggle-slider::before { content: ''; position: absolute; width: 18px; height: 18px; left: 3px; bottom: 3px; background: white; border-radius: 50%; transition: 0.3s; }
+        input:checked + .toggle-slider { background: linear-gradient(135deg, #3b82f6, #8b5cf6); }
+        input:checked + .toggle-slider::before { transform: translateX(20px); }
     </style>
 </head>
 <body>
-    <div id="root"></div>
-    <script type="text/babel">
-        const { useState, useEffect } = React;
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useCallback } = React;
 
-        const App = () => {
-          const [activeView, setActiveView] = useState('library');
-          const [config, setConfig] = useState(null);
-          const [movies, setMovies] = useState([]);
-          const [duplicates, setDuplicates] = useState([]);
-          const [seriesIssues, setSeriesIssues] = useState([]);
-          const [allGenres, setAllGenres] = useState([]);
-          const [loading, setLoading] = useState(false);
-          const [search, setSearch] = useState('');
-          const [genreFilter, setGenreFilter] = useState('');
-          const [showOnlyMissing, setShowOnlyMissing] = useState(false);
-          const [selectedMovies, setSelectedMovies] = useState(new Set());
-          const [stats, setStats] = useState({ total: 0, linked: 0, errors: 0, activeGenres: 0 });
-          const [showSettings, setShowSettings] = useState(false);
+const App = () => {
+  const [activeView, setActiveView] = useState('library');
+  const [config, setConfig] = useState(null);
+  const [movies, setMovies] = useState([]);
+  const [duplicates, setDuplicates] = useState([]);
+  const [seriesIssues, setSeriesIssues] = useState([]);
+  const [allGenres, setAllGenres] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState('');
+  const [genreFilter, setGenreFilter] = useState('');
+  const [showOnlyMissing, setShowOnlyMissing] = useState(false);
+  const [selectedMovies, setSelectedMovies] = useState(new Set());
+  const [stats, setStats] = useState({ total: 0, linked: 0, errors: 0, activeGenres: 0 });
+  const [showSettings, setShowSettings] = useState(false);
+  const [settingsTab, setSettingsTab] = useState('general');
+  const [cronStatus, setCronStatus] = useState(null);
 
-          useEffect(() => { fetchConfig(); }, []);
+  useEffect(() => { fetchConfig(); fetchCronStatus(); }, []);
 
-          const fetchConfig = async () => {
-            try {
-              const res = await fetch('/api/settings');
-              const data = await res.json();
-              setConfig(data);
-              const active = Object.values(data.genreMapping || {}).filter(g => g.enabled).length;
-              setStats(prev => ({ ...prev, activeGenres: active }));
-            } catch (error) {
-              showNotif('Erreur config', 'error');
-            }
-          };
+  const fetchConfig = async () => {
+    try {
+      const data = await apiFetch('/api/settings');
+      setConfig(data);
+      setStats(prev => ({
+        ...prev,
+        activeGenres: Object.values(data.genreMapping || {}).filter(g => g.enabled).length
+      }));
+    } catch { showNotif('Erreur config', 'error'); }
+  };
 
-          const fetchAllGenres = async () => {
-            try {
-              const res = await fetch('/api/genres');
-              const data = await res.json();
-              if (Array.isArray(data)) setAllGenres(data);
-            } catch (error) {
-              showNotif('Erreur genres', 'error');
-            }
-          };
+  const fetchCronStatus = async () => {
+    try {
+      const data = await apiFetch('/api/cron/status');
+      setCronStatus(data);
+    } catch { /* silently ignore */ }
+  };
 
-          const fetchSeriesIssues = async () => {
-            setLoading(true);
-            try {
-              const res = await fetch('/api/series-issues');
-              const data = await res.json();
-              if (Array.isArray(data)) {
-                setSeriesIssues(data);
-                showNotif(`${data.length} séries orphelines`, 'info');
-              }
-            } catch (error) {
-              showNotif('Erreur scan séries', 'error');
-            } finally {
-              setLoading(false);
-            }
-          };
+  const fetchAllGenres = async () => {
+    try {
+      const data = await apiFetch('/api/genres');
+      if (Array.isArray(data)) setAllGenres(data);
+    } catch { showNotif('Erreur genres', 'error'); }
+  };
 
-          const deleteSeries = async (path) => {
-            if (!confirm('Supprimer cette série complète ?')) return;
-            try {
-              await fetch('/api/delete-series', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ path })
-              });
-              fetchSeriesIssues();
-              showNotif('Série supprimée', 'success');
-            } catch (error) {
-              showNotif('Erreur', 'error');
-            }
-          };
+  const fetchSeriesIssues = async () => {
+    setLoading(true);
+    try {
+      const data = await apiFetch('/api/series-issues');
+      if (Array.isArray(data)) {
+        setSeriesIssues(data);
+        showNotif(`${data.length} série${data.length !== 1 ? 's' : ''} orpheline${data.length !== 1 ? 's' : ''}`, 'info');
+      }
+    } catch { showNotif('Erreur scan séries', 'error'); }
+    finally { setLoading(false); }
+  };
 
-          const deleteAllSeries = async () => {
-            if (seriesIssues.length === 0) return;
-            if (!confirm(`Supprimer ${seriesIssues.length} séries orphelines ?`)) return;
-            
-            setLoading(true);
-            try {
-              const res = await fetch('/api/delete-all-series', { method: 'POST' });
-              const data = await res.json();
-              showNotif(`${data.deleted} séries supprimées`, 'success');
-              fetchSeriesIssues();
-            } catch (error) {
-              showNotif('Erreur', 'error');
-            } finally {
-              setLoading(false);
-            }
-          };
+  const deleteSeries = async (path, name) => {
+    if (!confirm(`Supprimer définitivement "${name}" ?\nCette action est irréversible.`)) return;
+    try {
+      await apiFetch('/api/delete-series', { method: 'POST', body: { path } });
+      setSeriesIssues(prev => prev.filter(s => s.path !== path));
+      showNotif('Série supprimée', 'success');
+    } catch { showNotif('Erreur suppression', 'error'); }
+  };
 
-          const fetchDuplicates = async () => {
-            setLoading(true);
-            try {
-              const res = await fetch('/api/duplicates');
-              const data = await res.json();
-              if (Array.isArray(data)) {
-                setDuplicates(data);
-                showNotif(`${data.length} problèmes détectés`, 'info');
-              }
-            } catch (error) {
-              showNotif('Erreur scan', 'error');
-            } finally {
-              setLoading(false);
-            }
-          };
+  const deleteAllSeries = async () => {
+    if (!seriesIssues.length) return;
+    if (!confirm(`Supprimer définitivement ${seriesIssues.length} série(s) orpheline(s) ?\nCette action est irréversible.`)) return;
+    setLoading(true);
+    try {
+      const data = await apiFetch('/api/delete-all-series', { method: 'POST' });
+      showNotif(`${data.deleted} série(s) supprimée(s)`, 'success');
+      fetchSeriesIssues();
+    } catch { showNotif('Erreur', 'error'); }
+    finally { setLoading(false); }
+  };
 
-          const scanMovies = async () => {
-            setLoading(true);
-            try {
-              const res = await fetch('/api/status');
-              const data = await res.json();
-              
-              if (data.error) {
-                showNotif('Erreur: ' + data.error, 'error');
-                return;
-              }
-              
-              if (!Array.isArray(data)) {
-                showNotif('Format incorrect', 'error');
-                return;
-              }
-              
-              setMovies(data);
-              
-              let linked = 0, errors = 0;
-              data.forEach(m => {
-                if (m.hardlinks) {
-                  m.hardlinks.forEach(h => {
-                    if (h.exists) linked++;
-                    else errors++;
-                  });
-                }
-              });
-              
-              setStats(prev => ({ ...prev, total: data.length, linked, errors }));
-              showNotif(`${data.length} films`, 'success');
-            } catch (error) {
-              showNotif('Erreur: ' + error.message, 'error');
-            } finally {
-              setLoading(false);
-            }
-          };
+  const fetchDuplicates = async () => {
+    setLoading(true);
+    try {
+      const data = await apiFetch('/api/duplicates');
+      if (Array.isArray(data)) {
+        setDuplicates(data);
+        showNotif(`${data.length} problème${data.length !== 1 ? 's' : ''} détecté${data.length !== 1 ? 's' : ''}`, 'info');
+      }
+    } catch { showNotif('Erreur scan', 'error'); }
+    finally { setLoading(false); }
+  };
 
-          const createLinks = async (moviePath) => {
-            setLoading(true);
-            try {
-              await fetch('/api/run', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ movie_path: moviePath })
-              });
-              showNotif('Hardlinks créés', 'success');
-            } catch (error) {
-              showNotif('Erreur', 'error');
-            } finally {
-              setLoading(false);
-            }
-          };
+  const scanMovies = async () => {
+    setLoading(true);
+    try {
+      const data = await apiFetch('/api/status');
+      if (data.error) { showNotif('Erreur: ' + data.error, 'error'); return; }
+      if (!Array.isArray(data)) { showNotif('Format incorrect', 'error'); return; }
+      setMovies(data);
+      let linked = 0, errors = 0;
+      data.forEach(m => (m.hardlinks || []).forEach(h => h.exists ? linked++ : errors++));
+      setStats(prev => ({ ...prev, total: data.length, linked, errors }));
+      showNotif(`${data.length} films scannés`, 'success');
+    } catch (e) { showNotif('Erreur: ' + e.message, 'error'); }
+    finally { setLoading(false); }
+  };
 
-          const createSelectedLinks = async () => {
-            if (selectedMovies.size === 0) {
-              showNotif('Sélectionnez des films', 'warning');
-              return;
-            }
-            setLoading(true);
-            try {
-              const moviePaths = Array.from(selectedMovies);
-              await fetch('/api/run', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ movie_paths: moviePaths })
-              });
-              setSelectedMovies(new Set());
-              showNotif(`${moviePaths.length} films traités`, 'success');
-            } catch (error) {
-              showNotif('Erreur', 'error');
-            } finally {
-              setLoading(false);
-            }
-          };
+  const createSelectedLinks = async () => {
+    if (!selectedMovies.size) { showNotif('Sélectionnez des films', 'warning'); return; }
+    setLoading(true);
+    try {
+      await apiFetch('/api/run', { method: 'POST', body: { movie_paths: Array.from(selectedMovies) } });
+      setSelectedMovies(new Set());
+      showNotif(`${selectedMovies.size} films traités`, 'success');
+    } catch { showNotif('Erreur', 'error'); }
+    finally { setLoading(false); }
+  };
 
-          const createAllLinks = async () => {
-            if (!confirm('Créer tous les hardlinks manquants ?')) return;
-            setLoading(true);
-            try {
-              await fetch('/api/run-all', { method: 'POST' });
-              showNotif('Tous créés', 'success');
-            } catch (error) {
-              showNotif('Erreur', 'error');
-            } finally {
-              setLoading(false);
-            }
-          };
+  const createAllLinks = async () => {
+    if (!confirm('Créer tous les hardlinks manquants ?')) return;
+    setLoading(true);
+    try {
+      await apiFetch('/api/run-all', { method: 'POST' });
+      showNotif('Tous les hardlinks créés', 'success');
+    } catch { showNotif('Erreur', 'error'); }
+    finally { setLoading(false); }
+  };
 
-          const deleteDuplicate = async (path) => {
-            if (!confirm('Supprimer ?')) return;
-            try {
-              await fetch('/api/delete-file', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ path })
-              });
-              fetchDuplicates();
-              showNotif('Supprimé', 'success');
-            } catch (error) {
-              showNotif('Erreur', 'error');
-            }
-          };
+  const deleteDuplicate = async (path) => {
+    if (!confirm('Supprimer ce fichier ?')) return;
+    try {
+      await apiFetch('/api/delete-file', { method: 'POST', body: { path } });
+      setDuplicates(prev => prev.filter(d => d.path !== path));
+      showNotif('Fichier supprimé', 'success');
+    } catch { showNotif('Erreur', 'error'); }
+  };
 
-          const deleteAllByType = async (type) => {
-            const filtered = duplicates.filter(d => d.type === type);
-            if (filtered.length === 0) return;
-            if (!confirm(`Supprimer ${filtered.length} fichiers ?`)) return;
-            
-            setLoading(true);
-            try {
-              const paths = filtered.map(d => d.path);
-              const res = await fetch('/api/delete-duplicates', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ paths, type })
-              });
-              const data = await res.json();
-              showNotif(`${data.deleted} supprimés`, 'success');
-              fetchDuplicates();
-            } catch (error) {
-              showNotif('Erreur', 'error');
-            } finally {
-              setLoading(false);
-            }
-          };
+  const deleteAllByType = async (type) => {
+    const filtered = duplicates.filter(d => d.type === type);
+    if (!filtered.length) return;
+    if (!confirm(`Supprimer ${filtered.length} fichier(s) ?`)) return;
+    setLoading(true);
+    try {
+      const data = await apiFetch('/api/delete-duplicates', { method: 'POST', body: { paths: filtered.map(d => d.path) } });
+      showNotif(`${data.deleted} fichier(s) supprimé(s)`, 'success');
+      fetchDuplicates();
+    } catch { showNotif('Erreur', 'error'); }
+    finally { setLoading(false); }
+  };
 
-          const saveConfig = async () => {
-            try {
-              await fetch('/api/settings', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(config)
-              });
-              const active = Object.values(config.genreMapping || {}).filter(g => g.enabled).length;
-              setStats(prev => ({ ...prev, activeGenres: active }));
-              showNotif('Sauvegardé', 'success');
-            } catch (error) {
-              showNotif('Erreur', 'error');
-            }
-          };
+  const saveConfig = async () => {
+    try {
+      await apiFetch('/api/settings', { method: 'POST', body: config });
+      setStats(prev => ({
+        ...prev,
+        activeGenres: Object.values(config.genreMapping || {}).filter(g => g.enabled).length
+      }));
+      await fetchCronStatus();
+      showNotif('Configuration sauvegardée', 'success');
+    } catch { showNotif('Erreur sauvegarde', 'error'); }
+  };
 
-          const updateGenreMapping = (genre, field, value) => {
-            setConfig(prev => {
-              const newMapping = { ...prev.genreMapping };
-              if (!newMapping[genre]) newMapping[genre] = { enabled: false, folder: genre };
-              newMapping[genre][field] = value;
-              return { ...prev, genreMapping: newMapping };
-            });
-          };
+  const updateGenreMapping = (genre, field, value) => {
+    setConfig(prev => {
+      const newMapping = { ...prev.genreMapping };
+      if (!newMapping[genre]) newMapping[genre] = { enabled: false, folder: genre };
+      newMapping[genre][field] = value;
+      return { ...prev, genreMapping: newMapping };
+    });
+  };
 
-          const toggleMovieSelection = (path) => {
-            setSelectedMovies(prev => {
-              const newSet = new Set(prev);
-              if (newSet.has(path)) newSet.delete(path);
-              else newSet.add(path);
-              return newSet;
-            });
-          };
+  const toggleMovieSelection = (path) => {
+    setSelectedMovies(prev => {
+      const s = new Set(prev);
+      s.has(path) ? s.delete(path) : s.add(path);
+      return s;
+    });
+  };
 
-          const toggleSelectAll = () => {
-            if (selectedMovies.size === filteredMovies.length) setSelectedMovies(new Set());
-            else setSelectedMovies(new Set(filteredMovies.map(m => m.path)));
-          };
+  const toggleSelectAll = () => {
+    setSelectedMovies(selectedMovies.size === filteredMovies.length
+      ? new Set()
+      : new Set(filteredMovies.map(m => m.path)));
+  };
 
-          const showNotif = (message, type = 'info') => {
-            const colors = {
-              success: 'from-emerald-500 to-teal-600',
-              error: 'from-rose-500 to-red-600',
-              warning: 'from-amber-500 to-orange-600',
-              info: 'from-blue-500 to-cyan-600'
-            };
-            const notif = document.createElement('div');
-            notif.className = `fixed top-6 right-6 px-6 py-3 bg-gradient-to-r ${colors[type]} text-white rounded-xl shadow-2xl font-medium text-sm z-50`;
-            notif.textContent = message;
-            document.body.appendChild(notif);
-            setTimeout(() => notif.remove(), 3000);
-          };
+  // --- helpers ---
+  const apiFetch = async (url, opts = {}) => {
+    const res = await fetch(url, {
+      method: opts.method || 'GET',
+      headers: opts.body ? { 'Content-Type': 'application/json' } : {},
+      body: opts.body ? JSON.stringify(opts.body) : undefined
+    });
+    return res.json();
+  };
 
-          const formatFileSize = (bytes) => {
-            if (bytes < 1024) return bytes + ' B';
-            if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
-            if (bytes < 1073741824) return (bytes / 1048576).toFixed(1) + ' MB';
-            return (bytes / 1073741824).toFixed(2) + ' GB';
-          };
+  const showNotif = (message, type = 'info') => {
+    const colors = {
+      success: 'from-emerald-500 to-teal-600',
+      error: 'from-rose-500 to-red-600',
+      warning: 'from-amber-500 to-orange-600',
+      info: 'from-blue-500 to-cyan-600'
+    };
+    const el = document.createElement('div');
+    el.className = `fixed top-6 right-6 px-5 py-3 bg-gradient-to-r ${colors[type]} text-white rounded-xl shadow-2xl text-sm font-medium z-[100] transition-all`;
+    el.textContent = message;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 3000);
+  };
 
-          const filteredMovies = movies.filter(m => {
-            const matchSearch = m.title.toLowerCase().includes(search.toLowerCase());
-            const matchGenre = !genreFilter || (m.hardlinks && m.hardlinks.some(h => h.folder === genreFilter));
-            const matchMissing = !showOnlyMissing || (m.hardlinks && m.hardlinks.some(h => !h.exists));
-            return matchSearch && matchGenre && matchMissing;
-          });
+  const formatSize = (bytes) => {
+    if (!bytes) return '0 B';
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+    if (bytes < 1073741824) return (bytes / 1048576).toFixed(1) + ' MB';
+    return (bytes / 1073741824).toFixed(2) + ' GB';
+  };
 
-          const uniqueFolders = [...new Set(movies.flatMap(m => m.hardlinks ? m.hardlinks.map(h => h.folder) : []))].sort();
+  const formatDate = (iso) => {
+    if (!iso) return 'Jamais';
+    try { return new Date(iso).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }); }
+    catch { return iso; }
+  };
 
-          if (!config) {
-            return (
-              <div className="min-h-screen flex items-center justify-center">
-                <div className="text-center">
-                  <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                  <p className="text-white text-lg">Chargement...</p>
-                </div>
-              </div>
-            );
-          }
+  const filteredMovies = movies.filter(m => {
+    const s = m.title.toLowerCase().includes(search.toLowerCase());
+    const g = !genreFilter || (m.hardlinks || []).some(h => h.folder === genreFilter);
+    const miss = !showOnlyMissing || (m.hardlinks || []).some(h => !h.exists);
+    return s && g && miss;
+  });
 
-          return (
-            <div className="min-h-screen text-white p-6">
-              <header className="mb-8">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
-                      <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                      </svg>
-                    </div>
-                    <div>
-                      <h1 className="text-3xl font-bold gradient-text">Hardlink Manager</h1>
-                      <p className="text-slate-400 text-sm mt-1">Gestion intelligente de votre bibliothèque</p>
-                    </div>
-                  </div>
-                  <div className="flex gap-3">
-                    <button onClick={() => setShowSettings(true)} className="px-5 py-2.5 glass-card rounded-xl hover:bg-slate-700/50 transition-all">
-                      ⚙️ Paramètres
-                    </button>
-                    <button onClick={() => scanMovies()} disabled={loading} className="px-5 py-2.5 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl hover:from-blue-600 hover:to-purple-700 transition-all disabled:opacity-50">
-                      {loading ? '⏳' : '🔄'} Scanner
-                    </button>
-                  </div>
-                </div>
+  const uniqueFolders = [...new Set(movies.flatMap(m => (m.hardlinks || []).map(h => h.folder)))].sort();
+  const seriesEnabled = config?.seriesCheck?.enabled;
 
-                <nav className="flex gap-8 mt-8 border-b border-slate-700/50 pb-px">
-                  <button onClick={() => setActiveView('library')} className={`nav-link py-3 px-1 font-medium ${activeView === 'library' ? 'text-white active' : 'text-slate-400'}`}>
-                    Bibliothèque
-                  </button>
-                  <button onClick={() => setActiveView('issues')} className={`nav-link py-3 px-1 font-medium ${activeView === 'issues' ? 'text-white active' : 'text-slate-400'}`}>
-                    Films {duplicates.length > 0 && <span className="ml-2 px-2 py-0.5 bg-rose-500 text-white text-xs rounded-full">{duplicates.length}</span>}
-                  </button>
-                  {config?.seriesCheck?.enabled && (
-                    <button onClick={() => setActiveView('series')} className={`nav-link py-3 px-1 font-medium ${activeView === 'series' ? 'text-white active' : 'text-slate-400'}`}>
-                      Séries {seriesIssues.length > 0 && <span className="ml-2 px-2 py-0.5 bg-amber-500 text-white text-xs rounded-full">{seriesIssues.length}</span>}
-                    </button>
-                  )}
-                </nav>
-              </header>
+  if (!config) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-white text-lg font-medium">Chargement...</p>
+        </div>
+      </div>
+    );
+  }
 
-              <div className="grid grid-cols-4 gap-6 mb-8">
-                <div className="glass-card rounded-2xl p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-slate-400 text-sm mb-1">Films</p>
-                      <p className="text-3xl font-bold">{stats.total}</p>
-                    </div>
-                    <div className="w-12 h-12 bg-blue-500/20 rounded-xl flex items-center justify-center">🎬</div>
-                  </div>
-                </div>
-                <div className="glass-card rounded-2xl p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-slate-400 text-sm mb-1">Liens OK</p>
-                      <p className="text-3xl font-bold text-emerald-400">{stats.linked}</p>
-                    </div>
-                    <div className="w-12 h-12 bg-emerald-500/20 rounded-xl flex items-center justify-center">✓</div>
-                  </div>
-                </div>
-                <div className="glass-card rounded-2xl p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-slate-400 text-sm mb-1">Genres</p>
-                      <p className="text-3xl font-bold text-purple-400">{stats.activeGenres}</p>
-                    </div>
-                    <div className="w-12 h-12 bg-purple-500/20 rounded-xl flex items-center justify-center">🎭</div>
-                  </div>
-                </div>
-                <div className="glass-card rounded-2xl p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-slate-400 text-sm mb-1">Manquants</p>
-                      <p className="text-3xl font-bold text-rose-400">{stats.errors}</p>
-                    </div>
-                    <div className="w-12 h-12 bg-rose-500/20 rounded-xl flex items-center justify-center">⚠️</div>
-                  </div>
-                </div>
-              </div>
+  return (
+    <div className="min-h-screen text-white p-6 max-w-[1600px] mx-auto">
 
-              {activeView === 'library' && (
-                <div className="glass-card rounded-2xl p-6">
-                  <div className="flex items-center justify-between mb-6">
-                    <div className="flex gap-4">
-                      <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="🔍 Rechercher..." className="px-4 py-2.5 bg-slate-800/50 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-blue-500 w-64" />
-                      <select value={genreFilter} onChange={(e) => setGenreFilter(e.target.value)} className="px-4 py-2.5 bg-slate-800/50 border border-slate-700 rounded-xl text-white">
-                        <option value="">Tous</option>
-                        {uniqueFolders.map(g => <option key={g} value={g}>{g}</option>)}
-                      </select>
-                      <button onClick={() => setShowOnlyMissing(!showOnlyMissing)} className={`px-4 py-2.5 rounded-xl font-medium ${showOnlyMissing ? 'bg-rose-500 text-white' : 'bg-slate-800/50 text-slate-300'}`}>
-                        {showOnlyMissing ? '✓ Sans liens' : 'Tous'}
-                      </button>
-                    </div>
-                    {filteredMovies.length > 0 && (
-                      <div className="flex gap-3">
-                        <button onClick={toggleSelectAll} className="px-4 py-2.5 bg-slate-800/50 hover:bg-slate-700 rounded-xl">
-                          {selectedMovies.size === filteredMovies.length ? 'Désélectionner' : 'Tout sélectionner'}
-                        </button>
-                        {selectedMovies.size > 0 && (
-                          <button onClick={createSelectedLinks} disabled={loading} className="px-4 py-2.5 bg-blue-500 hover:bg-blue-600 rounded-xl disabled:opacity-50">
-                            Créer ({selectedMovies.size})
-                          </button>
-                        )}
-                        <button onClick={createAllLinks} disabled={loading} className="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 rounded-xl disabled:opacity-50">
-                          ⚡ Tout créer
-                        </button>
-                      </div>
-                    )}
-                  </div>
+      {/* HEADER */}
+      <header className="mb-8">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/20">
+              <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+              </svg>
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold gradient-text">Hardlink Manager</h1>
+              <p className="text-slate-400 text-sm">Films &amp; Séries — Radarr / Sonarr</p>
+            </div>
+          </div>
+          <div className="flex gap-3">
+            <button onClick={() => { setShowSettings(true); setSettingsTab('general'); }}
+              className="px-5 py-2.5 glass-card rounded-xl hover:bg-slate-700/50 transition-all text-sm font-medium">
+              ⚙️ Paramètres
+            </button>
+            <button onClick={scanMovies} disabled={loading}
+              className="px-5 py-2.5 btn-primary text-sm disabled:opacity-50">
+              {loading ? '⏳' : '🔄'} Scanner
+            </button>
+          </div>
+        </div>
 
-                  <div className="grid grid-cols-6 gap-4">
-                    {filteredMovies.map((movie, idx) => {
-                      const hasErrors = movie.hardlinks && movie.hardlinks.some(h => !h.exists);
-                      const isSelected = selectedMovies.has(movie.path);
-                      return (
-                        <div key={idx} onClick={() => toggleMovieSelection(movie.path)} className={`poster-card glass-card rounded-xl cursor-pointer ${isSelected ? 'ring-2 ring-blue-500' : ''}`}>
-                          <div className="aspect-[2/3] relative">
-                            {movie.poster ? (
-                              <img src={movie.poster} alt={movie.title} className="w-full h-full object-cover rounded-xl" />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center bg-slate-800 rounded-xl text-4xl">🎬</div>
-                            )}
-                            {isSelected && (
-                              <div className="absolute top-2 right-2 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-xs">✓</div>
-                            )}
-                            <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/80">
-                              <p className="text-xs font-bold truncate">{movie.title}</p>
-                              {hasErrors && <p className="text-xs text-rose-400 mt-1">⚠️ Liens manquants</p>}
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
+        {/* NAV */}
+        <nav className="flex gap-8 mt-8 border-b border-slate-700/50 pb-px">
+          {[
+            { id: 'library', label: 'Bibliothèque', badge: null },
+            { id: 'issues', label: 'Films', badge: duplicates.length || null, color: 'bg-rose-500' },
+            ...(seriesEnabled ? [{ id: 'series', label: 'Séries', badge: seriesIssues.length || null, color: 'bg-amber-500' }] : [])
+          ].map(tab => (
+            <button key={tab.id} onClick={() => setActiveView(tab.id)}
+              className={`nav-link py-3 px-1 font-medium text-sm flex items-center gap-2 ${activeView === tab.id ? 'text-white active' : 'text-slate-400 hover:text-slate-200'}`}>
+              {tab.label}
+              {tab.badge > 0 && (
+                <span className={`${tab.color} text-white text-xs px-2 py-0.5 rounded-full font-bold`}>{tab.badge}</span>
               )}
+            </button>
+          ))}
+        </nav>
+      </header>
 
-              {activeView === 'issues' && (
-                <div className="glass-card rounded-2xl p-6">
-                  <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-xl font-bold">Problèmes Films</h2>
-                    <button onClick={fetchDuplicates} disabled={loading} className="px-4 py-2.5 bg-rose-500 hover:bg-rose-600 rounded-xl disabled:opacity-50">
-                      🔍 Scanner
-                    </button>
-                  </div>
-                  
-                  {duplicates.length === 0 ? (
-                    <div className="text-center py-20">
-                      <p className="text-lg text-slate-400">Aucun problème</p>
-                    </div>
-                  ) : (
-                    <>
-                      {['duplicate', 'orphan', 'wrong_genre'].map(type => {
-                        const items = duplicates.filter(d => d.type === type);
-                        if (items.length === 0) return null;
-                        const labels = { duplicate: '🔄 Doublons', orphan: '👻 Orphelins', wrong_genre: '🎭 Mauvais genres' };
-                        return (
-                          <div key={type} className="mb-6">
-                            <div className="flex justify-between items-center mb-3">
-                              <h3 className="text-lg font-bold">{labels[type]} ({items.length})</h3>
-                              <button onClick={() => deleteAllByType(type)} className="px-4 py-2 bg-rose-500 hover:bg-rose-600 rounded-lg text-sm">
-                                🗑️ Tout supprimer
-                              </button>
-                            </div>
-                            <div className="space-y-2">
-                              {items.map((dup, idx) => (
-                                <div key={idx} className="glass-card rounded-xl p-4 flex justify-between items-center">
-                                  <div>
-                                    <p className="font-bold">{dup.title || dup.movie}</p>
-                                    <p className="text-sm text-slate-400">{dup.genre} / {dup.file}</p>
-                                    <p className="text-xs text-amber-400 mt-1">{dup.reason}</p>
-                                  </div>
-                                  <button onClick={() => deleteDuplicate(dup.path)} className="px-4 py-2 bg-rose-500 hover:bg-rose-600 rounded-lg">
-                                    🗑️
-                                  </button>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </>
-                  )}
-                </div>
-              )}
+      {/* STATS */}
+      <div className={`grid gap-4 mb-8 ${seriesEnabled ? 'grid-cols-5' : 'grid-cols-4'}`}>
+        <StatCard icon="🎬" label="Films" value={stats.total} color="blue" />
+        <StatCard icon="✓" label="Liens OK" value={stats.linked} color="emerald" />
+        <StatCard icon="⚠️" label="Manquants" value={stats.errors} color="rose" />
+        <StatCard icon="🎭" label="Genres actifs" value={stats.activeGenres} color="purple" />
+        {seriesEnabled && (
+          <StatCard icon="📺" label="Séries orphelines" value={seriesIssues.length} color="amber"
+            onClick={() => setActiveView('series')} clickable />
+        )}
+      </div>
 
-              {activeView === 'series' && (
-                <div className="glass-card rounded-2xl p-6">
-                  <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-xl font-bold">Séries orphelines</h2>
-                    <div className="flex gap-3">
-                      <button onClick={fetchSeriesIssues} disabled={loading} className="px-4 py-2.5 bg-amber-500 hover:bg-amber-600 rounded-xl disabled:opacity-50">
-                        🔍 Scanner
-                      </button>
-                      {seriesIssues.length > 0 && (
-                        <button onClick={deleteAllSeries} disabled={loading} className="px-4 py-2.5 bg-rose-500 hover:bg-rose-600 rounded-xl disabled:opacity-50">
-                          🗑️ Tout supprimer ({seriesIssues.length})
-                        </button>
+      {/* LIBRARY VIEW */}
+      {activeView === 'library' && (
+        <div className="glass-card rounded-2xl p-6">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex gap-3 flex-wrap">
+              <input type="text" value={search} onChange={e => setSearch(e.target.value)}
+                placeholder="🔍 Rechercher un film..."
+                className="input-field w-64" />
+              <select value={genreFilter} onChange={e => setGenreFilter(e.target.value)}
+                className="input-field w-44">
+                <option value="">Tous les genres</option>
+                {uniqueFolders.map(g => <option key={g} value={g}>{g}</option>)}
+              </select>
+              <button onClick={() => setShowOnlyMissing(!showOnlyMissing)}
+                className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${showOnlyMissing ? 'bg-rose-500 text-white' : 'glass-card text-slate-300 hover:text-white'}`}>
+                {showOnlyMissing ? '✓ Sans liens seulement' : 'Tous les films'}
+              </button>
+            </div>
+            {filteredMovies.length > 0 && (
+              <div className="flex gap-3">
+                <button onClick={toggleSelectAll}
+                  className="px-4 py-2.5 glass-card hover:bg-slate-700/50 rounded-xl text-sm transition-all">
+                  {selectedMovies.size === filteredMovies.length ? 'Tout désélectionner' : 'Tout sélectionner'}
+                </button>
+                {selectedMovies.size > 0 && (
+                  <button onClick={createSelectedLinks} disabled={loading}
+                    className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 rounded-xl text-sm font-medium disabled:opacity-50">
+                    🔗 Créer ({selectedMovies.size})
+                  </button>
+                )}
+                <button onClick={createAllLinks} disabled={loading}
+                  className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 rounded-xl text-sm font-medium disabled:opacity-50">
+                  ⚡ Tout créer
+                </button>
+              </div>
+            )}
+          </div>
+
+          {movies.length === 0 ? (
+            <div className="text-center py-20 text-slate-400">
+              <p className="text-5xl mb-4">🎬</p>
+              <p className="text-lg">Aucun film scanné</p>
+              <p className="text-sm mt-2">Cliquez sur "Scanner" pour démarrer</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-6 gap-4">
+              {filteredMovies.map((movie, idx) => {
+                const hasErrors = (movie.hardlinks || []).some(h => !h.exists);
+                const allOk = (movie.hardlinks || []).length > 0 && (movie.hardlinks || []).every(h => h.exists);
+                const isSelected = selectedMovies.has(movie.path);
+                return (
+                  <div key={idx} onClick={() => toggleMovieSelection(movie.path)}
+                    className={`poster-card glass-card rounded-xl cursor-pointer ${isSelected ? 'ring-2 ring-blue-500' : ''}`}>
+                    <div className="aspect-[2/3] relative">
+                      {movie.poster
+                        ? <img src={movie.poster} alt={movie.title} className="w-full h-full object-cover rounded-xl" />
+                        : <div className="w-full h-full flex items-center justify-center bg-slate-800 rounded-xl text-4xl">🎬</div>
+                      }
+                      {isSelected && (
+                        <div className="absolute top-2 right-2 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-xs font-bold">✓</div>
                       )}
+                      {allOk && !isSelected && (
+                        <div className="absolute top-2 right-2 w-6 h-6 bg-emerald-500/80 rounded-full flex items-center justify-center text-xs">✓</div>
+                      )}
+                      <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/90 via-black/50 to-transparent rounded-b-xl">
+                        <p className="text-xs font-bold truncate">{movie.title}</p>
+                        {hasErrors && <p className="text-xs text-rose-400 mt-0.5">⚠️ Liens manquants</p>}
+                        {allOk && <p className="text-xs text-emerald-400 mt-0.5">✓ Liens OK</p>}
+                      </div>
                     </div>
                   </div>
-                  
-                  {seriesIssues.length === 0 ? (
-                    <div className="text-center py-20">
-                      <p className="text-lg text-slate-400">Aucune série orpheline</p>
-                      <p className="text-sm text-slate-500 mt-2">Les séries absentes de "{config?.seriesSourceRoot}" seront listées ici</p>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ISSUES VIEW (films) */}
+      {activeView === 'issues' && (
+        <div className="glass-card rounded-2xl p-6">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-xl font-bold">Problèmes Films</h2>
+              <p className="text-sm text-slate-400 mt-1">Orphelins, doublons et mauvais genres détectés via Radarr</p>
+            </div>
+            <button onClick={fetchDuplicates} disabled={loading}
+              className="px-4 py-2.5 bg-rose-600 hover:bg-rose-700 rounded-xl text-sm font-medium disabled:opacity-50">
+              🔍 Scanner
+            </button>
+          </div>
+
+          {duplicates.length === 0 ? (
+            <div className="text-center py-20 text-slate-400">
+              <p className="text-5xl mb-4">👻</p>
+              <p className="text-lg">Aucun problème détecté</p>
+              <p className="text-sm mt-2">Cliquez sur "Scanner" pour analyser votre bibliothèque</p>
+            </div>
+          ) : (
+            <>
+              {[
+                { type: 'orphan', icon: '👻', label: 'Orphelins', desc: 'Source supprimée de "A trier"', color: 'rose' },
+                { type: 'duplicate', icon: '🔄', label: 'Doublons', desc: 'Ancienne version non officielle', color: 'orange' },
+                { type: 'wrong_genre', icon: '🎭', label: 'Mauvais genre', desc: 'Placé dans le mauvais dossier', color: 'yellow' }
+              ].map(({ type, icon, label, desc, color }) => {
+                const items = duplicates.filter(d => d.type === type);
+                if (!items.length) return null;
+                return (
+                  <div key={type} className="mb-8">
+                    <div className="flex justify-between items-center mb-4">
+                      <div>
+                        <h3 className="text-base font-bold">{icon} {label} <span className="text-slate-400 font-normal">({items.length})</span></h3>
+                        <p className="text-xs text-slate-500 mt-0.5">{desc}</p>
+                      </div>
+                      <button onClick={() => deleteAllByType(type)}
+                        className="px-4 py-2 btn-danger text-sm">
+                        🗑️ Tout supprimer
+                      </button>
                     </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {seriesIssues.map((series, idx) => (
-                        <div key={idx} className="glass-card rounded-xl p-5 flex justify-between items-center">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-3 mb-2">
-                              <h3 className="text-lg font-bold">📺 {series.series}</h3>
-                              <span className="px-3 py-1 bg-amber-500/20 text-amber-400 rounded-lg text-xs font-bold">
-                                {series.fileCount} épisodes
-                              </span>
-                              <span className="text-sm text-slate-400">
-                                {formatFileSize(series.size)}
-                              </span>
-                              {series.sonarrPath && (
-                                <span className="px-2 py-1 bg-purple-500/20 text-purple-300 rounded-lg text-xs">
-                                  🔗 Sonarr connu
-                                </span>
-                              )}
+                    <div className="space-y-2">
+                      {items.map((dup, idx) => (
+                        <div key={idx} className="glass-card-hover rounded-xl p-4 flex justify-between items-center gap-4">
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold truncate">{dup.title || dup.movie}</p>
+                            <p className="text-sm text-slate-400 truncate mt-0.5">{dup.genre} / {dup.file}</p>
+                            <div className="flex items-center gap-3 mt-1.5">
+                              <span className="text-xs text-amber-400">{dup.reason}</span>
+                              <span className="text-xs text-slate-500">{formatSize(dup.size)}</span>
                             </div>
-                            <p className="text-sm text-slate-400 mb-1">📁 Check : {series.path}</p>
-                            {series.sonarrPath && (
-                              <p className="text-sm text-slate-500 mb-1">🎯 Sonarr : {series.sonarrPath}</p>
-                            )}
-                            <p className="text-xs text-amber-400 mt-2">⚠️ {series.reason}</p>
                           </div>
-                          <button onClick={() => deleteSeries(series.path)} className="px-6 py-3 bg-rose-500 hover:bg-rose-600 rounded-xl font-bold transition-all ml-4">
-                            🗑️ Supprimer
+                          <button onClick={() => deleteDuplicate(dup.path)}
+                            className="shrink-0 px-4 py-2 bg-rose-600 hover:bg-rose-700 rounded-lg text-sm transition-all">
+                            🗑️
                           </button>
                         </div>
                       ))}
                     </div>
-                  )}
-                </div>
-              )}
-
-              {showSettings && (
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-6" onClick={() => setShowSettings(false)}>
-                  <div className="glass-card rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto p-8" onClick={e => e.stopPropagation()}>
-                    <div className="flex justify-between items-center mb-8">
-                      <h2 className="text-2xl font-bold">Paramètres</h2>
-                      <button onClick={() => setShowSettings(false)} className="text-slate-400 hover:text-white">✕</button>
-                    </div>
-
-                    <div className="space-y-6">
-                      <div className="glass-card rounded-xl p-6">
-                        <h3 className="text-lg font-bold mb-4">Radarr</h3>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <label className="text-sm text-slate-400 block mb-2">URL</label>
-                            <input type="text" value={config.radarrUrl} onChange={(e) => setConfig({...config, radarrUrl: e.target.value})} className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white" />
-                          </div>
-                          <div>
-                            <label className="text-sm text-slate-400 block mb-2">Clé API</label>
-                            <input type="password" value={config.apiKey} onChange={(e) => setConfig({...config, apiKey: e.target.value})} className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white" />
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="glass-card rounded-xl p-6">
-                        <h3 className="text-lg font-bold mb-4">Sonarr</h3>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <label className="text-sm text-slate-400 block mb-2">URL</label>
-                            <input type="text" value={config.sonarrUrl || ''} onChange={(e) => setConfig({...config, sonarrUrl: e.target.value})} className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white" placeholder="http://192.168.1.100:8989" />
-                          </div>
-                          <div>
-                            <label className="text-sm text-slate-400 block mb-2">Clé API</label>
-                            <input type="password" value={config.sonarrApiKey || ''} onChange={(e) => setConfig({...config, sonarrApiKey: e.target.value})} className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white" />
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="glass-card rounded-xl p-6">
-                        <h3 className="text-lg font-bold mb-4">Chemins</h3>
-                        <div className="space-y-4">
-                          <div>
-                            <label className="text-sm text-slate-400 block mb-2">Films - Source</label>
-                            <input type="text" value={config.sourceRoot} onChange={(e) => setConfig({...config, sourceRoot: e.target.value})} className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white font-mono" />
-                          </div>
-                          <div>
-                            <label className="text-sm text-slate-400 block mb-2">Films - Destination</label>
-                            <input type="text" value={config.mediaRoot} onChange={(e) => setConfig({...config, mediaRoot: e.target.value})} className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white font-mono" />
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="glass-card rounded-xl p-6">
-                        <div className="flex items-center justify-between mb-4">
-                          <h3 className="text-lg font-bold">Vérification Séries</h3>
-                          <input
-                            type="checkbox"
-                            checked={config.seriesCheck?.enabled || false}
-                            onChange={(e) => setConfig({
-                              ...config,
-                              seriesCheck: { ...config.seriesCheck, enabled: e.target.checked }
-                            })}
-                            className="w-5 h-5 rounded accent-blue-500"
-                          />
-                        </div>
-                        <div className="space-y-4">
-                          <div>
-                            <label className="text-sm text-slate-400 block mb-2">Dossier Source (séries légitimes)</label>
-                            <input 
-                              type="text" 
-                              value={config.seriesSourceRoot || ''} 
-                              onChange={(e) => setConfig({...config, seriesSourceRoot: e.target.value})} 
-                              className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white font-mono" 
-                              placeholder="/media/series/Source"
-                            />
-                          </div>
-                          <div>
-                            <label className="text-sm text-slate-400 block mb-2">Dossier à vérifier (hardlinks)</label>
-                            <input 
-                              type="text" 
-                              value={config.seriesCheckRoot || ''} 
-                              onChange={(e) => setConfig({...config, seriesCheckRoot: e.target.value})} 
-                              className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white font-mono" 
-                              placeholder="/media/series/Check"
-                            />
-                          </div>
-                          <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
-                            <p className="text-xs text-blue-300">
-                              💡 Les séries dans "Check" sont comparées à Sonarr via l'API. Une série est orpheline si son chemin Sonarr n'existe plus sur le disque ET qu'elle n'est pas en cours de téléchargement (activeDL).
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="glass-card rounded-xl p-6">
-                        <div className="flex justify-between items-center mb-4">
-                          <h3 className="text-lg font-bold">Genres</h3>
-                          <button onClick={fetchAllGenres} className="px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-lg text-sm">
-                            Charger
-                          </button>
-                        </div>
-                        {allGenres.length > 0 && (
-                          <div className="grid grid-cols-2 gap-4">
-                            {allGenres.map((genre) => (
-                              <div key={genre.name} className={`p-4 rounded-xl border ${genre.enabled ? 'bg-slate-800/50 border-blue-500/40' : 'bg-slate-900/20 opacity-60'}`}>
-                                <div className="flex items-center gap-3 mb-3">
-                                  <input type="checkbox" checked={genre.enabled} onChange={(e) => {
-                                    updateGenreMapping(genre.name, 'enabled', e.target.checked);
-                                    const newGenres = allGenres.map(g => g.name === genre.name ? {...g, enabled: e.target.checked} : g);
-                                    setAllGenres(newGenres);
-                                  }} className="w-5 h-5 rounded" />
-                                  <span className="text-sm font-bold">{genre.name}</span>
-                                </div>
-                                <input type="text" value={genre.folder} onChange={(e) => {
-                                  updateGenreMapping(genre.name, 'folder', e.target.value);
-                                  const newGenres = allGenres.map(g => g.name === genre.name ? {...g, folder: e.target.value} : g);
-                                  setAllGenres(newGenres);
-                                }} className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-xs" placeholder="Dossier" />
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-
-                      <button onClick={saveConfig} className="w-full py-4 bg-gradient-to-r from-emerald-500 to-teal-600 rounded-xl font-bold hover:from-emerald-600 hover:to-teal-700">
-                        💾 Sauvegarder
-                      </button>
-                    </div>
                   </div>
-                </div>
+                );
+              })}
+            </>
+          )}
+        </div>
+      )}
+
+      {/* SERIES VIEW */}
+      {activeView === 'series' && (
+        <div className="glass-card rounded-2xl p-6">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-xl font-bold">Séries orphelines</h2>
+              <p className="text-sm text-slate-400 mt-1">Séries présentes dans Check mais sans fichiers actifs dans Sonarr</p>
+            </div>
+            <div className="flex gap-3">
+              <button onClick={fetchSeriesIssues} disabled={loading}
+                className="px-4 py-2.5 bg-amber-600 hover:bg-amber-700 rounded-xl text-sm font-medium disabled:opacity-50">
+                🔍 Scanner
+              </button>
+              {seriesIssues.length > 0 && (
+                <button onClick={deleteAllSeries} disabled={loading}
+                  className="px-4 py-2.5 btn-danger text-sm disabled:opacity-50">
+                  🗑️ Tout supprimer ({seriesIssues.length})
+                </button>
               )}
             </div>
-          );
-        };
+          </div>
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
-    </script>
+          {seriesIssues.length === 0 ? (
+            <div className="text-center py-20 text-slate-400">
+              <p className="text-5xl mb-4">📺</p>
+              <p className="text-lg">Aucune série orpheline</p>
+              <p className="text-sm mt-2">Une série est orpheline si Sonarr n'a plus de fichiers pour elle et ne la monitore plus</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {seriesIssues.map((series, idx) => (
+                <div key={idx} className="glass-card-hover rounded-xl p-5 flex justify-between items-start gap-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-2 mb-2">
+                      <h3 className="text-base font-bold">📺 {series.series}</h3>
+                      {series.fileCount > 0 && (
+                        <span className="badge bg-amber-500/20 text-amber-400">{series.fileCount} épisodes</span>
+                      )}
+                      {series.size > 0 && (
+                        <span className="badge bg-slate-700/50 text-slate-300">{formatSize(series.size)}</span>
+                      )}
+                      {series.sonarrPath && (
+                        <span className="badge bg-purple-500/20 text-purple-300">🔗 Connu de Sonarr</span>
+                      )}
+                    </div>
+                    <p className="text-sm text-slate-400 font-mono truncate">📁 {series.path}</p>
+                    {series.sonarrPath && (
+                      <p className="text-sm text-slate-500 font-mono truncate mt-0.5">🎯 Sonarr : {series.sonarrPath}</p>
+                    )}
+                    <p className="text-xs text-amber-400 mt-2">⚠️ {series.reason}</p>
+                  </div>
+                  <button onClick={() => deleteSeries(series.path, series.series)}
+                    className="shrink-0 px-5 py-2.5 btn-danger text-sm">
+                    🗑️ Supprimer
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* SETTINGS MODAL */}
+      {showSettings && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={() => setShowSettings(false)}>
+          <div className="glass-card rounded-2xl w-full max-w-4xl max-h-[92vh] flex flex-col"
+            onClick={e => e.stopPropagation()}>
+
+            {/* Modal header */}
+            <div className="flex justify-between items-center p-6 border-b border-slate-700/50">
+              <h2 className="text-xl font-bold">Paramètres</h2>
+              <button onClick={() => setShowSettings(false)}
+                className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-700/50 text-slate-400 hover:text-white transition-all">
+                ✕
+              </button>
+            </div>
+
+            {/* Tabs */}
+            <div className="flex gap-1 px-6 pt-4 border-b border-slate-700/50">
+              {[
+                { id: 'general', label: '🔗 Connexions' },
+                { id: 'paths', label: '📁 Chemins' },
+                { id: 'series', label: '📺 Séries' },
+                { id: 'automation', label: '⏰ Automatisation' },
+                { id: 'genres', label: '🎭 Genres' }
+              ].map(t => (
+                <button key={t.id} onClick={() => setSettingsTab(t.id)}
+                  className={`px-4 py-2.5 text-sm font-medium rounded-t-lg transition-all ${settingsTab === t.id ? 'bg-blue-600/20 text-blue-400 border-b-2 border-blue-500' : 'text-slate-400 hover:text-slate-200'}`}>
+                  {t.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Tab content */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-5">
+
+              {/* CONNEXIONS */}
+              {settingsTab === 'general' && (
+                <>
+                  <SettingsSection title="Radarr" icon="🎬">
+                    <div className="grid grid-cols-2 gap-4">
+                      <Field label="URL">
+                        <input type="text" value={config.radarrUrl} onChange={e => setConfig({...config, radarrUrl: e.target.value})} className="input-field" placeholder="http://192.168.1.100:7878" />
+                      </Field>
+                      <Field label="Clé API">
+                        <input type="password" value={config.apiKey} onChange={e => setConfig({...config, apiKey: e.target.value})} className="input-field" />
+                      </Field>
+                    </div>
+                  </SettingsSection>
+                  <SettingsSection title="Sonarr" icon="📺">
+                    <div className="grid grid-cols-2 gap-4">
+                      <Field label="URL">
+                        <input type="text" value={config.sonarrUrl || ''} onChange={e => setConfig({...config, sonarrUrl: e.target.value})} className="input-field" placeholder="http://192.168.1.100:8989" />
+                      </Field>
+                      <Field label="Clé API">
+                        <input type="password" value={config.sonarrApiKey || ''} onChange={e => setConfig({...config, sonarrApiKey: e.target.value})} className="input-field" />
+                      </Field>
+                    </div>
+                  </SettingsSection>
+                  <SettingsSection title="Propriétaire des fichiers" icon="👤">
+                    <div className="grid grid-cols-2 gap-4">
+                      <Field label="Utilisateur">
+                        <input type="text" value={config.ownerUser} onChange={e => setConfig({...config, ownerUser: e.target.value})} className="input-field" />
+                      </Field>
+                      <Field label="Groupe">
+                        <input type="text" value={config.ownerGroup} onChange={e => setConfig({...config, ownerGroup: e.target.value})} className="input-field" />
+                      </Field>
+                    </div>
+                  </SettingsSection>
+                </>
+              )}
+
+              {/* CHEMINS */}
+              {settingsTab === 'paths' && (
+                <SettingsSection title="Chemins Films" icon="🎬">
+                  <Field label="Source (A trier)" hint="Dossier où arrivent les fichiers originaux">
+                    <input type="text" value={config.sourceRoot} onChange={e => setConfig({...config, sourceRoot: e.target.value})} className="input-field font-mono text-sm" />
+                  </Field>
+                  <Field label="Destination (bibliothèque)" hint="Racine des dossiers par genre">
+                    <input type="text" value={config.mediaRoot} onChange={e => setConfig({...config, mediaRoot: e.target.value})} className="input-field font-mono text-sm" />
+                  </Field>
+                </SettingsSection>
+              )}
+
+              {/* SÉRIES */}
+              {settingsTab === 'series' && (
+                <>
+                  <SettingsSection title="Vérification des séries orphelines" icon="📺"
+                    toggle={config.seriesCheck?.enabled || false}
+                    onToggle={v => setConfig({...config, seriesCheck: {...config.seriesCheck, enabled: v}})}>
+                    <Field label="Dossier Source (géré par Sonarr)" hint="Référence optionnelle si Sonarr n'est pas configuré">
+                      <input type="text" value={config.seriesSourceRoot || ''} onChange={e => setConfig({...config, seriesSourceRoot: e.target.value})} className="input-field font-mono text-sm" placeholder="/media/series/Source" />
+                    </Field>
+                    <Field label="Dossier Check (hardlinks à vérifier)" hint="Ce dossier est scanné pour détecter les orphelines">
+                      <input type="text" value={config.seriesCheckRoot || ''} onChange={e => setConfig({...config, seriesCheckRoot: e.target.value})} className="input-field font-mono text-sm" placeholder="/media/series/Check" />
+                    </Field>
+                    <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 mt-2">
+                      <p className="text-xs text-blue-300 leading-relaxed">
+                        <strong>Logique de détection :</strong> Pour chaque dossier dans Check, l'API Sonarr est consultée.
+                        Une série est marquée <strong>orpheline</strong> uniquement si Sonarr indique 0 fichier ET qu'elle n'est pas monitorée ET pas en téléchargement actif.
+                        Cela évite les faux positifs liés aux chemins Docker ou Windows.
+                      </p>
+                    </div>
+                  </SettingsSection>
+                </>
+              )}
+
+              {/* AUTOMATISATION */}
+              {settingsTab === 'automation' && (
+                <>
+                  <SettingsSection title="Hardlinks Films (auto)" icon="🎬"
+                    toggle={config.autoSync?.enabled || false}
+                    onToggle={v => setConfig({...config, autoSync: {...config.autoSync, enabled: v}})}>
+                    <Field label="Planification cron" hint="Ex: 0 */6 * * * = toutes les 6h">
+                      <input type="text" value={config.autoSync?.cronSchedule || '0 */6 * * *'} onChange={e => setConfig({...config, autoSync: {...config.autoSync, cronSchedule: e.target.value}})} className="input-field font-mono text-sm" />
+                    </Field>
+                    <div className="grid grid-cols-2 gap-4 mt-1">
+                      <Field label="Dernier run">
+                        <p className="text-sm text-slate-400 px-4 py-3">{formatDate(config.autoSync?.lastRun)}</p>
+                      </Field>
+                      <Field label="Dernier scan complet">
+                        <p className="text-sm text-slate-400 px-4 py-3">{formatDate(config.autoSync?.lastFullScan)}</p>
+                      </Field>
+                    </div>
+                    <div className="mt-2">
+                      <label className="flex items-center gap-3 cursor-pointer">
+                        <label className="toggle-switch">
+                          <input type="checkbox" checked={config.scanOptimization?.enabled !== false} onChange={e => setConfig({...config, scanOptimization: {...config.scanOptimization, enabled: e.target.checked}})} />
+                          <span className="toggle-slider"></span>
+                        </label>
+                        <div>
+                          <p className="text-sm font-medium">Scan optimisé</p>
+                          <p className="text-xs text-slate-400">Scan uniquement les films récents entre les scans complets</p>
+                        </div>
+                      </label>
+                      {config.scanOptimization?.enabled !== false && (
+                        <div className="grid grid-cols-2 gap-4 mt-3 ml-14">
+                          <Field label="Fenêtre récents (h)">
+                            <input type="number" value={config.scanOptimization?.recentHours || 3} onChange={e => setConfig({...config, scanOptimization: {...config.scanOptimization, recentHours: parseInt(e.target.value)}})} className="input-field text-sm" min="1" />
+                          </Field>
+                          <Field label="Scan complet toutes les (h)">
+                            <input type="number" value={config.scanOptimization?.fullScanInterval || 24} onChange={e => setConfig({...config, scanOptimization: {...config.scanOptimization, fullScanInterval: parseInt(e.target.value)}})} className="input-field text-sm" min="1" />
+                          </Field>
+                        </div>
+                      )}
+                    </div>
+                  </SettingsSection>
+
+                  <SettingsSection title="Vérification Séries (auto)" icon="📺"
+                    toggle={config.seriesAutoCheck?.enabled || false}
+                    onToggle={v => setConfig({...config, seriesAutoCheck: {...config.seriesAutoCheck, enabled: v}})}>
+                    <Field label="Planification cron" hint="Ex: 0 */12 * * * = toutes les 12h">
+                      <input type="text" value={config.seriesAutoCheck?.cronSchedule || '0 */12 * * *'} onChange={e => setConfig({...config, seriesAutoCheck: {...config.seriesAutoCheck, cronSchedule: e.target.value}})} className="input-field font-mono text-sm" />
+                    </Field>
+                    <Field label="Dernier run">
+                      <p className="text-sm text-slate-400 px-4 py-3">{formatDate(config.seriesAutoCheck?.lastRun)}</p>
+                    </Field>
+                  </SettingsSection>
+
+                  {cronStatus && (
+                    <SettingsSection title="Jobs actifs" icon="⏰">
+                      {cronStatus.jobs?.length === 0 ? (
+                        <p className="text-sm text-slate-400">Aucun job planifié</p>
+                      ) : (
+                        <div className="space-y-2">
+                          {(cronStatus.jobs || []).map((job, i) => (
+                            <div key={i} className="flex justify-between items-center p-3 bg-slate-800/40 rounded-lg">
+                              <div>
+                                <p className="text-sm font-medium">{job.id === 'auto_hardlink' ? '🎬 Films' : '📺 Séries'}</p>
+                                <p className="text-xs text-slate-400 mt-0.5">{job.trigger}</p>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-xs text-slate-400">Prochain run</p>
+                                <p className="text-xs text-emerald-400 font-mono">{job.next_run ? formatDate(job.next_run) : '—'}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </SettingsSection>
+                  )}
+
+                  <SettingsSection title="Webhooks" icon="🔔"
+                    toggle={config.webhookEnabled || false}
+                    onToggle={v => setConfig({...config, webhookEnabled: v})}>
+                    <Field label="Secret (optionnel)">
+                      <input type="password" value={config.webhookSecret || ''} onChange={e => setConfig({...config, webhookSecret: e.target.value})} className="input-field text-sm" placeholder="Laisser vide pour désactiver" />
+                    </Field>
+                    <div className="bg-slate-800/40 rounded-xl p-4 mt-1 space-y-1">
+                      <p className="text-xs text-slate-400">Endpoints disponibles :</p>
+                      <p className="text-xs text-blue-400 font-mono">POST /api/webhook/radarr</p>
+                      <p className="text-xs text-blue-400 font-mono">POST /api/webhook/jellyfin</p>
+                    </div>
+                  </SettingsSection>
+                </>
+              )}
+
+              {/* GENRES */}
+              {settingsTab === 'genres' && (
+                <SettingsSection title="Mapping Genres → Dossiers" icon="🎭"
+                  action={<button onClick={fetchAllGenres} className="px-4 py-2 btn-primary text-xs">Charger depuis Radarr</button>}>
+                  {allGenres.length === 0 ? (
+                    <p className="text-sm text-slate-400 text-center py-6">Cliquez sur "Charger depuis Radarr" pour obtenir la liste des genres</p>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-3">
+                      {allGenres.map(genre => (
+                        <div key={genre.name} className={`p-4 rounded-xl border transition-all ${genre.enabled ? 'bg-slate-800/60 border-blue-500/40' : 'bg-slate-900/20 border-slate-700/30 opacity-60'}`}>
+                          <div className="flex items-center gap-3 mb-3">
+                            <label className="toggle-switch">
+                              <input type="checkbox" checked={genre.enabled} onChange={e => {
+                                updateGenreMapping(genre.name, 'enabled', e.target.checked);
+                                setAllGenres(allGenres.map(g => g.name === genre.name ? {...g, enabled: e.target.checked} : g));
+                              }} />
+                              <span className="toggle-slider"></span>
+                            </label>
+                            <span className="text-sm font-semibold">{genre.name}</span>
+                          </div>
+                          <input type="text" value={genre.folder} onChange={e => {
+                            updateGenreMapping(genre.name, 'folder', e.target.value);
+                            setAllGenres(allGenres.map(g => g.name === genre.name ? {...g, folder: e.target.value} : g));
+                          }} className="input-field text-xs font-mono" placeholder="Nom du dossier" disabled={!genre.enabled} />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </SettingsSection>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="p-6 border-t border-slate-700/50">
+              <button onClick={saveConfig}
+                className="w-full py-3.5 btn-primary font-bold text-base">
+                💾 Sauvegarder la configuration
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// --- SUB-COMPONENTS ---
+
+const StatCard = ({ icon, label, value, color, onClick, clickable }) => {
+  const colors = {
+    blue: 'bg-blue-500/15 text-blue-400',
+    emerald: 'bg-emerald-500/15 text-emerald-400',
+    rose: 'bg-rose-500/15 text-rose-400',
+    purple: 'bg-purple-500/15 text-purple-400',
+    amber: 'bg-amber-500/15 text-amber-400'
+  };
+  const textColors = { blue: 'text-white', emerald: 'text-emerald-400', rose: 'text-rose-400', purple: 'text-purple-400', amber: 'text-amber-400' };
+  return (
+    <div onClick={onClick} className={`glass-card rounded-2xl p-5 ${clickable ? 'cursor-pointer hover:bg-slate-700/30 transition-all' : ''}`}>
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-slate-400 text-xs mb-1 font-medium uppercase tracking-wide">{label}</p>
+          <p className={`text-3xl font-bold ${textColors[color]}`}>{value}</p>
+        </div>
+        <div className={`w-11 h-11 ${colors[color]} rounded-xl flex items-center justify-center text-xl`}>{icon}</div>
+      </div>
+    </div>
+  );
+};
+
+const SettingsSection = ({ title, icon, toggle, onToggle, action, children }) => (
+  <div className="bg-slate-800/30 rounded-xl p-5 border border-slate-700/30">
+    <div className="section-header">
+      <span className="text-lg">{icon}</span>
+      <h3 className="text-base font-bold flex-1">{title}</h3>
+      {action}
+      {onToggle !== undefined && (
+        <label className="toggle-switch">
+          <input type="checkbox" checked={toggle} onChange={e => onToggle(e.target.checked)} />
+          <span className="toggle-slider"></span>
+        </label>
+      )}
+    </div>
+    <div className="space-y-4">{children}</div>
+  </div>
+);
+
+const Field = ({ label, hint, children }) => (
+  <div>
+    <label className="text-sm text-slate-400 block mb-1.5 font-medium">{label}</label>
+    {hint && <p className="text-xs text-slate-500 mb-2">{hint}</p>}
+    {children}
+  </div>
+);
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<App />);
+</script>
 </body>
 </html>
