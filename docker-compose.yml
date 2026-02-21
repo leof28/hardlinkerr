@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  radarr-manager:
+    build: .
+    container_name: radarr-manager
+    ports:
+      - "5550:5000"
+    volumes:
+      # TRÈS IMPORTANT : On monte la racine commune pour permettre les hardlinks
+      - /mnt/base/Media:/media      
+      # Persistance de la configuration
+      - /mnt/base/Media/Manage/Scripts/config:/app/config
+    environment:
+      - RADARR_URL=http://192.168.1.100:7878
+      - API_KEY=b51d90f91eca475cb5cca7d84cc33a28
+      - SOURCE_ROOT=/media/movies/A trier
+      - MEDIA_ROOT=/media/movies
+      - OWNER_USER=3001  # Ton UID utilisateur NAS
+      - OWNER_GROUP=3001 # Ton GID groupe NAS
+      - TZ=Europe/Paris
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 512M
