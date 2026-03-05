@@ -13,7 +13,7 @@ services:
       - /mnt/base/Media/Manage/Scripts/config:/app/config
     environment:
       - RADARR_URL=http://192.168.1.100:7878
-      - API_KEY=b51d90f91eca475cb5cca7d84cc33a28
+      - API_KEY={$APIKEY}
       - SOURCE_ROOT=/media/movies/A trier
       - MEDIA_ROOT=/media/movies
       - OWNER_USER=3001  # Ton UID utilisateur NAS
