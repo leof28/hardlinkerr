@@ -7,18 +7,18 @@ services:
     ports:
       - "5550:5000"
     volumes:
-      # TRÈS IMPORTANT : On monte la racine commune pour permettre les hardlinks
-      - /mnt/base/Media:/media      
-      # Persistance de la configuration
-      - /mnt/base/Media/Manage/Scripts/config:/app/config
+      # IMPORTANT: Mount the common root to allow hardlinks (same filesystem)
+      - /YOUR/MEDIA/PATH:/media
+      # Persistent configuration
+      - /YOUR/MEDIA/PATH/config:/app/config
     environment:
-      - RADARR_URL=http://192.168.1.100:7878
-      - API_KEY={$APIKEY}
-      - SOURCE_ROOT=/media/movies/A trier
+      - RADARR_URL=http://YOUR_NAS_IP:7878
+      - API_KEY=YOUR_RADARR_API_KEY
+      - SOURCE_ROOT=/media/movies/Unsorted
       - MEDIA_ROOT=/media/movies
-      - OWNER_USER=3001  # Ton UID utilisateur NAS
-      - OWNER_GROUP=3001 # Ton GID groupe NAS
-      - TZ=Europe/Paris
+      - OWNER_USER=1000  # Your NAS user UID (run: id -u)
+      - OWNER_GROUP=1000 # Your NAS group GID (run: id -g)
+      - TZ=America/Toronto  # Your timezone: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
     restart: unless-stopped
     deploy:
       resources:

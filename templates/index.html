@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="fr" class="dark">
+<html lang="en" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -100,15 +100,406 @@ const formatSize = (b) => {
   if (b < 1073741824) return (b/1048576).toFixed(1) + ' MB';
   return (b/1073741824).toFixed(2) + ' GB';
 };
-const formatDate = (iso) => {
-  if (!iso) return 'Jamais';
-  try { return new Date(iso).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }); }
+const formatDate = (iso, lang) => {
+  if (!iso) return lang === 'fr' ? 'Jamais' : 'Never';
+  try { return new Date(iso).toLocaleString(lang === 'fr' ? 'fr-FR' : 'en-CA', { dateStyle: 'short', timeStyle: 'short' }); }
   catch { return iso; }
 };
-const formatDateFull = (iso) => {
+const formatDateFull = (iso, lang) => {
   if (!iso) return '—';
-  try { return new Date(iso).toLocaleString('fr-FR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit', second:'2-digit' }); }
+  try { return new Date(iso).toLocaleString(lang === 'fr' ? 'fr-FR' : 'en-CA', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit', second:'2-digit' }); }
   catch { return iso; }
+};
+
+// ─── Translations ─────────────────────────────────────────────────────────────
+const TRANSLATIONS = {
+  fr: {
+    // Header
+    appSubtitle: 'Radarr · Sonarr · Bibliothèque média',
+    scan: 'Scanner',
+    settings: 'Paramètres',
+    // Nav tabs
+    library: 'Bibliothèque',
+    moviesIssues: 'Films',
+    seriesTab: 'Séries',
+    logs: 'Journaux',
+    // Stats
+    statMovies: 'Films',
+    statLinksOk: 'Liens OK',
+    statMissing: 'Manquants',
+    statActiveGenres: 'Genres actifs',
+    statOrphanSeries: 'Séries orphelines',
+    // Library
+    searchPlaceholder: 'Rechercher un film...',
+    allGenres: 'Tous les genres',
+    withoutLinks: '⚠ Sans liens',
+    all: 'Tous',
+    deselect: 'Désélectionner',
+    selectAll: 'Tout sélect.',
+    create: 'Créer',
+    createAll: '⚡ Tout créer',
+    emptyLibrary: 'Bibliothèque vide',
+    emptyLibrarySub: 'Cliquez sur "Scanner" pour charger les films',
+    filtered: '(filtrés)',
+    missingLinks: '⚠ Liens manquants',
+    noGenre: '— Aucun genre',
+    notWatched: '· Non vu',
+    deleteMovieTip: 'Supprimer le film et ses hardlinks',
+    // Library confirm
+    confirmDeleteMovie: (title, watchCount) => `Supprimer "${title}" ?\n\nSource + tous les hardlinks genre seront supprimés. Irréversible.${watchCount > 0 ? `\n\n⚠ Ce film a été vu ${watchCount} fois sur Jellyfin.` : ''}`,
+    deletedMovie: (title, count) => `"${title}" supprimé (${count} dossier${count > 1 ? 's' : ''})`,
+    moviesScanned: (n) => `${n} films scannés`,
+    selectMoviesWarn: 'Sélectionnez des films',
+    moviesProcessed: (n) => `${n} films traités`,
+    confirmCreateAll: 'Créer tous les hardlinks manquants ?',
+    linksCreated: 'Hardlinks créés',
+    // Issues
+    issuesTitle: 'Problèmes Films',
+    issuesSub: 'Orphelins, doublons et mauvais genres — via Radarr',
+    noIssues: 'Aucun problème détecté',
+    noIssuesSub: 'Cliquez sur "Scanner" pour analyser la bibliothèque',
+    orphans: 'Orphelins',
+    orphansDesc: 'Source supprimée de "A trier"',
+    duplicates: 'Doublons',
+    duplicatesDesc: 'Ancienne version non officielle',
+    wrongGenre: 'Mauvais genre',
+    wrongGenreDesc: 'Film dans le mauvais dossier genre',
+    deleteAll: '🗑 Tout supprimer',
+    ignoreTip: 'Ne plus afficher ce film dans les problèmes',
+    ignore: '🚫 Ignorer',
+    movieIgnored: (title) => `"${title}" ignoré`,
+    confirmDeleteFile: 'Supprimer ce fichier ?',
+    fileDeleted: 'Fichier supprimé',
+    confirmDeleteByType: (n) => `Supprimer ${n} fichier(s) ?`,
+    deletedByType: (n) => `${n} fichier(s) supprimé(s)`,
+    // Series
+    orphanSeriesTitle: 'Séries orphelines',
+    orphanSeriesSub: 'Séries dans Check sans fichiers actifs dans Sonarr',
+    noOrphanSeries: 'Aucune série orpheline',
+    noOrphanSeriesSub: 'Une série est orpheline si Sonarr indique 0 fichier, non monitorée, et non en téléchargement',
+    episodes: 'épisodes',
+    knownBySonarr: '↗ Connu de Sonarr',
+    deleteAllSeries: (n) => `🗑 Tout supprimer (${n})`,
+    confirmDeleteSeries: (name) => `Supprimer définitivement "${name}" ?\nIrréversible.`,
+    confirmDeleteAllSeries: (n) => `Supprimer ${n} série(s) orpheline(s) ?\nIrréversible.`,
+    seriesDeleted: 'Série supprimée',
+    seriesDeletedN: (n) => `${n} série(s) supprimée(s)`,
+    seriesIgnoredTip: 'Ne plus afficher cette série dans les orphelines',
+    seriesIgnored: (name) => `"${name}" ignorée`,
+    orphanScanResult: (n) => `${n} série(s) orpheline(s)`,
+    // Logs
+    activityLog: "Journal d'activité",
+    entries: (n) => `${n} entrée${n !== 1 ? 's' : ''}`,
+    filteredSuffix: '(filtrées)',
+    allLevels: 'Tous niveaux',
+    levelSuccess: 'Succès',
+    levelInfo: 'Info',
+    levelWarning: 'Avertissement',
+    levelError: 'Erreur',
+    allCategories: 'Toutes catégories',
+    catSeries: 'Séries',
+    catDelete: 'Suppression',
+    catIgnored: 'Ignoré',
+    refresh: '⟳ Rafraîchir',
+    auto5s: 'Auto 5s',
+    clearLogs: '🗑 Effacer',
+    confirmClearLogs: 'Effacer tous les logs ?',
+    logsCleared: 'Logs effacés',
+    noLogs: 'Aucun log',
+    noLogsSub: 'Les actions (hardlinks, scans, suppressions…) apparaîtront ici',
+    timestamp: 'Horodatage',
+    level: 'Niveau',
+    category: 'Catégorie',
+    message: 'Message',
+    // Log badges
+    badgeOk: '✓ OK',
+    badgeErr: '✕ Err',
+    badgeWarn: '⚠ Avert',
+    badgeInfo: 'ℹ Info',
+    // Level/category badges
+    badgeLevelSuccess: 'Succès',
+    badgeLevelError: 'Erreur',
+    badgeLevelWarning: 'Avert.',
+    badgeLevelInfo: 'Info',
+    catLabelSeries: 'Séries',
+    catLabelDelete: 'Suppression',
+    catLabelIgnored: 'Ignoré',
+    // Settings modal
+    settingsTitle: 'Paramètres',
+    tabConnections: '🔗 Connexions',
+    tabPaths: '📁 Chemins',
+    tabSeries: '📺 Séries',
+    tabAutomation: '⏰ Automatisation',
+    tabGenres: '🎭 Genres',
+    tabExclusions: (n) => `🚫 Exclusions${n > 0 ? ` (${n})` : ''}`,
+    // Connections tab
+    apiKeyLabel: 'Clé API',
+    jellystatUrlHint: 'ex: http://jellystat:3000',
+    jellystatApiKeyLabel: 'Clé API Jellystat',
+    jellystatDesc: `Affiche le nombre de vues et l'historique de visionnage dans la bibliothèque (via <code style="font-size:10px">/api/getItemsPlaybackActivity</code>). La clé API se génère dans Jellystat → Paramètres → API Key.`,
+    fileOwnerTitle: 'Propriétaire des fichiers',
+    ownerUserLabel: 'Utilisateur (chown)',
+    ownerUserHint: 'Laissez vide pour ne pas modifier',
+    ownerGroupLabel: 'Groupe (GID ou nom)',
+    ownerGroupHint: 'Laissez vide pour ne pas modifier',
+    ownerUserPlaceholder: 'media',
+    ownerGroupPlaceholder: '1000',
+    // Paths tab
+    pathsTitle: 'Chemins Films',
+    sourceLabel: 'Source "A trier"',
+    sourceHint: 'Dossier où arrivent les fichiers originaux',
+    destLabel: 'Destination (racine bibliothèque)',
+    destHint: 'Racine des dossiers par genre',
+    // Series tab
+    seriesCheckTitle: 'Vérification des séries orphelines',
+    seriesSourceLabel: 'Dossier Source (géré par Sonarr)',
+    seriesSourceHint: 'Référence optionnelle si Sonarr n\'est pas configuré',
+    seriesCheckLabel: 'Dossier Check (à vérifier)',
+    seriesCheckHint: 'Ce dossier est scanné pour détecter les orphelines',
+    seriesInfoBox: '<strong>Détection :</strong> Pour chaque dossier dans Check, l\'API Sonarr est consultée. Une série est <strong>orpheline</strong> uniquement si Sonarr indique 0 fichier, non monitorée, et non en téléchargement. Utilisez le bouton <strong>Ignorer</strong> pour exclure une série de cette liste sans la supprimer.',
+    // Automation tab
+    autoHardlinkTitle: 'Hardlinks Films (automatique)',
+    cronLabel: 'Planification cron',
+    cronHint: 'Exemple : 0 */6 * * * = toutes les 6h',
+    lastRunLabel: 'Dernier run',
+    lastFullScanLabel: 'Dernier scan complet',
+    optimizedScanLabel: 'Scan optimisé',
+    optimizedScanHint: 'Scanne uniquement les films récents entre les scans complets',
+    recentWindowLabel: 'Fenêtre récents (heures)',
+    fullScanIntervalLabel: 'Scan complet toutes les (heures)',
+    autoSeriesTitle: 'Vérification Séries (automatique)',
+    cronSeriesHint: 'Exemple : 0 */12 * * * = toutes les 12h',
+    activeJobsTitle: 'Jobs planifiés actifs',
+    noActiveJobs: 'Aucun job actif',
+    jobMovies: '🎬 Films',
+    jobSeries: '📺 Séries',
+    jobNext: 'Prochain',
+    webhooksTitle: 'Webhooks',
+    webhookSecretLabel: 'Secret (optionnel)',
+    webhookSecretHint: 'Laissez vide pour désactiver la vérification',
+    availableEndpoints: 'Endpoints disponibles :',
+    // Genres tab
+    genreMappingTitle: 'Mapping Genres → Dossiers',
+    loadFromRadarr: 'Charger depuis Radarr',
+    noGenresLoaded: 'Cliquez sur "Charger depuis Radarr" pour obtenir la liste des genres',
+    folderPlaceholder: 'Nom du dossier',
+    // Exclusions tab
+    excludedSeriesTitle: 'Séries exclues',
+    excludedMoviesTitle: 'Films exclus',
+    noExcludedSeries: 'Aucune série exclue',
+    noExcludedMovies: 'Aucun film exclu',
+    exclusionInfo: 'Les éléments exclus n\'apparaissent plus dans les listes d\'orphelins et de problèmes. Aucun fichier n\'est supprimé. Pour les retirer de l\'exclusion, cliquez sur <strong>×</strong>.',
+    remove: '× Retirer',
+    removedFromExclusion: 'Retiré de la liste d\'exclusion',
+    // Save
+    saveConfig: '💾 Sauvegarder la configuration',
+    configSaved: 'Configuration sauvegardée',
+    // Errors
+    errorLoadConfig: 'Erreur chargement config',
+    errorGenres: 'Erreur genres',
+    errorLoadLogs: 'Erreur chargement logs',
+    errorScanSeries: 'Erreur scan séries',
+    errorScan: 'Erreur scan',
+    errorSave: 'Erreur sauvegarde',
+    errorDelete: 'Erreur suppression',
+    error: 'Erreur',
+    wrongFormat: 'Format incorrect',
+    loading: 'Chargement...',
+    never: 'Jamais',
+    issuesScanResult: (n) => `${n} problème(s) détecté(s)`,
+  },
+  en: {
+    // Header
+    appSubtitle: 'Radarr · Sonarr · Media Library',
+    scan: 'Scan',
+    settings: 'Settings',
+    // Nav tabs
+    library: 'Library',
+    moviesIssues: 'Movies',
+    seriesTab: 'Series',
+    logs: 'Logs',
+    // Stats
+    statMovies: 'Movies',
+    statLinksOk: 'Links OK',
+    statMissing: 'Missing',
+    statActiveGenres: 'Active genres',
+    statOrphanSeries: 'Orphan series',
+    // Library
+    searchPlaceholder: 'Search a movie...',
+    allGenres: 'All genres',
+    withoutLinks: '⚠ Missing links',
+    all: 'All',
+    deselect: 'Deselect all',
+    selectAll: 'Select all',
+    create: 'Create',
+    createAll: '⚡ Create all',
+    emptyLibrary: 'Empty library',
+    emptyLibrarySub: 'Click "Scan" to load movies',
+    filtered: '(filtered)',
+    missingLinks: '⚠ Missing links',
+    noGenre: '— No genre',
+    notWatched: '· Not watched',
+    deleteMovieTip: 'Delete movie and its hardlinks',
+    confirmDeleteMovie: (title, watchCount) => `Delete "${title}"?\n\nSource + all genre hardlinks will be removed. Irreversible.${watchCount > 0 ? `\n\n⚠ This movie has been watched ${watchCount} time(s) on Jellyfin.` : ''}`,
+    deletedMovie: (title, count) => `"${title}" deleted (${count} folder${count > 1 ? 's' : ''})`,
+    moviesScanned: (n) => `${n} movie(s) scanned`,
+    selectMoviesWarn: 'Select movies first',
+    moviesProcessed: (n) => `${n} movie(s) processed`,
+    confirmCreateAll: 'Create all missing hardlinks?',
+    linksCreated: 'Hardlinks created',
+    // Issues
+    issuesTitle: 'Movie Issues',
+    issuesSub: 'Orphans, duplicates and wrong genres — via Radarr',
+    noIssues: 'No issues detected',
+    noIssuesSub: 'Click "Scan" to analyze the library',
+    orphans: 'Orphans',
+    orphansDesc: 'Source removed from "Unsorted"',
+    duplicates: 'Duplicates',
+    duplicatesDesc: 'Older unofficial version',
+    wrongGenre: 'Wrong genre',
+    wrongGenreDesc: 'Movie in the wrong genre folder',
+    deleteAll: '🗑 Delete all',
+    ignoreTip: 'Stop showing this movie in issues',
+    ignore: '🚫 Ignore',
+    movieIgnored: (title) => `"${title}" ignored`,
+    confirmDeleteFile: 'Delete this file?',
+    fileDeleted: 'File deleted',
+    confirmDeleteByType: (n) => `Delete ${n} file(s)?`,
+    deletedByType: (n) => `${n} file(s) deleted`,
+    // Series
+    orphanSeriesTitle: 'Orphan Series',
+    orphanSeriesSub: 'Series in Check folder with no active files in Sonarr',
+    noOrphanSeries: 'No orphan series',
+    noOrphanSeriesSub: 'A series is orphaned if Sonarr reports 0 files, not monitored, and not downloading',
+    episodes: 'episodes',
+    knownBySonarr: '↗ Known by Sonarr',
+    deleteAllSeries: (n) => `🗑 Delete all (${n})`,
+    confirmDeleteSeries: (name) => `Permanently delete "${name}"?\nIrreversible.`,
+    confirmDeleteAllSeries: (n) => `Delete ${n} orphan series?\nIrreversible.`,
+    seriesDeleted: 'Series deleted',
+    seriesDeletedN: (n) => `${n} series deleted`,
+    seriesIgnoredTip: 'Stop showing this series in orphan list',
+    seriesIgnored: (name) => `"${name}" ignored`,
+    orphanScanResult: (n) => `${n} orphan series`,
+    // Logs
+    activityLog: 'Activity Log',
+    entries: (n) => `${n} entr${n !== 1 ? 'ies' : 'y'}`,
+    filteredSuffix: '(filtered)',
+    allLevels: 'All levels',
+    levelSuccess: 'Success',
+    levelInfo: 'Info',
+    levelWarning: 'Warning',
+    levelError: 'Error',
+    allCategories: 'All categories',
+    catSeries: 'Series',
+    catDelete: 'Delete',
+    catIgnored: 'Ignored',
+    refresh: '⟳ Refresh',
+    auto5s: 'Auto 5s',
+    clearLogs: '🗑 Clear',
+    confirmClearLogs: 'Clear all logs?',
+    logsCleared: 'Logs cleared',
+    noLogs: 'No logs',
+    noLogsSub: 'Actions (hardlinks, scans, deletions…) will appear here',
+    timestamp: 'Timestamp',
+    level: 'Level',
+    category: 'Category',
+    message: 'Message',
+    badgeOk: '✓ OK',
+    badgeErr: '✕ Err',
+    badgeWarn: '⚠ Warn',
+    badgeInfo: 'ℹ Info',
+    badgeLevelSuccess: 'Success',
+    badgeLevelError: 'Error',
+    badgeLevelWarning: 'Warn.',
+    badgeLevelInfo: 'Info',
+    catLabelSeries: 'Series',
+    catLabelDelete: 'Delete',
+    catLabelIgnored: 'Ignored',
+    // Settings modal
+    settingsTitle: 'Settings',
+    tabConnections: '🔗 Connections',
+    tabPaths: '📁 Paths',
+    tabSeries: '📺 Series',
+    tabAutomation: '⏰ Automation',
+    tabGenres: '🎭 Genres',
+    tabExclusions: (n) => `🚫 Exclusions${n > 0 ? ` (${n})` : ''}`,
+    // Connections tab
+    apiKeyLabel: 'API Key',
+    jellystatUrlHint: 'e.g. http://jellystat:3000',
+    jellystatApiKeyLabel: 'Jellystat API Key',
+    jellystatDesc: `Shows watch count and playback history in the library (via <code style="font-size:10px">/api/getItemsPlaybackActivity</code>). Generate the API key in Jellystat → Settings → API Key.`,
+    fileOwnerTitle: 'File Owner',
+    ownerUserLabel: 'User (chown)',
+    ownerUserHint: 'Leave empty to skip',
+    ownerGroupLabel: 'Group (GID or name)',
+    ownerGroupHint: 'Leave empty to skip',
+    ownerUserPlaceholder: 'media',
+    ownerGroupPlaceholder: '1000',
+    // Paths tab
+    pathsTitle: 'Movie Paths',
+    sourceLabel: 'Source "Unsorted"',
+    sourceHint: 'Folder where original files arrive',
+    destLabel: 'Destination (library root)',
+    destHint: 'Root of the genre folders',
+    // Series tab
+    seriesCheckTitle: 'Orphan Series Check',
+    seriesSourceLabel: 'Source Folder (managed by Sonarr)',
+    seriesSourceHint: 'Optional reference if Sonarr is not configured',
+    seriesCheckLabel: 'Check Folder (to scan)',
+    seriesCheckHint: 'This folder is scanned to detect orphan series',
+    seriesInfoBox: '<strong>Detection:</strong> For each folder in Check, the Sonarr API is queried. A series is <strong>orphaned</strong> only if Sonarr reports 0 files, not monitored, and not downloading. Use the <strong>Ignore</strong> button to exclude a series from this list without deleting it.',
+    // Automation tab
+    autoHardlinkTitle: 'Movie Hardlinks (automatic)',
+    cronLabel: 'Cron schedule',
+    cronHint: 'Example: 0 */6 * * * = every 6h',
+    lastRunLabel: 'Last run',
+    lastFullScanLabel: 'Last full scan',
+    optimizedScanLabel: 'Optimized scan',
+    optimizedScanHint: 'Only scans recent movies between full scans',
+    recentWindowLabel: 'Recent window (hours)',
+    fullScanIntervalLabel: 'Full scan every (hours)',
+    autoSeriesTitle: 'Series Check (automatic)',
+    cronSeriesHint: 'Example: 0 */12 * * * = every 12h',
+    activeJobsTitle: 'Active scheduled jobs',
+    noActiveJobs: 'No active jobs',
+    jobMovies: '🎬 Movies',
+    jobSeries: '📺 Series',
+    jobNext: 'Next',
+    webhooksTitle: 'Webhooks',
+    webhookSecretLabel: 'Secret (optional)',
+    webhookSecretHint: 'Leave empty to disable verification',
+    availableEndpoints: 'Available endpoints:',
+    // Genres tab
+    genreMappingTitle: 'Genre → Folder Mapping',
+    loadFromRadarr: 'Load from Radarr',
+    noGenresLoaded: 'Click "Load from Radarr" to get the genre list',
+    folderPlaceholder: 'Folder name',
+    // Exclusions tab
+    excludedSeriesTitle: 'Excluded Series',
+    excludedMoviesTitle: 'Excluded Movies',
+    noExcludedSeries: 'No excluded series',
+    noExcludedMovies: 'No excluded movies',
+    exclusionInfo: 'Excluded items no longer appear in orphan and issue lists. No files are deleted. To remove from exclusions, click <strong>×</strong>.',
+    remove: '× Remove',
+    removedFromExclusion: 'Removed from exclusion list',
+    // Save
+    saveConfig: '💾 Save configuration',
+    configSaved: 'Configuration saved',
+    // Errors
+    errorLoadConfig: 'Error loading config',
+    errorGenres: 'Error loading genres',
+    errorLoadLogs: 'Error loading logs',
+    errorScanSeries: 'Error scanning series',
+    errorScan: 'Scan error',
+    errorSave: 'Save error',
+    errorDelete: 'Delete error',
+    error: 'Error',
+    wrongFormat: 'Wrong format',
+    loading: 'Loading...',
+    never: 'Never',
+    issuesScanResult: (n) => `${n} issue(s) detected`,
+  }
 };
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -173,18 +564,19 @@ const Field = ({ label, hint, children }) => (
 );
 
 // ─── Level badge for logs ──────────────────────────────────────────────────────
-const LevelBadge = ({ level }) => {
+const LevelBadge = ({ level, t }) => {
   const styles = {
-    success: { bg: 'rgba(16,185,129,0.15)', color: '#34d399', label: 'Succès' },
-    error:   { bg: 'rgba(239,68,68,0.15)',  color: '#f87171', label: 'Erreur' },
-    warning: { bg: 'rgba(245,158,11,0.15)', color: '#fbbf24', label: 'Avert.' },
-    info:    { bg: 'rgba(59,130,246,0.15)', color: '#60a5fa', label: 'Info'   },
+    success: { bg: 'rgba(16,185,129,0.15)', color: '#34d399' },
+    error:   { bg: 'rgba(239,68,68,0.15)',  color: '#f87171' },
+    warning: { bg: 'rgba(245,158,11,0.15)', color: '#fbbf24' },
+    info:    { bg: 'rgba(59,130,246,0.15)', color: '#60a5fa' },
   };
+  const labelMap = { success: 'badgeLevelSuccess', error: 'badgeLevelError', warning: 'badgeLevelWarning', info: 'badgeLevelInfo' };
   const s = styles[level] || styles.info;
-  return <span className="badge" style={{ background: s.bg, color: s.color }}>{s.label}</span>;
+  return <span className="badge" style={{ background: s.bg, color: s.color }}>{t(labelMap[level] || 'badgeLevelInfo')}</span>;
 };
 
-const CategoryBadge = ({ category }) => {
+const CategoryBadge = ({ category, t }) => {
   const styles = {
     hardlink: { bg: 'rgba(139,92,246,0.15)', color: '#a78bfa' },
     series:   { bg: 'rgba(245,158,11,0.15)', color: '#fbbf24' },
@@ -195,12 +587,22 @@ const CategoryBadge = ({ category }) => {
     ignore:   { bg: 'rgba(100,116,139,0.2)', color: '#94a3b8' },
   };
   const s = styles[category] || { bg: 'rgba(100,116,139,0.15)', color: '#94a3b8' };
-  const labels = { hardlink: 'Hardlink', series: 'Séries', cron: 'Cron', delete: 'Suppression', webhook: 'Webhook', scan: 'Scan', ignore: 'Ignoré' };
+  const labels = { hardlink: 'Hardlink', series: t('catLabelSeries'), cron: 'Cron', delete: t('catLabelDelete'), webhook: 'Webhook', scan: 'Scan', ignore: t('catLabelIgnored') };
   return <span className="badge" style={{ background: s.bg, color: s.color }}>{labels[category] || category}</span>;
 };
 
 // ─── Main App ─────────────────────────────────────────────────────────────────
 const App = () => {
+  const [lang, setLang] = useState(() => localStorage.getItem('hlm_lang') || 'en');
+  const t = (key) => {
+    const val = TRANSLATIONS[lang][key];
+    return typeof val === 'function' ? val : (val ?? TRANSLATIONS['en'][key] ?? key);
+  };
+  const toggleLang = () => {
+    const next = lang === 'fr' ? 'en' : 'fr';
+    setLang(next);
+    localStorage.setItem('hlm_lang', next);
+  };
   const [activeView, setActiveView] = useState('library');
   const [config, setConfig] = useState(null);
   const [movies, setMovies] = useState([]);
@@ -247,7 +649,7 @@ const App = () => {
         ...prev,
         activeGenres: Object.values(data.genreMapping || {}).filter(g => g.enabled).length
       }));
-    } catch { showToast('Erreur chargement config', 'error'); }
+    } catch { showToast(t('errorLoadConfig'), 'error'); }
   };
 
   const fetchCronStatus = async () => {
@@ -258,7 +660,7 @@ const App = () => {
     try {
       const data = await apiFetch('/api/genres');
       if (Array.isArray(data)) setAllGenres(data);
-    } catch { showToast('Erreur genres', 'error'); }
+    } catch { showToast(t('errorGenres'), 'error'); }
   };
 
   const fetchIgnored = async () => {
@@ -271,14 +673,14 @@ const App = () => {
       if (logLevel) params.set('level', logLevel);
       if (logCategory) params.set('category', logCategory);
       setLogs(await apiFetch('/api/logs?' + params));
-    } catch { showToast('Erreur chargement logs', 'error'); }
+    } catch { showToast(t('errorLoadLogs'), 'error'); }
   };
 
   const clearLogs = async () => {
-    if (!confirm('Effacer tous les logs ?')) return;
+    if (!confirm(t('confirmClearLogs'))) return;
     await apiFetch('/api/logs', { method: 'DELETE' });
     setLogs([]);
-    showToast('Logs effacés', 'success');
+    showToast(t('logsCleared'), 'success');
   };
 
   const fetchSeriesIssues = async () => {
@@ -287,9 +689,9 @@ const App = () => {
       const data = await apiFetch('/api/series-issues');
       if (Array.isArray(data)) {
         setSeriesIssues(data);
-        showToast(`${data.length} série(s) orpheline(s)`, data.length ? 'warning' : 'success');
+        showToast(t('orphanScanResult')(data.length), data.length ? 'warning' : 'success');
       }
-    } catch { showToast('Erreur scan séries', 'error'); }
+    } catch { showToast(t('errorScanSeries'), 'error'); }
     finally { setLoading(false); }
   };
 
@@ -298,8 +700,8 @@ const App = () => {
       const res = await apiFetch('/api/ignore', { method: 'POST', body: { type: 'series', name: seriesName, label: seriesName } });
       setIgnored(res.ignored || await apiFetch('/api/ignore'));
       setSeriesIssues(prev => prev.filter(s => s.series !== seriesName));
-      showToast(`"${seriesName}" ignorée`, 'info');
-    } catch { showToast('Erreur', 'error'); }
+      showToast(t('seriesIgnored')(seriesName), 'info');
+    } catch { showToast(t('error'), 'error'); }
   };
 
   const ignoreMovie = async (movieFolder, movieTitle) => {
@@ -307,36 +709,36 @@ const App = () => {
       const res = await apiFetch('/api/ignore', { method: 'POST', body: { type: 'movies', name: movieFolder, label: movieTitle } });
       setIgnored(res.ignored || await apiFetch('/api/ignore'));
       setDuplicates(prev => prev.filter(d => d.movie !== movieFolder));
-      showToast(`"${movieTitle}" ignoré`, 'info');
-    } catch { showToast('Erreur', 'error'); }
+      showToast(t('movieIgnored')(movieTitle), 'info');
+    } catch { showToast(t('error'), 'error'); }
   };
 
   const removeIgnored = async (type, name) => {
     try {
       await apiFetch(`/api/ignore/${type}/${encodeURIComponent(name)}`, { method: 'DELETE' });
       await fetchIgnored();
-      showToast('Retiré de la liste d\'exclusion', 'success');
-    } catch { showToast('Erreur', 'error'); }
+      showToast(t('removedFromExclusion'), 'success');
+    } catch { showToast(t('error'), 'error'); }
   };
 
   const deleteSeries = async (path, name) => {
-    if (!confirm(`Supprimer définitivement "${name}" ?\nIrréversible.`)) return;
+    if (!confirm(t('confirmDeleteSeries')(name))) return;
     try {
       await apiFetch('/api/delete-series', { method: 'POST', body: { path, name } });
       setSeriesIssues(prev => prev.filter(s => s.path !== path));
-      showToast('Série supprimée', 'success');
-    } catch { showToast('Erreur suppression', 'error'); }
+      showToast(t('seriesDeleted'), 'success');
+    } catch { showToast(t('errorDelete'), 'error'); }
   };
 
   const deleteAllSeries = async () => {
     if (!seriesIssues.length) return;
-    if (!confirm(`Supprimer ${seriesIssues.length} série(s) orpheline(s) ?\nIrréversible.`)) return;
+    if (!confirm(t('confirmDeleteAllSeries')(seriesIssues.length))) return;
     setLoading(true);
     try {
       const data = await apiFetch('/api/delete-all-series', { method: 'POST' });
-      showToast(`${data.deleted} série(s) supprimée(s)`, 'success');
+      showToast(t('seriesDeletedN')(data.deleted), 'success');
       fetchSeriesIssues();
-    } catch { showToast('Erreur', 'error'); }
+    } catch { showToast(t('error'), 'error'); }
     finally { setLoading(false); }
   };
 
@@ -346,9 +748,9 @@ const App = () => {
       const data = await apiFetch('/api/duplicates');
       if (Array.isArray(data)) {
         setDuplicates(data);
-        showToast(`${data.length} problème(s) détecté(s)`, data.length ? 'warning' : 'success');
+        showToast(t('issuesScanResult')(data.length), data.length ? 'warning' : 'success');
       }
-    } catch { showToast('Erreur scan', 'error'); }
+    } catch { showToast(t('errorScan'), 'error'); }
     finally { setLoading(false); }
   };
 
@@ -356,74 +758,72 @@ const App = () => {
     setLoading(true);
     try {
       const data = await apiFetch('/api/status');
-      if (data.error) { showToast('Erreur: ' + data.error, 'error'); return; }
-      if (!Array.isArray(data)) { showToast('Format incorrect', 'error'); return; }
+      if (data.error) { showToast(t('error') + ': ' + data.error, 'error'); return; }
+      if (!Array.isArray(data)) { showToast(t('wrongFormat'), 'error'); return; }
       setMovies(data);
       let linked = 0, errors = 0;
       data.forEach(m => (m.hardlinks || []).forEach(h => h.exists ? linked++ : errors++));
       setStats(prev => ({ ...prev, total: data.length, linked, errors }));
-      showToast(`${data.length} films scannés`, 'success');
-    } catch (e) { showToast('Erreur: ' + e.message, 'error'); }
+      showToast(t('moviesScanned')(data.length), 'success');
+    } catch (e) { showToast(t('error') + ': ' + e.message, 'error'); }
     finally { setLoading(false); }
   };
 
   const createSelectedLinks = async () => {
-    if (!selectedMovies.size) { showToast('Sélectionnez des films', 'warning'); return; }
+    if (!selectedMovies.size) { showToast(t('selectMoviesWarn'), 'warning'); return; }
     setLoading(true);
     try {
+      const count = selectedMovies.size;
       await apiFetch('/api/run', { method: 'POST', body: { movie_paths: Array.from(selectedMovies) } });
       setSelectedMovies(new Set());
-      showToast(`${selectedMovies.size} films traités`, 'success');
-    } catch { showToast('Erreur', 'error'); }
+      showToast(t('moviesProcessed')(count), 'success');
+    } catch { showToast(t('error'), 'error'); }
     finally { setLoading(false); }
   };
 
   const createAllLinks = async () => {
-    if (!confirm('Créer tous les hardlinks manquants ?')) return;
+    if (!confirm(t('confirmCreateAll'))) return;
     setLoading(true);
     try {
       await apiFetch('/api/run-all', { method: 'POST' });
-      showToast('Hardlinks créés', 'success');
-    } catch { showToast('Erreur', 'error'); }
+      showToast(t('linksCreated'), 'success');
+    } catch { showToast(t('error'), 'error'); }
     finally { setLoading(false); }
   };
 
   const deleteMovieWithHardlinks = async (movie) => {
-    const watchInfo = movie.watchCount > 0
-      ? `\n\n⚠ Ce film a été vu ${movie.watchCount} fois sur Jellyfin.`
-      : '';
-    if (!confirm(`Supprimer "${movie.title}" ?\n\nSource + tous les hardlinks genre seront supprimés. Irréversible.${watchInfo}`)) return;
+    if (!confirm(t('confirmDeleteMovie')(movie.title, movie.watchCount))) return;
     try {
       const data = await apiFetch('/api/delete-movie', {
         method: 'POST',
         body: { sourcePath: movie.path, folderName: movie.folderName, title: movie.title }
       });
-      if (data.error) { showToast('Erreur: ' + data.error, 'error'); return; }
+      if (data.error) { showToast(t('error') + ': ' + data.error, 'error'); return; }
       setMovies(prev => prev.filter(m => m.path !== movie.path));
       const count = (data.deleted || []).length;
-      showToast(`"${movie.title}" supprimé (${count} dossier${count > 1 ? 's' : ''})`, 'success');
-    } catch { showToast('Erreur suppression', 'error'); }
+      showToast(t('deletedMovie')(movie.title, count), 'success');
+    } catch { showToast(t('errorDelete'), 'error'); }
   };
 
   const deleteDuplicate = async (path) => {
-    if (!confirm('Supprimer ce fichier ?')) return;
+    if (!confirm(t('confirmDeleteFile'))) return;
     try {
       await apiFetch('/api/delete-file', { method: 'POST', body: { path } });
       setDuplicates(prev => prev.filter(d => d.path !== path));
-      showToast('Fichier supprimé', 'success');
-    } catch { showToast('Erreur', 'error'); }
+      showToast(t('fileDeleted'), 'success');
+    } catch { showToast(t('error'), 'error'); }
   };
 
   const deleteAllByType = async (type) => {
     const filtered = duplicates.filter(d => d.type === type);
     if (!filtered.length) return;
-    if (!confirm(`Supprimer ${filtered.length} fichier(s) ?`)) return;
+    if (!confirm(t('confirmDeleteByType')(filtered.length))) return;
     setLoading(true);
     try {
       const data = await apiFetch('/api/delete-duplicates', { method: 'POST', body: { paths: filtered.map(d => d.path) } });
-      showToast(`${data.deleted} fichier(s) supprimé(s)`, 'success');
+      showToast(t('deletedByType')(data.deleted), 'success');
       fetchDuplicates();
-    } catch { showToast('Erreur', 'error'); }
+    } catch { showToast(t('error'), 'error'); }
     finally { setLoading(false); }
   };
 
@@ -435,8 +835,8 @@ const App = () => {
         activeGenres: Object.values(config.genreMapping || {}).filter(g => g.enabled).length
       }));
       await fetchCronStatus();
-      showToast('Configuration sauvegardée', 'success');
-    } catch { showToast('Erreur sauvegarde', 'error'); }
+      showToast(t('configSaved'), 'success');
+    } catch { showToast(t('errorSave'), 'error'); }
   };
 
   const updateGenreMapping = (genre, field, value) => {
@@ -478,17 +878,17 @@ const App = () => {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <Spinner size={40} />
-          <p className="text-white/60 text-sm mt-4">Chargement...</p>
+          <p className="text-white/60 text-sm mt-4">{t('loading')}</p>
         </div>
       </div>
     );
   }
 
   const navTabs = [
-    { id: 'library', label: 'Bibliothèque' },
-    { id: 'issues', label: 'Films', badge: duplicates.length || null, badgeColor: '#ef4444' },
-    ...(seriesEnabled ? [{ id: 'series', label: 'Séries', badge: seriesIssues.length || null, badgeColor: '#f59e0b' }] : []),
-    { id: 'logs', label: 'Journaux', badge: null },
+    { id: 'library', label: t('library') },
+    { id: 'issues', label: t('moviesIssues'), badge: duplicates.length || null, badgeColor: '#ef4444' },
+    ...(seriesEnabled ? [{ id: 'series', label: t('seriesTab'), badge: seriesIssues.length || null, badgeColor: '#f59e0b' }] : []),
+    { id: 'logs', label: t('logs'), badge: null },
   ];
 
   return (
@@ -507,15 +907,21 @@ const App = () => {
             </div>
             <div>
               <h1 className="text-2xl font-bold gradient-text">Hardlink Manager</h1>
-              <p className="text-xs" style={{ color: 'rgba(100,116,139,0.9)' }}>Radarr · Sonarr · Bibliothèque média</p>
+              <p className="text-xs" style={{ color: 'rgba(100,116,139,0.9)' }}>{t('appSubtitle')}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <button onClick={toggleLang}
+              className="btn-ghost text-white/70"
+              title={lang === 'fr' ? 'Switch to English' : 'Passer en français'}
+              style={{ minWidth: 42, fontWeight: 700, fontSize: 13 }}>
+              {lang === 'fr' ? '🇬🇧 EN' : '🇫🇷 FR'}
+            </button>
             <button onClick={scanMovies} disabled={loading} className="btn-primary flex items-center gap-2 text-white">
-              {loading ? <Spinner size={14}/> : <span>⟳</span>} Scanner
+              {loading ? <Spinner size={14}/> : <span>⟳</span>} {t('scan')}
             </button>
             <button onClick={() => { setShowSettings(true); setSettingsTab('general'); }} className="btn-ghost text-white/80">
-              ⚙ Paramètres
+              ⚙ {t('settings')}
             </button>
           </div>
         </div>
@@ -538,12 +944,12 @@ const App = () => {
 
       {/* ── STATS ── */}
       <div className={`grid gap-4 mb-7 ${seriesEnabled ? 'grid-cols-5' : 'grid-cols-4'}`}>
-        <StatCard icon="🎬" label="Films" value={stats.total} color="blue" />
-        <StatCard icon="✓" label="Liens OK" value={stats.linked} color="green" />
-        <StatCard icon="⚠" label="Manquants" value={stats.errors} color="red" />
-        <StatCard icon="🎭" label="Genres actifs" value={stats.activeGenres} color="purple" />
+        <StatCard icon="🎬" label={t('statMovies')} value={stats.total} color="blue" />
+        <StatCard icon="✓" label={t('statLinksOk')} value={stats.linked} color="green" />
+        <StatCard icon="⚠" label={t('statMissing')} value={stats.errors} color="red" />
+        <StatCard icon="🎭" label={t('statActiveGenres')} value={stats.activeGenres} color="purple" />
         {seriesEnabled && (
-          <StatCard icon="📺" label="Séries orphelines" value={seriesIssues.length}
+          <StatCard icon="📺" label={t('statOrphanSeries')} value={seriesIssues.length}
             color="amber" onClick={() => setActiveView('series')} />
         )}
       </div>
@@ -556,32 +962,32 @@ const App = () => {
           <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
             <div className="flex gap-2 flex-wrap">
               <input type="text" value={search} onChange={e => setSearch(e.target.value)}
-                placeholder="Rechercher un film..." className="input-field" style={{ width: 240 }} />
+                placeholder={t('searchPlaceholder')} className="input-field" style={{ width: 240 }} />
               <select value={genreFilter} onChange={e => setGenreFilter(e.target.value)}
                 className="input-field" style={{ width: 170 }}>
-                <option value="">Tous les genres</option>
+                <option value="">{t('allGenres')}</option>
                 {uniqueFolders.map(g => <option key={g} value={g}>{g}</option>)}
               </select>
               <button onClick={() => setShowOnlyMissing(!showOnlyMissing)}
                 className={showOnlyMissing ? 'btn-danger text-white' : 'btn-ghost text-white/70'}>
-                {showOnlyMissing ? '⚠ Sans liens' : 'Tous'}
+                {showOnlyMissing ? t('withoutLinks') : t('all')}
               </button>
             </div>
             {filteredMovies.length > 0 && (
               <div className="flex gap-2">
                 <button onClick={() => setSelectedMovies(selectedMovies.size === filteredMovies.length ? new Set() : new Set(filteredMovies.map(m => m.path)))}
                   className="btn-ghost text-white/70">
-                  {selectedMovies.size === filteredMovies.length ? 'Désélectionner' : 'Tout sélect.'}
+                  {selectedMovies.size === filteredMovies.length ? t('deselect') : t('selectAll')}
                 </button>
                 {selectedMovies.size > 0 && (
                   <button onClick={createSelectedLinks} disabled={loading} className="btn-primary text-white">
-                    🔗 Créer ({selectedMovies.size})
+                    🔗 {t('create')} ({selectedMovies.size})
                   </button>
                 )}
                 <button onClick={createAllLinks} disabled={loading}
                   className="text-white font-semibold text-sm px-4 py-2 rounded-xl transition-all"
                   style={{ background: 'rgba(16,185,129,0.2)', border: '1px solid rgba(16,185,129,0.3)' }}>
-                  ⚡ Tout créer
+                  {t('createAll')}
                 </button>
               </div>
             )}
@@ -590,14 +996,14 @@ const App = () => {
           {movies.length === 0 ? (
             <div className="text-center py-24" style={{ color: 'rgba(100,116,139,0.7)' }}>
               <div className="text-5xl mb-4">🎬</div>
-              <p className="text-base font-medium">Bibliothèque vide</p>
-              <p className="text-sm mt-1">Cliquez sur "Scanner" pour charger les films</p>
+              <p className="text-base font-medium">{t('emptyLibrary')}</p>
+              <p className="text-sm mt-1">{t('emptyLibrarySub')}</p>
             </div>
           ) : (
             <>
               <p className="text-xs mb-4" style={{ color: 'rgba(100,116,139,0.7)' }}>
-                {filteredMovies.length} film{filteredMovies.length !== 1 ? 's' : ''}
-                {search || genreFilter || showOnlyMissing ? ' (filtrés)' : ''}
+                {filteredMovies.length} {lang === 'fr' ? `film${filteredMovies.length !== 1 ? 's' : ''}` : `movie${filteredMovies.length !== 1 ? 's' : ''}`}
+                {search || genreFilter || showOnlyMissing ? ` ${t('filtered')}` : ''}
               </p>
               <div className="grid grid-cols-6 gap-3">
                 {filteredMovies.map((movie, idx) => {
@@ -605,7 +1011,7 @@ const App = () => {
                   const allOk = (movie.hardlinks || []).length > 0 && (movie.hardlinks || []).every(h => h.exists);
                   const isSelected = selectedMovies.has(movie.path);
                   const addedRadarr = movie.addedToRadarr
-                    ? new Date(movie.addedToRadarr).toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit', year:'2-digit' })
+                    ? new Date(movie.addedToRadarr).toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-CA', { day:'2-digit', month:'2-digit', year:'2-digit' })
                     : null;
                   return (
                     <div key={idx} onClick={() => toggleMovieSelection(movie.path)}
@@ -620,7 +1026,7 @@ const App = () => {
                         <button
                           className="movie-delete-btn"
                           onClick={e => { e.stopPropagation(); deleteMovieWithHardlinks(movie); }}
-                          title="Supprimer le film et ses hardlinks"
+                          title={t('deleteMovieTip')}
                           style={{ position:'absolute', top:7, left:7, width:24, height:24, borderRadius:'50%', background:'rgba(239,68,68,0.9)', border:'none', cursor:'pointer', color:'white', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, lineHeight:1, zIndex:10 }}>
                           🗑
                         </button>
@@ -633,7 +1039,7 @@ const App = () => {
                         )}
                         {/* Badge vues Jellystat */}
                         {movie.jellystatEnabled && movie.watchCount > 0 && (
-                          <div title={`Vu ${movie.watchCount} fois${movie.watchDates && movie.watchDates[0] ? ' · Dernière fois : ' + new Date(movie.watchDates[0]).toLocaleDateString('fr-FR') : ''}`}
+                          <div title={lang === 'fr' ? `Vu ${movie.watchCount} fois${movie.watchDates && movie.watchDates[0] ? ' · Dernière fois : ' + new Date(movie.watchDates[0]).toLocaleDateString('fr-FR') : ''}` : `Watched ${movie.watchCount} time(s)${movie.watchDates && movie.watchDates[0] ? ' · Last: ' + new Date(movie.watchDates[0]).toLocaleDateString('en-CA') : ''}`}
                             style={{ position:'absolute', top:8, right: isSelected || allOk ? 36 : 8, background:'rgba(59,130,246,0.85)', borderRadius:10, padding:'2px 6px', fontSize:9, fontWeight:700, color:'white', display:'flex', alignItems:'center', gap:3 }}>
                             👁 {movie.watchCount}
                           </div>
@@ -641,9 +1047,9 @@ const App = () => {
                         {/* Overlay bas : titre + statut + méta */}
                         <div style={{ position:'absolute', bottom:0, left:0, right:0, padding:'28px 8px 7px', background:'linear-gradient(to top, rgba(0,0,0,0.97) 0%, rgba(0,0,0,0.6) 60%, rgba(0,0,0,0) 100%)' }}>
                           <p style={{ fontSize:11, fontWeight:600, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{movie.title}</p>
-                          {hasErrors && <p style={{ fontSize:10, color:'#f87171', marginTop:2 }}>⚠ Liens manquants</p>}
+                          {hasErrors && <p style={{ fontSize:10, color:'#f87171', marginTop:2 }}>{t('missingLinks')}</p>}
                           {allOk && <p style={{ fontSize:10, color:'#34d399', marginTop:2 }}>✓ OK</p>}
-                          {(movie.hardlinks||[]).length === 0 && <p style={{ fontSize:10, color:'rgba(100,116,139,0.7)', marginTop:2 }}>— Aucun genre</p>}
+                          {(movie.hardlinks||[]).length === 0 && <p style={{ fontSize:10, color:'rgba(100,116,139,0.7)', marginTop:2 }}>{t('noGenre')}</p>}
                           {/* Ligne méta : taille + date Radarr */}
                           <div style={{ display:'flex', gap:5, marginTop:3, flexWrap:'wrap', alignItems:'center' }}>
                             {movie.fileSize > 0 && (
@@ -653,7 +1059,7 @@ const App = () => {
                               <span style={{ fontSize:9, color:'rgba(100,116,139,0.55)' }}>· {addedRadarr}</span>
                             )}
                             {movie.jellystatEnabled && movie.watchCount === 0 && (
-                              <span style={{ fontSize:9, color:'rgba(100,116,139,0.45)' }}>· Non vu</span>
+                              <span style={{ fontSize:9, color:'rgba(100,116,139,0.45)' }}>{t('notWatched')}</span>
                             )}
                           </div>
                         </div>
@@ -674,8 +1080,8 @@ const App = () => {
         <div className="glass rounded-2xl p-6">
           <div className="flex items-center justify-between mb-6 gap-4">
             <div>
-              <h2 className="text-lg font-bold">Problèmes Films</h2>
-              <p className="text-xs mt-1" style={{ color: 'rgba(100,116,139,0.8)' }}>Orphelins, doublons et mauvais genres — via Radarr</p>
+              <h2 className="text-lg font-bold">{t('issuesTitle')}</h2>
+              <p className="text-xs mt-1" style={{ color: 'rgba(100,116,139,0.8)' }}>{t('issuesSub')}</p>
             </div>
             <button onClick={fetchDuplicates} disabled={loading}
               className="btn-primary flex items-center gap-2 text-white">
@@ -686,15 +1092,15 @@ const App = () => {
           {duplicates.length === 0 ? (
             <div className="text-center py-20" style={{ color: 'rgba(100,116,139,0.7)' }}>
               <div className="text-5xl mb-4">✓</div>
-              <p className="text-base font-medium">Aucun problème détecté</p>
-              <p className="text-sm mt-1">Cliquez sur "Scanner" pour analyser la bibliothèque</p>
+              <p className="text-base font-medium">{t('noIssues')}</p>
+              <p className="text-sm mt-1">{t('noIssuesSub')}</p>
             </div>
           ) : (
             <div className="space-y-8">
               {[
-                { type: 'orphan',     icon: '👻', label: 'Orphelins',    desc: 'Source supprimée de "A trier"',       color: 'rgba(239,68,68,0.1)',   border: 'rgba(239,68,68,0.25)' },
-                { type: 'duplicate',  icon: '📄', label: 'Doublons',     desc: 'Ancienne version non officielle',     color: 'rgba(245,158,11,0.1)',  border: 'rgba(245,158,11,0.25)' },
-                { type: 'wrong_genre',icon: '🎭', label: 'Mauvais genre', desc: 'Film dans le mauvais dossier genre', color: 'rgba(139,92,246,0.1)', border: 'rgba(139,92,246,0.25)' }
+                { type: 'orphan',     icon: '👻', label: t('orphans'),    desc: t('orphansDesc'),    color: 'rgba(239,68,68,0.1)',   border: 'rgba(239,68,68,0.25)' },
+                { type: 'duplicate',  icon: '📄', label: t('duplicates'), desc: t('duplicatesDesc'), color: 'rgba(245,158,11,0.1)',  border: 'rgba(245,158,11,0.25)' },
+                { type: 'wrong_genre',icon: '🎭', label: t('wrongGenre'), desc: t('wrongGenreDesc'), color: 'rgba(139,92,246,0.1)', border: 'rgba(139,92,246,0.25)' }
               ].map(({ type, icon, label, desc, color, border }) => {
                 const items = duplicates.filter(d => d.type === type);
                 if (!items.length) return null;
@@ -710,7 +1116,7 @@ const App = () => {
                         <p className="text-xs mt-0.5" style={{ color: 'rgba(100,116,139,0.7)' }}>{desc}</p>
                       </div>
                       <button onClick={() => deleteAllByType(type)} className="btn-danger text-white flex-shrink-0">
-                        🗑 Tout supprimer
+                        {t('deleteAll')}
                       </button>
                     </div>
                     <div className="space-y-2">
@@ -729,9 +1135,9 @@ const App = () => {
                           </div>
                           <div className="flex gap-2 flex-shrink-0">
                             <button onClick={() => ignoreMovie(dup.movie, dup.title || dup.movie)}
-                              title="Ne plus afficher ce film dans les problèmes"
+                              title={t('ignoreTip')}
                               className="btn-ghost text-white/60" style={{ padding: '7px 12px' }}>
-                              🚫 Ignorer
+                              {t('ignore')}
                             </button>
                             <button onClick={() => deleteDuplicate(dup.path)}
                               className="btn-danger text-white" style={{ padding: '7px 12px' }}>
@@ -756,19 +1162,19 @@ const App = () => {
         <div className="glass rounded-2xl p-6">
           <div className="flex items-center justify-between mb-6 gap-4">
             <div>
-              <h2 className="text-lg font-bold">Séries orphelines</h2>
+              <h2 className="text-lg font-bold">{t('orphanSeriesTitle')}</h2>
               <p className="text-xs mt-1" style={{ color: 'rgba(100,116,139,0.8)' }}>
-                Séries dans Check sans fichiers actifs dans Sonarr
+                {t('orphanSeriesSub')}
               </p>
             </div>
             <div className="flex gap-2">
               <button onClick={fetchSeriesIssues} disabled={loading}
                 className="btn-primary flex items-center gap-2 text-white">
-                {loading ? <Spinner size={14}/> : '🔍'} Scanner
+                {loading ? <Spinner size={14}/> : '🔍'} {t('scan')}
               </button>
               {seriesIssues.length > 0 && (
                 <button onClick={deleteAllSeries} disabled={loading} className="btn-danger text-white">
-                  🗑 Tout supprimer ({seriesIssues.length})
+                  {t('deleteAllSeries')(seriesIssues.length)}
                 </button>
               )}
             </div>
@@ -777,10 +1183,8 @@ const App = () => {
           {seriesIssues.length === 0 ? (
             <div className="text-center py-20" style={{ color: 'rgba(100,116,139,0.7)' }}>
               <div className="text-5xl mb-4">📺</div>
-              <p className="text-base font-medium">Aucune série orpheline</p>
-              <p className="text-sm mt-1">
-                Une série est orpheline si Sonarr indique 0 fichier, non monitorée, et non en téléchargement
-              </p>
+              <p className="text-base font-medium">{t('noOrphanSeries')}</p>
+              <p className="text-sm mt-1">{t('noOrphanSeriesSub')}</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -792,7 +1196,7 @@ const App = () => {
                       <h3 className="text-sm font-bold">📺 {series.series}</h3>
                       {series.fileCount > 0 && (
                         <span className="badge" style={{ background: 'rgba(245,158,11,0.15)', color: '#fbbf24' }}>
-                          {series.fileCount} épisodes
+                          {series.fileCount} {t('episodes')}
                         </span>
                       )}
                       {series.size > 0 && (
@@ -802,7 +1206,7 @@ const App = () => {
                       )}
                       {series.sonarrPath && (
                         <span className="badge" style={{ background: 'rgba(139,92,246,0.15)', color: '#a78bfa' }}>
-                          ↗ Connu de Sonarr
+                          {t('knownBySonarr')}
                         </span>
                       )}
                     </div>
@@ -818,13 +1222,13 @@ const App = () => {
                   </div>
                   <div className="flex gap-2 flex-shrink-0">
                     <button onClick={() => ignoreSeries(series.series)}
-                      title="Ne plus afficher cette série dans les orphelines"
+                      title={t('seriesIgnoredTip')}
                       className="btn-ghost text-white/60" style={{ padding: '7px 12px' }}>
-                      🚫 Ignorer
+                      {t('ignore')}
                     </button>
                     <button onClick={() => deleteSeries(series.path, series.series)}
                       className="btn-danger text-white" style={{ padding: '7px 12px' }}>
-                      🗑 Supprimer
+                      🗑 {lang === 'fr' ? 'Supprimer' : 'Delete'}
                     </button>
                   </div>
                 </div>
@@ -841,40 +1245,40 @@ const App = () => {
         <div className="glass rounded-2xl p-6">
           <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
             <div>
-              <h2 className="text-lg font-bold">Journal d'activité</h2>
+              <h2 className="text-lg font-bold">{t('activityLog')}</h2>
               <p className="text-xs mt-1" style={{ color: 'rgba(100,116,139,0.8)' }}>
-                {filteredLogs.length} entrée{filteredLogs.length !== 1 ? 's' : ''}
-                {logLevel || logCategory ? ' (filtrées)' : ''}
+                {t('entries')(filteredLogs.length)}
+                {logLevel || logCategory ? ` ${t('filteredSuffix')}` : ''}
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               {/* Filters */}
               <select value={logLevel} onChange={e => setLogLevel(e.target.value)}
                 className="input-field" style={{ width: 130 }}>
-                <option value="">Tous niveaux</option>
-                <option value="success">Succès</option>
-                <option value="info">Info</option>
-                <option value="warning">Avertissement</option>
-                <option value="error">Erreur</option>
+                <option value="">{t('allLevels')}</option>
+                <option value="success">{t('levelSuccess')}</option>
+                <option value="info">{t('levelInfo')}</option>
+                <option value="warning">{t('levelWarning')}</option>
+                <option value="error">{t('levelError')}</option>
               </select>
               <select value={logCategory} onChange={e => setLogCategory(e.target.value)}
                 className="input-field" style={{ width: 140 }}>
-                <option value="">Toutes catégories</option>
+                <option value="">{t('allCategories')}</option>
                 <option value="hardlink">Hardlink</option>
-                <option value="series">Séries</option>
+                <option value="series">{t('catSeries')}</option>
                 <option value="cron">Cron</option>
-                <option value="delete">Suppression</option>
+                <option value="delete">{t('catDelete')}</option>
                 <option value="webhook">Webhook</option>
                 <option value="scan">Scan</option>
-                <option value="ignore">Ignoré</option>
+                <option value="ignore">{t('catIgnored')}</option>
               </select>
-              <button onClick={fetchLogs} className="btn-ghost text-white/70">⟳ Rafraîchir</button>
+              <button onClick={fetchLogs} className="btn-ghost text-white/70">{t('refresh')}</button>
               <label className="flex items-center gap-2 text-xs cursor-pointer select-none" style={{ color: 'rgba(148,163,184,0.8)' }}>
                 <ToggleSwitch checked={logAutoRefresh} onChange={setLogAutoRefresh} />
-                Auto 5s
+                {t('auto5s')}
               </label>
               <button onClick={clearLogs} className="btn-danger text-white" style={{ padding: '7px 14px' }}>
-                🗑 Effacer
+                {t('clearLogs')}
               </button>
             </div>
           </div>
@@ -882,22 +1286,22 @@ const App = () => {
           {filteredLogs.length === 0 ? (
             <div className="text-center py-20" style={{ color: 'rgba(100,116,139,0.7)' }}>
               <div className="text-5xl mb-4">📋</div>
-              <p className="text-base font-medium">Aucun log</p>
-              <p className="text-sm mt-1">Les actions (hardlinks, scans, suppressions…) apparaîtront ici</p>
+              <p className="text-base font-medium">{t('noLogs')}</p>
+              <p className="text-sm mt-1">{t('noLogsSub')}</p>
             </div>
           ) : (
             <div className="rounded-xl overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.07)' }}>
               {/* Header */}
               <div className="grid px-4 py-2.5" style={{ gridTemplateColumns: '155px 80px 100px 1fr', gap: 12, background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(255,255,255,0.07)', fontSize: 11, fontWeight: 600, color: 'rgba(100,116,139,0.8)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                <span>Horodatage</span>
-                <span>Niveau</span>
-                <span>Catégorie</span>
-                <span>Message</span>
+                <span>{t('timestamp')}</span>
+                <span>{t('level')}</span>
+                <span>{t('category')}</span>
+                <span>{t('message')}</span>
               </div>
               {/* Rows */}
               <div className="overflow-y-auto scrollbar-thin" style={{ maxHeight: 600 }}>
                 {filteredLogs.map((log, idx) => (
-                  <LogRow key={idx} log={log} />
+                  <LogRow key={idx} log={log} lang={lang} t={t} />
                 ))}
               </div>
             </div>
@@ -917,7 +1321,7 @@ const App = () => {
 
             {/* Modal header */}
             <div className="flex justify-between items-center p-6" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-              <h2 className="text-lg font-bold">Paramètres</h2>
+              <h2 className="text-lg font-bold">{t('settingsTitle')}</h2>
               <button onClick={() => setShowSettings(false)}
                 className="w-8 h-8 flex items-center justify-center rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition-all text-xl">
                 ×
@@ -927,17 +1331,17 @@ const App = () => {
             {/* Tabs */}
             <div className="flex gap-1 px-6 pt-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
               {[
-                { id: 'general',    label: '🔗 Connexions' },
-                { id: 'paths',      label: '📁 Chemins' },
-                { id: 'series',     label: '📺 Séries' },
-                { id: 'automation', label: '⏰ Automatisation' },
-                { id: 'genres',     label: '🎭 Genres' },
-                { id: 'ignored',    label: `🚫 Exclusions${totalIgnored > 0 ? ` (${totalIgnored})` : ''}` },
-              ].map(t => (
-                <button key={t.id} onClick={() => setSettingsTab(t.id)}
+                { id: 'general',    label: t('tabConnections') },
+                { id: 'paths',      label: t('tabPaths') },
+                { id: 'series',     label: t('tabSeries') },
+                { id: 'automation', label: t('tabAutomation') },
+                { id: 'genres',     label: t('tabGenres') },
+                { id: 'ignored',    label: t('tabExclusions')(totalIgnored) },
+              ].map(tab => (
+                <button key={tab.id} onClick={() => setSettingsTab(tab.id)}
                   className="px-4 py-2 text-xs font-medium rounded-t-lg transition-all"
-                  style={{ color: settingsTab === t.id ? '#60a5fa' : 'rgba(100,116,139,0.8)', borderBottom: settingsTab === t.id ? '2px solid #3b82f6' : '2px solid transparent', background: settingsTab === t.id ? 'rgba(59,130,246,0.08)' : 'transparent' }}>
-                  {t.label}
+                  style={{ color: settingsTab === tab.id ? '#60a5fa' : 'rgba(100,116,139,0.8)', borderBottom: settingsTab === tab.id ? '2px solid #3b82f6' : '2px solid transparent', background: settingsTab === tab.id ? 'rgba(59,130,246,0.08)' : 'transparent' }}>
+                  {tab.label}
                 </button>
               ))}
             </div>
@@ -953,7 +1357,7 @@ const App = () => {
                       <Field label="URL">
                         <input type="text" value={config.radarrUrl} onChange={e => setConfig({...config, radarrUrl: e.target.value})} className="input-field" placeholder="http://radarr:7878" />
                       </Field>
-                      <Field label="Clé API">
+                      <Field label={t('apiKeyLabel')}>
                         <input type="password" value={config.apiKey} onChange={e => setConfig({...config, apiKey: e.target.value})} className="input-field" placeholder="••••••••••••••••" />
                       </Field>
                     </div>
@@ -963,32 +1367,30 @@ const App = () => {
                       <Field label="URL">
                         <input type="text" value={config.sonarrUrl || ''} onChange={e => setConfig({...config, sonarrUrl: e.target.value})} className="input-field" placeholder="http://sonarr:8989" />
                       </Field>
-                      <Field label="Clé API">
+                      <Field label={t('apiKeyLabel')}>
                         <input type="password" value={config.sonarrApiKey || ''} onChange={e => setConfig({...config, sonarrApiKey: e.target.value})} className="input-field" placeholder="••••••••••••••••" />
                       </Field>
                     </div>
                   </SectionCard>
                   <SectionCard title="Jellystat" icon="📊">
                     <div className="grid grid-cols-2 gap-3">
-                      <Field label="URL Jellystat" hint="ex: http://jellystat:3000">
+                      <Field label="URL Jellystat" hint={t('jellystatUrlHint')}>
                         <input type="text" value={config.jellystatUrl || ''} onChange={e => setConfig({...config, jellystatUrl: e.target.value})} className="input-field" placeholder="http://jellystat:3000" />
                       </Field>
-                      <Field label="Clé API Jellystat">
+                      <Field label={t('jellystatApiKeyLabel')}>
                         <input type="password" value={config.jellystatApiKey || ''} onChange={e => setConfig({...config, jellystatApiKey: e.target.value})} className="input-field" placeholder="••••••••••••••••" />
                       </Field>
                     </div>
-                    <p className="text-xs" style={{ color: 'rgba(100,116,139,0.7)' }}>
-                      Affiche le nombre de vues et l'historique de visionnage dans la bibliothèque (via <code style={{ fontSize:10 }}>/api/getItemsPlaybackActivity</code>).
-                      La clé API se génère dans Jellystat → Paramètres → API Key.
-                    </p>
+                    <p className="text-xs" style={{ color: 'rgba(100,116,139,0.7)' }}
+                      dangerouslySetInnerHTML={{ __html: t('jellystatDesc') }} />
                   </SectionCard>
-                  <SectionCard title="Propriétaire des fichiers" icon="👤">
+                  <SectionCard title={t('fileOwnerTitle')} icon="👤">
                     <div className="grid grid-cols-2 gap-3">
-                      <Field label="Utilisateur (chown)" hint="Laissez vide pour ne pas modifier">
-                        <input type="text" value={config.ownerUser} onChange={e => setConfig({...config, ownerUser: e.target.value})} className="input-field" placeholder="media" />
+                      <Field label={t('ownerUserLabel')} hint={t('ownerUserHint')}>
+                        <input type="text" value={config.ownerUser} onChange={e => setConfig({...config, ownerUser: e.target.value})} className="input-field" placeholder={t('ownerUserPlaceholder')} />
                       </Field>
-                      <Field label="Groupe (GID ou nom)" hint="Laissez vide pour ne pas modifier">
-                        <input type="text" value={config.ownerGroup} onChange={e => setConfig({...config, ownerGroup: e.target.value})} className="input-field" placeholder="1000" />
+                      <Field label={t('ownerGroupLabel')} hint={t('ownerGroupHint')}>
+                        <input type="text" value={config.ownerGroup} onChange={e => setConfig({...config, ownerGroup: e.target.value})} className="input-field" placeholder={t('ownerGroupPlaceholder')} />
                       </Field>
                     </div>
                   </SectionCard>
@@ -997,11 +1399,11 @@ const App = () => {
 
               {/* CHEMINS */}
               {settingsTab === 'paths' && (
-                <SectionCard title="Chemins Films" icon="🎬">
-                  <Field label='Source "A trier"' hint="Dossier où arrivent les fichiers originaux">
+                <SectionCard title={t('pathsTitle')} icon="🎬">
+                  <Field label={t('sourceLabel')} hint={t('sourceHint')}>
                     <input type="text" value={config.sourceRoot} onChange={e => setConfig({...config, sourceRoot: e.target.value})} className="input-field font-mono text-xs" />
                   </Field>
-                  <Field label="Destination (racine bibliothèque)" hint="Racine des dossiers par genre">
+                  <Field label={t('destLabel')} hint={t('destHint')}>
                     <input type="text" value={config.mediaRoot} onChange={e => setConfig({...config, mediaRoot: e.target.value})} className="input-field font-mono text-xs" />
                   </Field>
                 </SectionCard>
@@ -1009,22 +1411,18 @@ const App = () => {
 
               {/* SÉRIES */}
               {settingsTab === 'series' && (
-                <SectionCard title="Vérification des séries orphelines" icon="📺"
+                <SectionCard title={t('seriesCheckTitle')} icon="📺"
                   toggle={config.seriesCheck?.enabled || false}
                   onToggle={v => setConfig({...config, seriesCheck: {...config.seriesCheck, enabled: v}})}>
-                  <Field label="Dossier Source (géré par Sonarr)" hint="Référence optionnelle si Sonarr n'est pas configuré">
+                  <Field label={t('seriesSourceLabel')} hint={t('seriesSourceHint')}>
                     <input type="text" value={config.seriesSourceRoot || ''} onChange={e => setConfig({...config, seriesSourceRoot: e.target.value})} className="input-field font-mono text-xs" placeholder="/media/series/Source" />
                   </Field>
-                  <Field label="Dossier Check (à vérifier)" hint="Ce dossier est scanné pour détecter les orphelines">
+                  <Field label={t('seriesCheckLabel')} hint={t('seriesCheckHint')}>
                     <input type="text" value={config.seriesCheckRoot || ''} onChange={e => setConfig({...config, seriesCheckRoot: e.target.value})} className="input-field font-mono text-xs" placeholder="/media/series/Check" />
                   </Field>
                   <div className="rounded-xl p-4" style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)' }}>
-                    <p className="text-xs leading-relaxed" style={{ color: 'rgba(147,197,253,0.9)' }}>
-                      <strong>Détection :</strong> Pour chaque dossier dans Check, l'API Sonarr est consultée.
-                      Une série est <strong>orpheline</strong> uniquement si Sonarr indique 0 fichier,
-                      non monitorée, et non en téléchargement. Utilisez le bouton <strong>Ignorer</strong> pour
-                      exclure une série de cette liste sans la supprimer.
-                    </p>
+                    <p className="text-xs leading-relaxed" style={{ color: 'rgba(147,197,253,0.9)' }}
+                      dangerouslySetInnerHTML={{ __html: t('seriesInfoBox') }} />
                   </div>
                 </SectionCard>
               )}
@@ -1032,65 +1430,65 @@ const App = () => {
               {/* AUTOMATISATION */}
               {settingsTab === 'automation' && (
                 <>
-                  <SectionCard title="Hardlinks Films (automatique)" icon="🎬"
+                  <SectionCard title={t('autoHardlinkTitle')} icon="🎬"
                     toggle={config.autoSync?.enabled || false}
                     onToggle={v => setConfig({...config, autoSync: {...config.autoSync, enabled: v}})}>
-                    <Field label="Planification cron" hint="Exemple : 0 */6 * * * = toutes les 6h">
+                    <Field label={t('cronLabel')} hint={t('cronHint')}>
                       <input type="text" value={config.autoSync?.cronSchedule || '0 */6 * * *'} onChange={e => setConfig({...config, autoSync: {...config.autoSync, cronSchedule: e.target.value}})} className="input-field font-mono text-xs" />
                     </Field>
                     <div className="grid grid-cols-2 gap-3">
-                      <Field label="Dernier run">
-                        <p className="text-xs px-3 py-2.5 rounded-lg" style={{ background: 'rgba(255,255,255,0.04)', color: 'rgba(148,163,184,0.8)' }}>{formatDate(config.autoSync?.lastRun)}</p>
+                      <Field label={t('lastRunLabel')}>
+                        <p className="text-xs px-3 py-2.5 rounded-lg" style={{ background: 'rgba(255,255,255,0.04)', color: 'rgba(148,163,184,0.8)' }}>{formatDate(config.autoSync?.lastRun, lang)}</p>
                       </Field>
-                      <Field label="Dernier scan complet">
-                        <p className="text-xs px-3 py-2.5 rounded-lg" style={{ background: 'rgba(255,255,255,0.04)', color: 'rgba(148,163,184,0.8)' }}>{formatDate(config.autoSync?.lastFullScan)}</p>
+                      <Field label={t('lastFullScanLabel')}>
+                        <p className="text-xs px-3 py-2.5 rounded-lg" style={{ background: 'rgba(255,255,255,0.04)', color: 'rgba(148,163,184,0.8)' }}>{formatDate(config.autoSync?.lastFullScan, lang)}</p>
                       </Field>
                     </div>
                     <label className="flex items-center gap-3 cursor-pointer">
                       <ToggleSwitch checked={config.scanOptimization?.enabled !== false} onChange={v => setConfig({...config, scanOptimization: {...config.scanOptimization, enabled: v}})} />
                       <div>
-                        <p className="text-xs font-medium">Scan optimisé</p>
-                        <p className="text-xs" style={{ color: 'rgba(100,116,139,0.7)' }}>Scanne uniquement les films récents entre les scans complets</p>
+                        <p className="text-xs font-medium">{t('optimizedScanLabel')}</p>
+                        <p className="text-xs" style={{ color: 'rgba(100,116,139,0.7)' }}>{t('optimizedScanHint')}</p>
                       </div>
                     </label>
                     {config.scanOptimization?.enabled !== false && (
                       <div className="grid grid-cols-2 gap-3 ml-12">
-                        <Field label="Fenêtre récents (heures)">
+                        <Field label={t('recentWindowLabel')}>
                           <input type="number" value={config.scanOptimization?.recentHours || 3} onChange={e => setConfig({...config, scanOptimization: {...config.scanOptimization, recentHours: parseInt(e.target.value)}})} className="input-field text-sm" min="1" />
                         </Field>
-                        <Field label="Scan complet toutes les (heures)">
+                        <Field label={t('fullScanIntervalLabel')}>
                           <input type="number" value={config.scanOptimization?.fullScanInterval || 24} onChange={e => setConfig({...config, scanOptimization: {...config.scanOptimization, fullScanInterval: parseInt(e.target.value)}})} className="input-field text-sm" min="1" />
                         </Field>
                       </div>
                     )}
                   </SectionCard>
 
-                  <SectionCard title="Vérification Séries (automatique)" icon="📺"
+                  <SectionCard title={t('autoSeriesTitle')} icon="📺"
                     toggle={config.seriesAutoCheck?.enabled || false}
                     onToggle={v => setConfig({...config, seriesAutoCheck: {...config.seriesAutoCheck, enabled: v}})}>
-                    <Field label="Planification cron" hint="Exemple : 0 */12 * * * = toutes les 12h">
+                    <Field label={t('cronLabel')} hint={t('cronSeriesHint')}>
                       <input type="text" value={config.seriesAutoCheck?.cronSchedule || '0 */12 * * *'} onChange={e => setConfig({...config, seriesAutoCheck: {...config.seriesAutoCheck, cronSchedule: e.target.value}})} className="input-field font-mono text-xs" />
                     </Field>
-                    <Field label="Dernier run">
-                      <p className="text-xs px-3 py-2.5 rounded-lg" style={{ background: 'rgba(255,255,255,0.04)', color: 'rgba(148,163,184,0.8)' }}>{formatDate(config.seriesAutoCheck?.lastRun)}</p>
+                    <Field label={t('lastRunLabel')}>
+                      <p className="text-xs px-3 py-2.5 rounded-lg" style={{ background: 'rgba(255,255,255,0.04)', color: 'rgba(148,163,184,0.8)' }}>{formatDate(config.seriesAutoCheck?.lastRun, lang)}</p>
                     </Field>
                   </SectionCard>
 
                   {cronStatus && (
-                    <SectionCard title="Jobs planifiés actifs" icon="⏰">
+                    <SectionCard title={t('activeJobsTitle')} icon="⏰">
                       {!cronStatus.jobs?.length ? (
-                        <p className="text-xs" style={{ color: 'rgba(100,116,139,0.7)' }}>Aucun job actif</p>
+                        <p className="text-xs" style={{ color: 'rgba(100,116,139,0.7)' }}>{t('noActiveJobs')}</p>
                       ) : (
                         <div className="space-y-2">
                           {(cronStatus.jobs || []).map((job, i) => (
                             <div key={i} className="flex justify-between items-center p-3 rounded-lg" style={{ background: 'rgba(255,255,255,0.04)' }}>
                               <div>
-                                <p className="text-xs font-semibold">{job.id === 'auto_hardlink' ? '🎬 Films' : '📺 Séries'}</p>
+                                <p className="text-xs font-semibold">{job.id === 'auto_hardlink' ? t('jobMovies') : t('jobSeries')}</p>
                                 <p className="text-xs mt-0.5" style={{ color: 'rgba(100,116,139,0.7)' }}>{job.trigger}</p>
                               </div>
                               <div className="text-right">
-                                <p className="text-xs" style={{ color: 'rgba(100,116,139,0.7)' }}>Prochain</p>
-                                <p className="text-xs font-mono mt-0.5" style={{ color: '#34d399' }}>{job.next_run ? formatDate(job.next_run) : '—'}</p>
+                                <p className="text-xs" style={{ color: 'rgba(100,116,139,0.7)' }}>{t('jobNext')}</p>
+                                <p className="text-xs font-mono mt-0.5" style={{ color: '#34d399' }}>{job.next_run ? formatDate(job.next_run, lang) : '—'}</p>
                               </div>
                             </div>
                           ))}
@@ -1099,14 +1497,14 @@ const App = () => {
                     </SectionCard>
                   )}
 
-                  <SectionCard title="Webhooks" icon="🔔"
+                  <SectionCard title={t('webhooksTitle')} icon="🔔"
                     toggle={config.webhookEnabled || false}
                     onToggle={v => setConfig({...config, webhookEnabled: v})}>
-                    <Field label="Secret (optionnel)" hint="Laissez vide pour désactiver la vérification">
+                    <Field label={t('webhookSecretLabel')} hint={t('webhookSecretHint')}>
                       <input type="password" value={config.webhookSecret || ''} onChange={e => setConfig({...config, webhookSecret: e.target.value})} className="input-field text-xs" placeholder="secret" />
                     </Field>
                     <div className="rounded-lg p-3 space-y-1" style={{ background: 'rgba(255,255,255,0.04)' }}>
-                      <p className="text-xs" style={{ color: 'rgba(100,116,139,0.7)' }}>Endpoints disponibles :</p>
+                      <p className="text-xs" style={{ color: 'rgba(100,116,139,0.7)' }}>{t('availableEndpoints')}</p>
                       <p className="text-xs font-mono" style={{ color: '#60a5fa' }}>POST /api/webhook/radarr</p>
                       <p className="text-xs font-mono" style={{ color: '#60a5fa' }}>POST /api/webhook/jellyfin</p>
                     </div>
@@ -1116,11 +1514,11 @@ const App = () => {
 
               {/* GENRES */}
               {settingsTab === 'genres' && (
-                <SectionCard title="Mapping Genres → Dossiers" icon="🎭"
-                  action={<button onClick={fetchAllGenres} className="btn-primary text-white text-xs px-3 py-1.5">Charger depuis Radarr</button>}>
+                <SectionCard title={t('genreMappingTitle')} icon="🎭"
+                  action={<button onClick={fetchAllGenres} className="btn-primary text-white text-xs px-3 py-1.5">{t('loadFromRadarr')}</button>}>
                   {allGenres.length === 0 ? (
                     <p className="text-xs text-center py-6" style={{ color: 'rgba(100,116,139,0.7)' }}>
-                      Cliquez sur "Charger depuis Radarr" pour obtenir la liste des genres
+                      {t('noGenresLoaded')}
                     </p>
                   ) : (
                     <div className="grid grid-cols-2 gap-2">
@@ -1137,7 +1535,7 @@ const App = () => {
                           <input type="text" value={genre.folder} onChange={e => {
                             updateGenreMapping(genre.name, 'folder', e.target.value);
                             setAllGenres(allGenres.map(g => g.name === genre.name ? {...g, folder: e.target.value} : g));
-                          }} className="input-field text-xs font-mono" placeholder="Nom du dossier" disabled={!genre.enabled} />
+                          }} className="input-field text-xs font-mono" placeholder={t('folderPlaceholder')} disabled={!genre.enabled} />
                         </div>
                       ))}
                     </div>
@@ -1149,15 +1547,13 @@ const App = () => {
               {settingsTab === 'ignored' && (
                 <div className="space-y-4">
                   <div className="rounded-xl p-4" style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)' }}>
-                    <p className="text-xs leading-relaxed" style={{ color: 'rgba(147,197,253,0.9)' }}>
-                      Les éléments exclus n'apparaissent plus dans les listes d'orphelins et de problèmes.
-                      Aucun fichier n'est supprimé. Pour les retirer de l'exclusion, cliquez sur <strong>×</strong>.
-                    </p>
+                    <p className="text-xs leading-relaxed" style={{ color: 'rgba(147,197,253,0.9)' }}
+                      dangerouslySetInnerHTML={{ __html: t('exclusionInfo') }} />
                   </div>
 
-                  <SectionCard title="Séries exclues" icon="📺">
+                  <SectionCard title={t('excludedSeriesTitle')} icon="📺">
                     {!(ignored.series || []).length ? (
-                      <p className="text-xs" style={{ color: 'rgba(100,116,139,0.6)' }}>Aucune série exclue</p>
+                      <p className="text-xs" style={{ color: 'rgba(100,116,139,0.6)' }}>{t('noExcludedSeries')}</p>
                     ) : (
                       <div className="space-y-2">
                         {(ignored.series || []).map((name, i) => (
@@ -1165,7 +1561,7 @@ const App = () => {
                             <span className="text-xs font-medium">📺 {name}</span>
                             <button onClick={() => removeIgnored('series', name)}
                               className="text-xs px-2 py-1 rounded transition-all hover:bg-white/10" style={{ color: 'rgba(239,68,68,0.8)' }}>
-                              × Retirer
+                              {t('remove')}
                             </button>
                           </div>
                         ))}
@@ -1173,9 +1569,9 @@ const App = () => {
                     )}
                   </SectionCard>
 
-                  <SectionCard title="Films exclus" icon="🎬">
+                  <SectionCard title={t('excludedMoviesTitle')} icon="🎬">
                     {!(ignored.movies || []).length ? (
-                      <p className="text-xs" style={{ color: 'rgba(100,116,139,0.6)' }}>Aucun film exclu</p>
+                      <p className="text-xs" style={{ color: 'rgba(100,116,139,0.6)' }}>{t('noExcludedMovies')}</p>
                     ) : (
                       <div className="space-y-2">
                         {(ignored.movies || []).map((name, i) => (
@@ -1183,7 +1579,7 @@ const App = () => {
                             <span className="text-xs font-medium">🎬 {name}</span>
                             <button onClick={() => removeIgnored('movies', name)}
                               className="text-xs px-2 py-1 rounded transition-all hover:bg-white/10" style={{ color: 'rgba(239,68,68,0.8)' }}>
-                              × Retirer
+                              {t('remove')}
                             </button>
                           </div>
                         ))}
@@ -1197,7 +1593,7 @@ const App = () => {
             {/* Footer */}
             <div className="p-5" style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}>
               <button onClick={saveConfig} className="btn-primary w-full text-white text-sm font-bold py-3">
-                💾 Sauvegarder la configuration
+                {t('saveConfig')}
               </button>
             </div>
           </div>
@@ -1208,10 +1604,11 @@ const App = () => {
 };
 
 // ─── Log Row component ────────────────────────────────────────────────────────
-const LogRow = ({ log }) => {
+const LogRow = ({ log, lang, t }) => {
   const [expanded, setExpanded] = useState(false);
   const levelColors = { success: '#34d399', error: '#f87171', warning: '#fbbf24', info: '#60a5fa' };
   const lc = levelColors[log.level] || '#94a3b8';
+  const locale = lang === 'fr' ? 'fr-FR' : 'en-CA';
 
   return (
     <div className="log-row" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
@@ -1219,14 +1616,14 @@ const LogRow = ({ log }) => {
         style={{ gridTemplateColumns: '155px 80px 100px 1fr', gap: 12, cursor: log.details ? 'pointer' : 'default' }}
         onClick={() => log.details && setExpanded(!expanded)}>
         <span className="text-xs font-mono" style={{ color: 'rgba(100,116,139,0.7)' }}>
-          {new Date(log.timestamp).toLocaleString('fr-FR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit', second:'2-digit' })}
+          {new Date(log.timestamp).toLocaleString(locale, { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit', second:'2-digit' })}
         </span>
         <span>
           <span className="badge text-xs" style={{ background: `${lc}18`, color: lc }}>
-            {log.level === 'success' ? '✓ OK' : log.level === 'error' ? '✕ Err' : log.level === 'warning' ? '⚠ Avert' : 'ℹ Info'}
+            {log.level === 'success' ? t('badgeOk') : log.level === 'error' ? t('badgeErr') : log.level === 'warning' ? t('badgeWarn') : t('badgeInfo')}
           </span>
         </span>
-        <span><CategoryBadge category={log.category} /></span>
+        <span><CategoryBadge category={log.category} t={t} /></span>
         <div className="flex items-center gap-2 min-w-0">
           <span className="text-xs truncate" style={{ color: 'rgba(203,213,225,0.9)' }}>{log.message}</span>
           {log.details && (
