@@ -36,6 +36,8 @@ def load_config():
         "ownerUser": "",
         "ownerGroup": "",
         "genreMapping": {},
+        "studioMapping": {},
+        "tmdbApiKey": "",
         "autoSync": {
             "enabled": False,
             "cronSchedule": "0 */6 * * *",
@@ -153,10 +155,15 @@ def save_ignored(ignored):
 
 # --- HARDLINK HELPERS ---
 
-def get_env(config, movie="", genres=""):
+def get_env(config, movie="", genres="", studios=""):
     mapping_str = "|".join([
         f"{genre}:{settings['folder']}"
         for genre, settings in config.get('genreMapping', {}).items()
+        if settings.get('enabled', False)
+    ])
+    studio_mapping_str = "|".join([
+        f"{studio}:{settings['folder']}"
+        for studio, settings in config.get('studioMapping', {}).items()
         if settings.get('enabled', False)
     ])
     env = os.environ.copy()
@@ -166,10 +173,12 @@ def get_env(config, movie="", genres=""):
         "SOURCE_ROOT": config.get('sourceRoot', ''),
         "MEDIA_ROOT": config.get('mediaRoot', ''),
         "GENRE_MAPPING_STR": mapping_str,
+        "STUDIO_MAPPING_STR": studio_mapping_str,
         "OWNER_USER": str(config.get('ownerUser', '')),
         "OWNER_GROUP": str(config.get('ownerGroup', '')),
         "SPECIFIC_MOVIE": str(movie),
-        "SPECIFIC_GENRES": str(genres)
+        "SPECIFIC_GENRES": str(genres),
+        "SPECIFIC_STUDIOS": str(studios)
     })
     return env
 
@@ -193,9 +202,9 @@ def _parse_hardlink_summary(output):
     return summary
 
 
-def execute_hardlinks(config, movie_path='', genres=''):
-    env = get_env(config, movie_path, genres)
-    label = os.path.basename(movie_path) if movie_path else ("genre=" + genres if genres else "tous")
+def execute_hardlinks(config, movie_path='', genres='', studios=''):
+    env = get_env(config, movie_path, genres, studios)
+    label = os.path.basename(movie_path) if movie_path else ("genre=" + genres if genres else ("studio=" + studios if studios else "tous"))
     try:
         process = subprocess.run(
             [SCRIPT_PATH, "-y"],
@@ -237,16 +246,18 @@ def get_hardlink_status(config):
                 parts = line.split('|')
                 if len(parts) >= 6:
                     folder_name = parts[1]
-                    genre = parts[2]
+                    category = parts[2]
                     local_folder = parts[3]
                     found = int(parts[4])
                     total = int(parts[5])
+                    link_type = parts[6].strip() if len(parts) >= 7 else 'genre'
                     hardlink_status.setdefault(folder_name, []).append({
-                        "genre": genre,
+                        "genre": category,
                         "folder": local_folder,
                         "found": found,
                         "total": total,
-                        "exists": found >= total and total > 0
+                        "exists": found >= total and total > 0,
+                        "type": link_type
                     })
         return hardlink_status
     except Exception as e:
@@ -742,6 +753,59 @@ def get_all_genres():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route('/api/studios', methods=['GET'])
+def get_all_studios():
+    config = load_config()
+    try:
+        # Primary: Radarr
+        response = requests.get(
+            f"{config['radarrUrl']}/api/v3/movie",
+            headers={"X-Api-Key": config['apiKey']},
+            timeout=30
+        )
+        response.raise_for_status()
+        all_studios = set()
+        movies_data = response.json()
+        tmdb_ids_missing = []
+
+        for movie in movies_data:
+            studio = movie.get('studio', '').strip()
+            if studio:
+                all_studios.add(studio)
+            elif config.get('tmdbApiKey') and movie.get('tmdbId'):
+                tmdb_ids_missing.append(movie['tmdbId'])
+
+        # Fallback: TMDB for movies without studio in Radarr
+        if tmdb_ids_missing and config.get('tmdbApiKey'):
+            for tmdb_id in tmdb_ids_missing[:50]:  # limit to avoid rate limiting
+                try:
+                    tmdb_resp = requests.get(
+                        f"https://api.themoviedb.org/3/movie/{tmdb_id}",
+                        params={"api_key": config['tmdbApiKey']},
+                        timeout=10
+                    )
+                    if tmdb_resp.ok:
+                        companies = tmdb_resp.json().get('production_companies', [])
+                        for company in companies:
+                            name = company.get('name', '').strip()
+                            if name:
+                                all_studios.add(name)
+                except Exception:
+                    pass
+
+        current_mapping = config.get('studioMapping', {})
+        return jsonify([
+            {
+                'name': studio,
+                'enabled': current_mapping.get(studio, {}).get('enabled', False),
+                'folder': current_mapping.get(studio, {}).get('folder', studio)
+            }
+            for studio in sorted(all_studios)
+        ])
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route('/api/scan', methods=['POST'])
 def scan():
     config = load_config()
@@ -787,6 +851,7 @@ def get_status():
                 continue
 
             genres = [g['name'] if isinstance(g, dict) else g for g in movie.get('genres', [])]
+            studio = movie.get('studio', '').strip()
             poster = next((img.get('remoteUrl') for img in movie.get('images', [])
                            if img.get('coverType') == 'poster'), None)
 
@@ -801,6 +866,7 @@ def get_status():
                 "folderName": folder_name,
                 "poster": poster,
                 "genres": genres,
+                "studio": studio,
                 "hardlinks": hardlink_status.get(folder_name, []),
                 "addedTime": os.path.getmtime(source_path),
                 "addedToRadarr": movie.get('added', ''),
@@ -1019,6 +1085,17 @@ def run_by_genre():
         return jsonify({"error": "Aucun genre"}), 400
     config = load_config()
     results = [{"genre": g, **execute_hardlinks(config, '', g)} for g in genres]
+    return jsonify({"status": "ok", "results": results})
+
+
+@app.route('/api/run-by-studio', methods=['POST'])
+def run_by_studio():
+    data = request.json or {}
+    studios = data.get('studios', [])
+    if not studios:
+        return jsonify({"error": "Aucun studio"}), 400
+    config = load_config()
+    results = [{"studio": s, **execute_hardlinks(config, '', '', s)} for s in studios]
     return jsonify({"status": "ok", "results": results})
 
 

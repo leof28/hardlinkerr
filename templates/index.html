@@ -283,6 +283,15 @@ const TRANSLATIONS = {
     loadFromRadarr: 'Charger depuis Radarr',
     noGenresLoaded: 'Cliquez sur "Charger depuis Radarr" pour obtenir la liste des genres',
     folderPlaceholder: 'Nom du dossier',
+    // Studios tab
+    tabStudios: '🎬 Studios',
+    studioMappingTitle: 'Mapping Studios → Dossiers',
+    loadStudiosFromRadarr: 'Charger depuis Radarr',
+    noStudiosLoaded: 'Cliquez sur "Charger depuis Radarr" pour obtenir la liste des studios',
+    studioFolderPlaceholder: 'Nom du dossier',
+    tmdbApiKeyLabel: 'Clé API TMDB (optionnel)',
+    tmdbApiKeyHint: 'Utilisée pour enrichir les studios manquants dans Radarr',
+    errorStudios: 'Erreur studios',
     // Exclusions tab
     excludedSeriesTitle: 'Séries exclues',
     excludedMoviesTitle: 'Films exclus',
@@ -475,6 +484,15 @@ const TRANSLATIONS = {
     loadFromRadarr: 'Load from Radarr',
     noGenresLoaded: 'Click "Load from Radarr" to get the genre list',
     folderPlaceholder: 'Folder name',
+    // Studios tab
+    tabStudios: '🎬 Studios',
+    studioMappingTitle: 'Studio → Folder Mapping',
+    loadStudiosFromRadarr: 'Load from Radarr',
+    noStudiosLoaded: 'Click "Load from Radarr" to get the studio list',
+    studioFolderPlaceholder: 'Folder name',
+    tmdbApiKeyLabel: 'TMDB API Key (optional)',
+    tmdbApiKeyHint: 'Used to enrich studios missing from Radarr',
+    errorStudios: 'Error loading studios',
     // Exclusions tab
     excludedSeriesTitle: 'Excluded Series',
     excludedMoviesTitle: 'Excluded Movies',
@@ -609,6 +627,7 @@ const App = () => {
   const [duplicates, setDuplicates] = useState([]);
   const [seriesIssues, setSeriesIssues] = useState([]);
   const [allGenres, setAllGenres] = useState([]);
+  const [allStudios, setAllStudios] = useState([]);
   const [logs, setLogs] = useState([]);
   const [ignored, setIgnored] = useState({ series: [], movies: [] });
   const [loading, setLoading] = useState(false);
@@ -661,6 +680,22 @@ const App = () => {
       const data = await apiFetch('/api/genres');
       if (Array.isArray(data)) setAllGenres(data);
     } catch { showToast(t('errorGenres'), 'error'); }
+  };
+
+  const fetchAllStudios = async () => {
+    try {
+      const data = await apiFetch('/api/studios');
+      if (Array.isArray(data)) setAllStudios(data);
+    } catch { showToast(t('errorStudios'), 'error'); }
+  };
+
+  const updateStudioMapping = (studio, field, value) => {
+    setConfig(prev => {
+      const newMapping = { ...prev.studioMapping };
+      if (!newMapping[studio]) newMapping[studio] = { enabled: false, folder: studio };
+      newMapping[studio][field] = value;
+      return { ...prev, studioMapping: newMapping };
+    });
   };
 
   const fetchIgnored = async () => {
@@ -1336,6 +1371,7 @@ const App = () => {
                 { id: 'series',     label: t('tabSeries') },
                 { id: 'automation', label: t('tabAutomation') },
                 { id: 'genres',     label: t('tabGenres') },
+                { id: 'studios',    label: t('tabStudios') },
                 { id: 'ignored',    label: t('tabExclusions')(totalIgnored) },
               ].map(tab => (
                 <button key={tab.id} onClick={() => setSettingsTab(tab.id)}
@@ -1541,6 +1577,44 @@ const App = () => {
                     </div>
                   )}
                 </SectionCard>
+              )}
+
+              {/* STUDIOS */}
+              {settingsTab === 'studios' && (
+                <>
+                  <SectionCard title="TMDB" icon="🔑">
+                    <Field label={t('tmdbApiKeyLabel')} hint={t('tmdbApiKeyHint')}>
+                      <input type="password" value={config.tmdbApiKey || ''} onChange={e => setConfig({...config, tmdbApiKey: e.target.value})} className="input-field" placeholder="••••••••••••••••" />
+                    </Field>
+                  </SectionCard>
+                  <SectionCard title={t('studioMappingTitle')} icon="🎬"
+                    action={<button onClick={fetchAllStudios} className="btn-primary text-white text-xs px-3 py-1.5">{t('loadStudiosFromRadarr')}</button>}>
+                    {allStudios.length === 0 ? (
+                      <p className="text-xs text-center py-6" style={{ color: 'rgba(100,116,139,0.7)' }}>
+                        {t('noStudiosLoaded')}
+                      </p>
+                    ) : (
+                      <div className="grid grid-cols-2 gap-2">
+                        {allStudios.map(studio => (
+                          <div key={studio.name} className="p-3 rounded-xl transition-all"
+                            style={{ background: studio.enabled ? 'rgba(234,179,8,0.08)' : 'rgba(255,255,255,0.03)', border: `1px solid ${studio.enabled ? 'rgba(234,179,8,0.3)' : 'rgba(255,255,255,0.06)'}`, opacity: studio.enabled ? 1 : 0.55 }}>
+                            <div className="flex items-center gap-2 mb-2">
+                              <ToggleSwitch checked={studio.enabled} onChange={v => {
+                                updateStudioMapping(studio.name, 'enabled', v);
+                                setAllStudios(allStudios.map(s => s.name === studio.name ? {...s, enabled: v} : s));
+                              }} />
+                              <span className="text-xs font-semibold">{studio.name}</span>
+                            </div>
+                            <input type="text" value={studio.folder} onChange={e => {
+                              updateStudioMapping(studio.name, 'folder', e.target.value);
+                              setAllStudios(allStudios.map(s => s.name === studio.name ? {...s, folder: e.target.value} : s));
+                            }} className="input-field text-xs font-mono" placeholder={t('studioFolderPlaceholder')} disabled={!studio.enabled} />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </SectionCard>
+                </>
               )}
 
               {/* EXCLUSIONS */}
