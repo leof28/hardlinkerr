@@ -17,6 +17,7 @@ LOGS_PATH = os.path.join(CONFIG_DIR, "logs.json")
 IGNORE_PATH = os.path.join(CONFIG_DIR, "ignored.json")
 SCRIPT_PATH = "./hardlink_manager.sh"
 TEMPLATE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates')
+PLATFORMS_CACHE_PATH = os.path.join(CONFIG_DIR, "platforms_cache.json")
 
 # --- SCHEDULER ---
 scheduler = BackgroundScheduler()
@@ -37,7 +38,9 @@ def load_config():
         "ownerGroup": "",
         "genreMapping": {},
         "studioMapping": {},
+        "platformMapping": {},
         "tmdbApiKey": "",
+        "tmdbCountry": "FR",
         "autoSync": {
             "enabled": False,
             "cronSchedule": "0 */6 * * *",
@@ -68,7 +71,7 @@ def load_config():
                 saved = json.load(f)
                 # Deep merge for nested dicts
                 result = {**defaults, **saved}
-                for key in ('autoSync', 'seriesAutoCheck', 'scanOptimization', 'seriesCheck'):
+                for key in ('autoSync', 'seriesAutoCheck', 'scanOptimization', 'seriesCheck', 'platformMapping'):
                     if key in defaults and key in saved and isinstance(saved[key], dict):
                         result[key] = {**defaults[key], **saved[key]}
                 return result
@@ -263,6 +266,257 @@ def get_hardlink_status(config):
     except Exception as e:
         print(f"Erreur get_hardlink_status: {e}")
         return {}
+
+
+# --- PLATFORM CACHE ---
+
+def load_platforms_cache():
+    if os.path.exists(PLATFORMS_CACHE_PATH):
+        try:
+            with open(PLATFORMS_CACHE_PATH, 'r') as f:
+                return json.load(f)
+        except Exception:
+            return {}
+    return {}
+
+
+def save_platforms_cache(cache):
+    os.makedirs(CONFIG_DIR, exist_ok=True)
+    with open(PLATFORMS_CACHE_PATH, 'w') as f:
+        json.dump(cache, f, indent=2)
+
+
+def get_movie_platforms_from_tmdb(tmdb_id, api_key, country='FR'):
+    """Fetches streaming platforms (flatrate) for a movie from TMDB with local caching."""
+    cache = load_platforms_cache()
+    cache_key = str(tmdb_id)
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
+    if not api_key:
+        return []
+    try:
+        resp = requests.get(
+            f"https://api.themoviedb.org/3/movie/{tmdb_id}/watch/providers",
+            params={"api_key": api_key},
+            timeout=10
+        )
+        if resp.ok:
+            results = resp.json().get('results', {})
+            country_data = results.get(country, {})
+            platforms = []
+            for p in country_data.get('flatrate', []):
+                name = p.get('provider_name', '').strip()
+                if name and name not in platforms:
+                    platforms.append(name)
+            cache[cache_key] = platforms
+            save_platforms_cache(cache)
+            return platforms
+    except Exception as e:
+        print(f"[TMDB] Erreur watch/providers pour {tmdb_id}: {e}")
+    cache[cache_key] = []
+    save_platforms_cache(cache)
+    return []
+
+
+def get_platform_hardlink_status(config, movies_data=None):
+    """Returns platform hardlink status per movie folder (dict: folder_name → list of hardlink info)."""
+    platform_mapping = {
+        p: s for p, s in config.get('platformMapping', {}).items()
+        if s.get('enabled', False)
+    }
+    if not platform_mapping:
+        return {}
+
+    tmdb_api_key = config.get('tmdbApiKey', '')
+    tmdb_country = config.get('tmdbCountry', 'FR')
+    media_root = config.get('mediaRoot', '')
+    source_root = config.get('sourceRoot', '')
+
+    if not media_root or not source_root or not tmdb_api_key:
+        return {}
+
+    if movies_data is None:
+        try:
+            resp = requests.get(
+                f"{config['radarrUrl']}/api/v3/movie",
+                headers={"X-Api-Key": config['apiKey']},
+                timeout=30
+            )
+            resp.raise_for_status()
+            movies_data = resp.json()
+        except Exception as e:
+            print(f"[PLATFORM] Erreur fetch Radarr: {e}")
+            return {}
+
+    status = {}
+
+    for movie in movies_data:
+        if not movie.get('hasFile'):
+            continue
+        folder_name = os.path.basename(movie['path'])
+        source_path = os.path.join(source_root, folder_name)
+        if not os.path.isdir(source_path):
+            continue
+
+        tmdb_id = movie.get('tmdbId')
+        if not tmdb_id:
+            continue
+
+        movie_platforms = get_movie_platforms_from_tmdb(tmdb_id, tmdb_api_key, tmdb_country)
+
+        try:
+            all_files = [f for f in os.listdir(source_path)
+                         if f.lower().endswith(('.mkv', '.mp4', '.avi', '.ts', '.mov',
+                                                '.jpg', '.png', '.nfo', '.srt', '.sub', '.txt'))]
+        except OSError:
+            continue
+        total = len(all_files)
+
+        for platform_name in movie_platforms:
+            p_settings = platform_mapping.get(platform_name)
+            if not p_settings:
+                continue
+            target_folder = p_settings.get('folder', platform_name)
+            target_dir = os.path.join(media_root, target_folder, folder_name)
+
+            found = 0
+            if os.path.isdir(target_dir):
+                for f in all_files:
+                    src_file = os.path.join(source_path, f)
+                    dest_file = os.path.join(target_dir, f)
+                    try:
+                        if (os.path.exists(dest_file) and
+                                os.stat(src_file).st_ino == os.stat(dest_file).st_ino):
+                            found += 1
+                    except OSError:
+                        pass
+
+            status.setdefault(folder_name, []).append({
+                "genre": platform_name,
+                "folder": target_folder,
+                "found": found,
+                "total": total,
+                "exists": found >= total and total > 0,
+                "type": "platform"
+            })
+
+    return status
+
+
+def create_platform_hardlinks(config, movie_path=''):
+    """Creates platform hardlinks using Python's os.link(). Called after genre/studio hardlinks."""
+    platform_mapping = {
+        p: s for p, s in config.get('platformMapping', {}).items()
+        if s.get('enabled', False)
+    }
+    if not platform_mapping:
+        return {"status": "ok", "linked": 0, "skipped": 0, "errors": 0}
+
+    tmdb_api_key = config.get('tmdbApiKey', '')
+    tmdb_country = config.get('tmdbCountry', 'FR')
+    media_root = config.get('mediaRoot', '')
+    source_root = config.get('sourceRoot', '')
+
+    if not tmdb_api_key or not media_root or not source_root:
+        return {"status": "ok", "linked": 0, "skipped": 0, "errors": 0}
+
+    try:
+        resp = requests.get(
+            f"{config['radarrUrl']}/api/v3/movie",
+            headers={"X-Api-Key": config['apiKey']},
+            timeout=30
+        )
+        resp.raise_for_status()
+        movies = resp.json()
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+
+    linked = 0
+    skipped = 0
+    errors = 0
+
+    for movie in movies:
+        if not movie.get('hasFile'):
+            continue
+        folder_name = os.path.basename(movie['path'])
+        source_path = os.path.join(source_root, folder_name)
+        if not os.path.isdir(source_path):
+            continue
+
+        if movie_path and source_path != movie_path:
+            continue
+
+        try:
+            if not any(f.lower().endswith('.mkv') for f in os.listdir(source_path)):
+                continue
+        except OSError:
+            continue
+
+        tmdb_id = movie.get('tmdbId')
+        if not tmdb_id:
+            skipped += 1
+            continue
+
+        movie_platforms = get_movie_platforms_from_tmdb(tmdb_id, tmdb_api_key, tmdb_country)
+        if not movie_platforms:
+            skipped += 1
+            continue
+
+        try:
+            all_files = [f for f in os.listdir(source_path)
+                         if f.lower().endswith(('.mkv', '.mp4', '.avi', '.ts', '.mov',
+                                                '.jpg', '.png', '.nfo', '.srt', '.sub', '.txt'))]
+        except OSError:
+            continue
+
+        created_for_movie = False
+
+        for platform_name in movie_platforms:
+            p_settings = platform_mapping.get(platform_name)
+            if not p_settings:
+                continue
+            target_folder = p_settings.get('folder', platform_name)
+            target_dir = os.path.join(media_root, target_folder, folder_name)
+
+            for fname in all_files:
+                src_file = os.path.join(source_path, fname)
+                dest_file = os.path.join(target_dir, fname)
+                try:
+                    src_stat = os.stat(src_file)
+                    if os.path.exists(dest_file):
+                        dest_stat = os.stat(dest_file)
+                        if src_stat.st_ino == dest_stat.st_ino:
+                            continue
+                        os.remove(dest_file)
+                    os.makedirs(target_dir, exist_ok=True)
+                    os.link(src_file, dest_file)
+                    linked += 1
+                    created_for_movie = True
+                    # Apply ownership
+                    owner_user = config.get('ownerUser', '')
+                    owner_group = config.get('ownerGroup', '')
+                    if owner_user or owner_group:
+                        try:
+                            import pwd
+                            import grp
+                            uid = pwd.getpwnam(owner_user).pw_uid if owner_user else -1
+                            gid = grp.getgrnam(owner_group).gr_gid if owner_group else -1
+                            os.chown(dest_file, uid, gid)
+                        except Exception:
+                            pass
+                except Exception as e:
+                    errors += 1
+                    print(f"[PLATFORM] Erreur hardlink {fname}: {e}")
+
+        if not created_for_movie:
+            skipped += 1
+
+    if linked > 0:
+        append_log("success", "hardlink",
+                   f"Platform hardlinks créés — {linked} lien(s)",
+                   {"linked": linked, "errors": errors})
+    return {"status": "ok", "linked": linked, "skipped": skipped, "errors": errors}
 
 
 # --- SCAN OPTIMIZATION ---
@@ -835,6 +1089,15 @@ def get_status():
         jellystat_history = get_jellystat_history(config)
         jellystat_enabled = bool(config.get('jellystatUrl') and config.get('jellystatApiKey'))
 
+        # Platform hardlink status (only if platform mapping configured)
+        platform_status = {}
+        tmdb_api_key = config.get('tmdbApiKey', '')
+        tmdb_country = config.get('tmdbCountry', 'FR')
+        platform_mapping = config.get('platformMapping', {})
+        has_platform_mapping = any(s.get('enabled') for s in platform_mapping.values())
+        if has_platform_mapping and tmdb_api_key:
+            platform_status = get_platform_hardlink_status(config, all_movies)
+
         result = []
 
         for movie in all_movies:
@@ -860,6 +1123,15 @@ def get_status():
             watch_dates_raw = jellystat_history.get(title_key, [])
             watch_dates_sorted = sorted([d for d in watch_dates_raw if d], reverse=True)
 
+            # Platforms from TMDB cache (fast, cache already populated)
+            tmdb_id = movie.get('tmdbId')
+            movie_platforms = []
+            if tmdb_api_key and tmdb_id:
+                movie_platforms = get_movie_platforms_from_tmdb(tmdb_id, tmdb_api_key, tmdb_country)
+
+            # Merge genre/studio hardlinks with platform hardlinks
+            all_hardlinks = hardlink_status.get(folder_name, []) + platform_status.get(folder_name, [])
+
             result.append({
                 "title": movie['title'],
                 "path": source_path,
@@ -867,11 +1139,12 @@ def get_status():
                 "poster": poster,
                 "genres": genres,
                 "studio": studio,
-                "hardlinks": hardlink_status.get(folder_name, []),
+                "platforms": movie_platforms,
+                "hardlinks": all_hardlinks,
                 "addedTime": os.path.getmtime(source_path),
                 "addedToRadarr": movie.get('added', ''),
                 "fileSize": movie.get('movieFile', {}).get('size', 0),
-                "tmdbId": movie.get('tmdbId'),
+                "tmdbId": tmdb_id,
                 "watchCount": len(watch_dates_raw),
                 "watchDates": watch_dates_sorted[:10],
                 "jellystatEnabled": jellystat_enabled
@@ -1065,16 +1338,25 @@ def run_action():
     movie_paths = data.get('movie_paths', [])
 
     if not movie_paths:
-        return jsonify(execute_hardlinks(config, data.get('movie_path', ''), data.get('genres', '')))
+        mp = data.get('movie_path', '')
+        result = execute_hardlinks(config, mp, data.get('genres', ''))
+        create_platform_hardlinks(config, mp)
+        return jsonify(result)
 
-    results = [{"movie": os.path.basename(mp), **execute_hardlinks(config, mp)}
-               for mp in movie_paths]
+    results = []
+    for mp in movie_paths:
+        r = execute_hardlinks(config, mp)
+        create_platform_hardlinks(config, mp)
+        results.append({"movie": os.path.basename(mp), **r})
     return jsonify({"status": "ok", "results": results})
 
 
 @app.route('/api/run-all', methods=['POST'])
 def run_all():
-    return jsonify(execute_hardlinks(load_config()))
+    config = load_config()
+    result = execute_hardlinks(config)
+    create_platform_hardlinks(config)
+    return jsonify(result)
 
 
 @app.route('/api/run-by-genre', methods=['POST'])
@@ -1239,6 +1521,195 @@ def remove_ignored(item_type, item_name):
         append_log("info", "ignore",
                    f"{'Série' if item_type == 'series' else 'Film'} retiré(e) de la liste d'exclusion : {item_name}")
     return jsonify({"status": "ok", "ignored": ignored})
+
+
+@app.route('/api/platforms', methods=['GET'])
+def get_all_platforms():
+    """Returns all unique streaming platforms for the library (from TMDB watch providers)."""
+    config = load_config()
+    tmdb_api_key = config.get('tmdbApiKey', '')
+    if not tmdb_api_key:
+        return jsonify([])
+    try:
+        resp = requests.get(
+            f"{config['radarrUrl']}/api/v3/movie",
+            headers={"X-Api-Key": config['apiKey']},
+            timeout=30
+        )
+        resp.raise_for_status()
+        movies = resp.json()
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+    tmdb_country = config.get('tmdbCountry', 'FR')
+    all_platforms = set()
+    count = 0
+    limit = 150
+
+    for movie in movies:
+        if not movie.get('hasFile') or not movie.get('tmdbId'):
+            continue
+        if count >= limit:
+            break
+        count += 1
+        for p in get_movie_platforms_from_tmdb(movie['tmdbId'], tmdb_api_key, tmdb_country):
+            all_platforms.add(p)
+
+    current_mapping = config.get('platformMapping', {})
+    return jsonify([
+        {
+            'name': p,
+            'enabled': current_mapping.get(p, {}).get('enabled', False),
+            'folder': current_mapping.get(p, {}).get('folder', p)
+        }
+        for p in sorted(all_platforms)
+    ])
+
+
+@app.route('/api/stats', methods=['GET'])
+def get_library_stats():
+    """Returns library statistics: totals + breakdown by genre, studio and platform."""
+    config = load_config()
+    try:
+        resp = requests.get(
+            f"{config['radarrUrl']}/api/v3/movie",
+            headers={"X-Api-Key": config['apiKey']},
+            timeout=30
+        )
+        resp.raise_for_status()
+        all_movies = resp.json()
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+    hardlink_status = get_hardlink_status(config)
+    source_root = config.get('sourceRoot', '')
+    media_root = config.get('mediaRoot', '')
+    genre_mapping = config.get('genreMapping', {})
+    studio_mapping = config.get('studioMapping', {})
+    platform_mapping = config.get('platformMapping', {})
+    tmdb_api_key = config.get('tmdbApiKey', '')
+    tmdb_country = config.get('tmdbCountry', 'FR')
+
+    by_genre = {}
+    by_studio = {}
+    by_platform = {}
+    total = 0
+    total_size = 0
+    total_linked = 0
+
+    for movie in all_movies:
+        if not movie.get('hasFile'):
+            continue
+        folder_name = os.path.basename(movie['path'])
+        source_path = os.path.join(source_root, folder_name)
+        if not os.path.isdir(source_path):
+            continue
+        try:
+            if not any(f.lower().endswith('.mkv') for f in os.listdir(source_path)):
+                continue
+        except OSError:
+            continue
+
+        total += 1
+        file_size = movie.get('movieFile', {}).get('size', 0)
+        total_size += file_size
+        movie_hl = hardlink_status.get(folder_name, [])
+        if movie_hl and all(h['exists'] for h in movie_hl):
+            total_linked += 1
+
+        # Genre stats
+        movie_genres = [g['name'] if isinstance(g, dict) else g for g in movie.get('genres', [])]
+        for genre in movie_genres:
+            g_settings = genre_mapping.get(genre)
+            if g_settings and g_settings.get('enabled'):
+                folder = g_settings.get('folder', genre)
+                if folder not in by_genre:
+                    by_genre[folder] = {"name": folder, "count": 0, "size": 0, "linked": 0}
+                by_genre[folder]["count"] += 1
+                by_genre[folder]["size"] += file_size
+                hl = next((h for h in movie_hl if h['folder'] == folder and h['type'] == 'genre'), None)
+                if hl and hl['exists']:
+                    by_genre[folder]["linked"] += 1
+
+        # Studio stats
+        studio = movie.get('studio', '').strip()
+        if studio:
+            s_settings = studio_mapping.get(studio)
+            if s_settings and s_settings.get('enabled'):
+                folder = s_settings.get('folder', studio)
+                if folder not in by_studio:
+                    by_studio[folder] = {"name": folder, "count": 0, "size": 0, "linked": 0}
+                by_studio[folder]["count"] += 1
+                by_studio[folder]["size"] += file_size
+                hl = next((h for h in movie_hl if h['folder'] == folder and h['type'] == 'studio'), None)
+                if hl and hl['exists']:
+                    by_studio[folder]["linked"] += 1
+
+        # Platform stats
+        if tmdb_api_key and movie.get('tmdbId'):
+            movie_platforms = get_movie_platforms_from_tmdb(movie['tmdbId'], tmdb_api_key, tmdb_country)
+            for platform_name in movie_platforms:
+                p_settings = platform_mapping.get(platform_name)
+                if p_settings and p_settings.get('enabled'):
+                    folder = p_settings.get('folder', platform_name)
+                    if folder not in by_platform:
+                        by_platform[folder] = {"name": folder, "count": 0, "size": 0, "linked": 0}
+                    by_platform[folder]["count"] += 1
+                    by_platform[folder]["size"] += file_size
+                    target_dir = os.path.join(media_root, folder, folder_name)
+                    if os.path.isdir(target_dir):
+                        by_platform[folder]["linked"] += 1
+
+    return jsonify({
+        "total": total,
+        "totalSize": total_size,
+        "linked": total_linked,
+        "missing": total - total_linked,
+        "byGenre": sorted([v for v in by_genre.values() if v["count"] > 0],
+                          key=lambda x: x["count"], reverse=True),
+        "byStudio": sorted([v for v in by_studio.values() if v["count"] > 0],
+                           key=lambda x: x["count"], reverse=True),
+        "byPlatform": sorted([v for v in by_platform.values() if v["count"] > 0],
+                             key=lambda x: x["count"], reverse=True),
+    })
+
+
+@app.route('/api/delete-hardlink', methods=['POST'])
+def delete_hardlink_folder():
+    """Supprime le dossier hardlink d'un film dans un dossier cible spécifique."""
+    import shutil
+    data = request.json or {}
+    folder_name = data.get('folderName', '')
+    target_folder = data.get('targetFolder', '')
+    config = load_config()
+    media_root = config.get('mediaRoot', '')
+
+    if not folder_name or not target_folder or not media_root:
+        return jsonify({"error": "Paramètres manquants"}), 400
+
+    target_path = os.path.join(media_root, target_folder, folder_name)
+    try:
+        if os.path.isdir(target_path):
+            shutil.rmtree(target_path)
+            append_log("success", "delete",
+                       f"Hardlink supprimé : {folder_name} dans {target_folder}",
+                       {"path": target_path})
+            return jsonify({"status": "ok"})
+        return jsonify({"error": "Dossier non trouvé"}), 404
+    except Exception as e:
+        append_log("error", "delete", f"Erreur suppression hardlink: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/run-by-platform', methods=['POST'])
+def run_by_platform():
+    data = request.json or {}
+    platforms = data.get('platforms', [])
+    if not platforms:
+        return jsonify({"error": "Aucune plateforme"}), 400
+    config = load_config()
+    result = create_platform_hardlinks(config)
+    return jsonify({"status": "ok", "result": result})
 
 
 if __name__ == '__main__':
