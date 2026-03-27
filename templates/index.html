@@ -1,1721 +1,1289 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hardlink Manager</title>
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
-        * { font-family: 'Inter', sans-serif; }
-        body { background: #0a0f1e; min-height: 100vh; }
-        .glass { background: rgba(15,23,42,0.7); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.07); }
-        .glass-hover { background: rgba(15,23,42,0.7); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.07); transition: all 0.2s; }
-        .glass-hover:hover { border-color: rgba(255,255,255,0.15); background: rgba(15,23,42,0.85); }
-        .gradient-text { background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-        .btn-primary { background: linear-gradient(135deg, #3b82f6, #7c3aed); border-radius: 10px; font-weight: 600; transition: all 0.2s; padding: 9px 18px; font-size: 13px; }
-        .btn-primary:hover { opacity: 0.88; transform: translateY(-1px); box-shadow: 0 4px 20px rgba(59,130,246,0.3); }
-        .btn-primary:disabled { opacity: 0.4; transform: none; cursor: not-allowed; }
-        .btn-danger { background: linear-gradient(135deg, #ef4444, #b91c1c); border-radius: 10px; font-weight: 600; transition: all 0.2s; padding: 9px 18px; font-size: 13px; }
-        .btn-danger:hover { opacity: 0.88; }
-        .btn-ghost { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; transition: all 0.2s; padding: 9px 18px; font-size: 13px; font-weight: 500; }
-        .btn-ghost:hover { background: rgba(255,255,255,0.1); }
-        .input-field { width: 100%; padding: 10px 14px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; color: white; outline: none; transition: border-color 0.2s; font-size: 13px; }
-        .input-field:focus { border-color: #3b82f6; background: rgba(255,255,255,0.07); }
-        .input-field::placeholder { color: rgba(255,255,255,0.25); }
-        .input-field:disabled { opacity: 0.4; cursor: not-allowed; }
-        .nav-tab { padding: 10px 4px; font-size: 13px; font-weight: 500; color: #64748b; border-bottom: 2px solid transparent; transition: all 0.2s; cursor: pointer; white-space: nowrap; }
-        .nav-tab:hover { color: #94a3b8; }
-        .nav-tab.active { color: white; border-color: #3b82f6; }
-        .poster-card { transition: transform 0.25s, box-shadow 0.25s; }
-        .poster-card:hover { transform: translateY(-6px); box-shadow: 0 16px 40px rgba(59,130,246,0.25); }
-        .badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; letter-spacing: 0.01em; }
-        .toggle-switch { position: relative; width: 40px; height: 22px; flex-shrink: 0; }
-        .toggle-switch input { opacity: 0; width: 0; height: 0; }
-        .toggle-slider { position: absolute; inset: 0; background: rgba(100,116,139,0.35); border-radius: 22px; cursor: pointer; transition: 0.25s; }
-        .toggle-slider::before { content: ''; position: absolute; width: 16px; height: 16px; left: 3px; bottom: 3px; background: white; border-radius: 50%; transition: 0.25s; }
-        input:checked + .toggle-slider { background: linear-gradient(135deg, #3b82f6, #7c3aed); }
-        input:checked + .toggle-slider::before { transform: translateX(18px); }
-        .log-row:nth-child(even) { background: rgba(255,255,255,0.015); }
-        .scrollbar-thin::-webkit-scrollbar { width: 5px; height: 5px; }
-        .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
-        .scrollbar-thin::-webkit-scrollbar-thumb { background: rgba(100,116,139,0.3); border-radius: 3px; }
-        .scrollbar-thin::-webkit-scrollbar-thumb:hover { background: rgba(100,116,139,0.5); }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .spin { animation: spin 1s linear infinite; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
-        .fade-in { animation: fadeIn 0.2s ease; }
-        .poster-card .movie-delete-btn { opacity: 0; transition: opacity 0.2s; }
-        .poster-card:hover .movie-delete-btn { opacity: 1; }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Radarr Manager</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --bg: #0a0f1e;
+      --surface: rgba(255,255,255,0.04);
+      --surface-hover: rgba(255,255,255,0.08);
+      --border: rgba(255,255,255,0.08);
+      --accent: #6366f1;
+      --accent2: #a855f7;
+      --text: #e2e8f0;
+      --muted: #64748b;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; min-height: 100vh; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(99,102,241,0.4); border-radius: 3px; }
+    .glass { background: var(--surface); backdrop-filter: blur(12px); border: 1px solid var(--border); border-radius: 12px; }
+    .glass-hover:hover { background: var(--surface-hover); }
+    .grad-text { background: linear-gradient(135deg, #6366f1, #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .grad-btn { background: linear-gradient(135deg, #6366f1, #a855f7); border: none; cursor: pointer; color: white; border-radius: 8px; transition: opacity 0.2s; }
+    .grad-btn:hover { opacity: 0.85; }
+    .tab-btn { background: transparent; border: none; cursor: pointer; color: var(--muted); padding: 8px 16px; border-radius: 8px; transition: all 0.2s; font-size: 14px; white-space: nowrap; }
+    .tab-btn.active { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
+    .tab-btn:hover:not(.active) { color: var(--text); background: rgba(255,255,255,0.03); }
+    input, select, textarea { background: rgba(255,255,255,0.05); border: 1px solid var(--border); border-radius: 8px; color: var(--text); padding: 8px 12px; font-size: 14px; outline: none; transition: border-color 0.2s; }
+    input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+    select option { background: #1e293b; }
+    .badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 500; }
+    .badge-blue { background: rgba(99,102,241,0.2); color: #818cf8; border: 1px solid rgba(99,102,241,0.3); }
+    .badge-purple { background: rgba(168,85,247,0.2); color: #c084fc; border: 1px solid rgba(168,85,247,0.3); }
+    .badge-green { background: rgba(34,197,94,0.2); color: #4ade80; border: 1px solid rgba(34,197,94,0.3); }
+    .badge-red { background: rgba(239,68,68,0.2); color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
+    .badge-yellow { background: rgba(234,179,8,0.2); color: #facc15; border: 1px solid rgba(234,179,8,0.3); }
+    .badge-gray { background: rgba(100,116,139,0.2); color: #94a3b8; border: 1px solid rgba(100,116,139,0.3); }
+    .badge-teal { background: rgba(20,184,166,0.2); color: #2dd4bf; border: 1px solid rgba(20,184,166,0.3); }
+    .movie-card { position: relative; cursor: pointer; border-radius: 10px; overflow: hidden; transition: transform 0.2s, box-shadow 0.2s; }
+    .movie-card:hover { transform: translateY(-3px); box-shadow: 0 8px 32px rgba(99,102,241,0.25); }
+    .movie-card img { width: 100%; aspect-ratio: 2/3; object-fit: cover; display: block; }
+    .movie-card .overlay { position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 50%); opacity: 0; transition: opacity 0.2s; }
+    .movie-card:hover .overlay { opacity: 1; }
+    .movie-card .card-info { position: absolute; bottom: 0; left: 0; right: 0; padding: 8px; transform: translateY(100%); transition: transform 0.2s; }
+    .movie-card:hover .card-info { transform: translateY(0); }
+    .checkbox-overlay { position: absolute; top: 6px; left: 6px; z-index: 10; }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+    .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); z-index: 100; display: flex; align-items: center; justify-content: center; padding: 20px; }
+    .modal-box { background: #0f172a; border: 1px solid var(--border); border-radius: 16px; max-width: 900px; width: 100%; max-height: 90vh; overflow-y: auto; }
+    .progress-bar { height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden; }
+    .progress-fill { height: 100%; background: linear-gradient(90deg, #6366f1, #a855f7); border-radius: 3px; transition: width 0.4s; }
+    .log-line { font-family: 'Courier New', monospace; font-size: 12px; padding: 2px 0; border-bottom: 1px solid rgba(255,255,255,0.03); }
+    .animate-spin { animation: spin 1s linear infinite; }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+  </style>
 </head>
 <body>
 <div id="root"></div>
 <script type="text/babel">
-const { useState, useEffect, useCallback, useRef } = React;
+const { useState, useEffect, useCallback, useRef, useMemo } = React;
 
-// ─── API helper ───────────────────────────────────────────────────────────────
-const apiFetch = async (url, opts = {}) => {
-  const res = await fetch(url, {
-    method: opts.method || 'GET',
-    headers: opts.body ? { 'Content-Type': 'application/json' } : {},
-    body: opts.body ? JSON.stringify(opts.body) : undefined
-  });
-  return res.json();
-};
-
-// ─── Toast notifications ──────────────────────────────────────────────────────
-const toastColors = {
-  success: '#10b981',
-  error:   '#ef4444',
-  warning: '#f59e0b',
-  info:    '#3b82f6'
-};
-const toastIcons = { success: '✓', error: '✕', warning: '⚠', info: 'ℹ' };
-
-const showToast = (message, type = 'info') => {
-  const el = document.createElement('div');
-  el.style.cssText = `
-    position:fixed;top:20px;right:20px;z-index:9999;
-    display:flex;align-items:center;gap:10px;
-    padding:12px 18px;border-radius:12px;
-    background:rgba(10,15,30,0.95);border:1px solid ${toastColors[type]}40;
-    box-shadow:0 8px 32px rgba(0,0,0,0.5);
-    font-size:13px;font-weight:500;color:white;
-    animation:fadeIn 0.2s ease;max-width:360px;
-  `;
-  el.innerHTML = `<span style="color:${toastColors[type]};font-size:16px">${toastIcons[type]}</span><span>${message}</span>`;
-  document.body.appendChild(el);
-  setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity 0.3s'; setTimeout(() => el.remove(), 300); }, 3500);
-};
-
-// ─── Utilities ────────────────────────────────────────────────────────────────
-const formatSize = (b) => {
-  if (!b) return '0 B';
-  if (b < 1024) return b + ' B';
-  if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
-  if (b < 1073741824) return (b/1048576).toFixed(1) + ' MB';
-  return (b/1073741824).toFixed(2) + ' GB';
-};
-const formatDate = (iso, lang) => {
-  if (!iso) return lang === 'fr' ? 'Jamais' : 'Never';
-  try { return new Date(iso).toLocaleString(lang === 'fr' ? 'fr-FR' : 'en-CA', { dateStyle: 'short', timeStyle: 'short' }); }
-  catch { return iso; }
-};
-const formatDateFull = (iso, lang) => {
-  if (!iso) return '—';
-  try { return new Date(iso).toLocaleString(lang === 'fr' ? 'fr-FR' : 'en-CA', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit', second:'2-digit' }); }
-  catch { return iso; }
-};
-
-// ─── Translations ─────────────────────────────────────────────────────────────
-const TRANSLATIONS = {
+// ─── Translations ───────────────────────────────────────────────────────────
+const T = {
   fr: {
-    // Header
-    appSubtitle: 'Radarr · Sonarr · Bibliothèque média',
-    scan: 'Scanner',
-    settings: 'Paramètres',
-    // Nav tabs
-    library: 'Bibliothèque',
-    moviesIssues: 'Films',
-    seriesTab: 'Séries',
-    logs: 'Journaux',
-    // Stats
-    statMovies: 'Films',
-    statLinksOk: 'Liens OK',
-    statMissing: 'Manquants',
-    statActiveGenres: 'Genres actifs',
-    statOrphanSeries: 'Séries orphelines',
-    // Library
-    searchPlaceholder: 'Rechercher un film...',
-    allGenres: 'Tous les genres',
-    withoutLinks: '⚠ Sans liens',
-    all: 'Tous',
-    deselect: 'Désélectionner',
-    selectAll: 'Tout sélect.',
-    create: 'Créer',
-    createAll: '⚡ Tout créer',
-    emptyLibrary: 'Bibliothèque vide',
-    emptyLibrarySub: 'Cliquez sur "Scanner" pour charger les films',
-    filtered: '(filtrés)',
-    missingLinks: '⚠ Liens manquants',
-    noGenre: '— Aucun genre',
-    notWatched: '· Non vu',
-    deleteMovieTip: 'Supprimer le film et ses hardlinks',
-    // Library confirm
-    confirmDeleteMovie: (title, watchCount) => `Supprimer "${title}" ?\n\nSource + tous les hardlinks genre seront supprimés. Irréversible.${watchCount > 0 ? `\n\n⚠ Ce film a été vu ${watchCount} fois sur Jellyfin.` : ''}`,
-    deletedMovie: (title, count) => `"${title}" supprimé (${count} dossier${count > 1 ? 's' : ''})`,
-    moviesScanned: (n) => `${n} films scannés`,
-    selectMoviesWarn: 'Sélectionnez des films',
-    moviesProcessed: (n) => `${n} films traités`,
-    confirmCreateAll: 'Créer tous les hardlinks manquants ?',
-    linksCreated: 'Hardlinks créés',
-    // Issues
-    issuesTitle: 'Problèmes Films',
-    issuesSub: 'Orphelins, doublons et mauvais genres — via Radarr',
-    noIssues: 'Aucun problème détecté',
-    noIssuesSub: 'Cliquez sur "Scanner" pour analyser la bibliothèque',
-    orphans: 'Orphelins',
-    orphansDesc: 'Source supprimée de "A trier"',
-    duplicates: 'Doublons',
-    duplicatesDesc: 'Ancienne version non officielle',
-    wrongGenre: 'Mauvais genre',
-    wrongGenreDesc: 'Film dans le mauvais dossier genre',
-    deleteAll: '🗑 Tout supprimer',
-    ignoreTip: 'Ne plus afficher ce film dans les problèmes',
-    ignore: '🚫 Ignorer',
-    movieIgnored: (title) => `"${title}" ignoré`,
-    confirmDeleteFile: 'Supprimer ce fichier ?',
-    fileDeleted: 'Fichier supprimé',
-    confirmDeleteByType: (n) => `Supprimer ${n} fichier(s) ?`,
-    deletedByType: (n) => `${n} fichier(s) supprimé(s)`,
-    // Series
-    orphanSeriesTitle: 'Séries orphelines',
-    orphanSeriesSub: 'Séries dans Check sans fichiers actifs dans Sonarr',
-    noOrphanSeries: 'Aucune série orpheline',
-    noOrphanSeriesSub: 'Une série est orpheline si Sonarr indique 0 fichier, non monitorée, et non en téléchargement',
-    episodes: 'épisodes',
-    knownBySonarr: '↗ Connu de Sonarr',
-    deleteAllSeries: (n) => `🗑 Tout supprimer (${n})`,
-    confirmDeleteSeries: (name) => `Supprimer définitivement "${name}" ?\nIrréversible.`,
-    confirmDeleteAllSeries: (n) => `Supprimer ${n} série(s) orpheline(s) ?\nIrréversible.`,
-    seriesDeleted: 'Série supprimée',
-    seriesDeletedN: (n) => `${n} série(s) supprimée(s)`,
-    seriesIgnoredTip: 'Ne plus afficher cette série dans les orphelines',
-    seriesIgnored: (name) => `"${name}" ignorée`,
-    orphanScanResult: (n) => `${n} série(s) orpheline(s)`,
-    // Logs
-    activityLog: "Journal d'activité",
-    entries: (n) => `${n} entrée${n !== 1 ? 's' : ''}`,
-    filteredSuffix: '(filtrées)',
-    allLevels: 'Tous niveaux',
-    levelSuccess: 'Succès',
-    levelInfo: 'Info',
-    levelWarning: 'Avertissement',
-    levelError: 'Erreur',
-    allCategories: 'Toutes catégories',
-    catSeries: 'Séries',
-    catDelete: 'Suppression',
-    catIgnored: 'Ignoré',
-    refresh: '⟳ Rafraîchir',
-    auto5s: 'Auto 5s',
-    clearLogs: '🗑 Effacer',
-    confirmClearLogs: 'Effacer tous les logs ?',
-    logsCleared: 'Logs effacés',
-    noLogs: 'Aucun log',
-    noLogsSub: 'Les actions (hardlinks, scans, suppressions…) apparaîtront ici',
-    timestamp: 'Horodatage',
-    level: 'Niveau',
-    category: 'Catégorie',
-    message: 'Message',
-    // Log badges
-    badgeOk: '✓ OK',
-    badgeErr: '✕ Err',
-    badgeWarn: '⚠ Avert',
-    badgeInfo: 'ℹ Info',
-    // Level/category badges
-    badgeLevelSuccess: 'Succès',
-    badgeLevelError: 'Erreur',
-    badgeLevelWarning: 'Avert.',
-    badgeLevelInfo: 'Info',
-    catLabelSeries: 'Séries',
-    catLabelDelete: 'Suppression',
-    catLabelIgnored: 'Ignoré',
-    // Settings modal
-    settingsTitle: 'Paramètres',
-    tabConnections: '🔗 Connexions',
-    tabPaths: '📁 Chemins',
-    tabSeries: '📺 Séries',
-    tabAutomation: '⏰ Automatisation',
-    tabGenres: '🎭 Genres',
-    tabExclusions: (n) => `🚫 Exclusions${n > 0 ? ` (${n})` : ''}`,
-    // Connections tab
-    apiKeyLabel: 'Clé API',
-    jellystatUrlHint: 'ex: http://jellystat:3000',
-    jellystatApiKeyLabel: 'Clé API Jellystat',
-    jellystatDesc: `Affiche le nombre de vues et l'historique de visionnage dans la bibliothèque (via <code style="font-size:10px">/api/getItemsPlaybackActivity</code>). La clé API se génère dans Jellystat → Paramètres → API Key.`,
-    fileOwnerTitle: 'Propriétaire des fichiers',
-    ownerUserLabel: 'Utilisateur (chown)',
-    ownerUserHint: 'Laissez vide pour ne pas modifier',
-    ownerGroupLabel: 'Groupe (GID ou nom)',
-    ownerGroupHint: 'Laissez vide pour ne pas modifier',
-    ownerUserPlaceholder: 'media',
-    ownerGroupPlaceholder: '1000',
-    // Paths tab
-    pathsTitle: 'Chemins Films',
-    sourceLabel: 'Source "A trier"',
-    sourceHint: 'Dossier où arrivent les fichiers originaux',
-    destLabel: 'Destination (racine bibliothèque)',
-    destHint: 'Racine des dossiers par genre',
-    // Series tab
-    seriesCheckTitle: 'Vérification des séries orphelines',
-    seriesSourceLabel: 'Dossier Source (géré par Sonarr)',
-    seriesSourceHint: 'Référence optionnelle si Sonarr n\'est pas configuré',
-    seriesCheckLabel: 'Dossier Check (à vérifier)',
-    seriesCheckHint: 'Ce dossier est scanné pour détecter les orphelines',
-    seriesInfoBox: '<strong>Détection :</strong> Pour chaque dossier dans Check, l\'API Sonarr est consultée. Une série est <strong>orpheline</strong> uniquement si Sonarr indique 0 fichier, non monitorée, et non en téléchargement. Utilisez le bouton <strong>Ignorer</strong> pour exclure une série de cette liste sans la supprimer.',
-    // Automation tab
-    autoHardlinkTitle: 'Hardlinks Films (automatique)',
-    cronLabel: 'Planification cron',
-    cronHint: 'Exemple : 0 */6 * * * = toutes les 6h',
-    lastRunLabel: 'Dernier run',
-    lastFullScanLabel: 'Dernier scan complet',
-    optimizedScanLabel: 'Scan optimisé',
-    optimizedScanHint: 'Scanne uniquement les films récents entre les scans complets',
-    recentWindowLabel: 'Fenêtre récents (heures)',
-    fullScanIntervalLabel: 'Scan complet toutes les (heures)',
-    autoSeriesTitle: 'Vérification Séries (automatique)',
-    cronSeriesHint: 'Exemple : 0 */12 * * * = toutes les 12h',
-    activeJobsTitle: 'Jobs planifiés actifs',
-    noActiveJobs: 'Aucun job actif',
-    jobMovies: '🎬 Films',
-    jobSeries: '📺 Séries',
-    jobNext: 'Prochain',
-    webhooksTitle: 'Webhooks',
-    webhookSecretLabel: 'Secret (optionnel)',
-    webhookSecretHint: 'Laissez vide pour désactiver la vérification',
-    availableEndpoints: 'Endpoints disponibles :',
-    // Genres tab
-    genreMappingTitle: 'Mapping Genres → Dossiers',
-    loadFromRadarr: 'Charger depuis Radarr',
-    noGenresLoaded: 'Cliquez sur "Charger depuis Radarr" pour obtenir la liste des genres',
-    folderPlaceholder: 'Nom du dossier',
-    // Studios tab
-    tabStudios: '🎬 Studios',
-    studioMappingTitle: 'Mapping Studios → Dossiers',
-    loadStudiosFromRadarr: 'Charger depuis Radarr',
-    noStudiosLoaded: 'Cliquez sur "Charger depuis Radarr" pour obtenir la liste des studios',
-    studioFolderPlaceholder: 'Nom du dossier',
-    tmdbApiKeyLabel: 'Clé API TMDB (optionnel)',
-    tmdbApiKeyHint: 'Utilisée pour enrichir les studios manquants dans Radarr',
-    errorStudios: 'Erreur studios',
-    // Exclusions tab
-    excludedSeriesTitle: 'Séries exclues',
-    excludedMoviesTitle: 'Films exclus',
-    noExcludedSeries: 'Aucune série exclue',
-    noExcludedMovies: 'Aucun film exclu',
-    exclusionInfo: 'Les éléments exclus n\'apparaissent plus dans les listes d\'orphelins et de problèmes. Aucun fichier n\'est supprimé. Pour les retirer de l\'exclusion, cliquez sur <strong>×</strong>.',
-    remove: '× Retirer',
-    removedFromExclusion: 'Retiré de la liste d\'exclusion',
-    // Save
-    saveConfig: '💾 Sauvegarder la configuration',
-    configSaved: 'Configuration sauvegardée',
-    // Errors
-    errorLoadConfig: 'Erreur chargement config',
-    errorGenres: 'Erreur genres',
-    errorLoadLogs: 'Erreur chargement logs',
-    errorScanSeries: 'Erreur scan séries',
-    errorScan: 'Erreur scan',
-    errorSave: 'Erreur sauvegarde',
-    errorDelete: 'Erreur suppression',
-    error: 'Erreur',
-    wrongFormat: 'Format incorrect',
-    loading: 'Chargement...',
-    never: 'Jamais',
-    issuesScanResult: (n) => `${n} problème(s) détecté(s)`,
+    appTitle: 'Radarr Manager',
+    tabs: { library: '🎬 Bibliothèque', issues: '⚠️ Problèmes', series: '📁 Séries', stats: '📊 Stats', logs: '📋 Logs', settings: '⚙️ Paramètres' },
+    library: {
+      search: 'Rechercher un film…',
+      allGenres: 'Tous les genres',
+      allStudios: 'Tous les studios',
+      allPlatforms: 'Toutes les plateformes',
+      missingOnly: 'Manquants seulement',
+      selectAll: 'Tout sélectionner',
+      deselectAll: 'Tout désélectionner',
+      createLinks: 'Créer les hardlinks',
+      runAll: 'Tout relancer',
+      selected: 'sélectionné(s)',
+      noMovies: 'Aucun film trouvé',
+      loading: 'Chargement…',
+    },
+    stats: {
+      title: 'Statistiques',
+      fetch: 'Calculer les stats',
+      loading: 'Calcul en cours…',
+      totalMovies: 'Films total',
+      totalSize: 'Taille totale',
+      linked: 'Liens OK',
+      missing: 'Manquants',
+      byGenre: 'Par genre',
+      byStudio: 'Par studio',
+      byPlatform: 'Par plateforme',
+      name: 'Nom',
+      count: 'Films',
+      size: 'Taille',
+      linkedCol: 'Liés',
+      progress: 'Progression',
+    },
+    modal: {
+      genres: '🎭 Genres',
+      studios: '🎬 Studios',
+      platforms: '📺 Plateformes',
+      createLinks: '🔗 Créer les hardlinks',
+      deleteMovie: '🗑 Supprimer le film',
+      ok: '✓ OK',
+      missing: '⚠ Manquant',
+      delete: '🗑 Supprimer',
+      fileSize: 'Taille',
+      watchCount: 'Visions',
+      close: 'Fermer',
+      confirmDelete: 'Supprimer ce film et tous ses hardlinks ?',
+      confirmHardlinkDel: 'Supprimer ce hardlink ?',
+    },
+    issues: {
+      title: 'Problèmes détectés',
+      duplicates: 'Doublons',
+      orphans: 'Orphelins',
+      wrongGenre: 'Mauvais genre',
+      noIssues: 'Aucun problème détecté',
+      refresh: 'Actualiser',
+      loading: 'Analyse en cours…',
+      ignore: 'Ignorer',
+      fix: 'Corriger',
+    },
+    series: {
+      title: 'Séries orphelines',
+      noSeries: 'Aucune série orpheline',
+      refresh: 'Actualiser',
+    },
+    logs: {
+      title: 'Logs',
+      clear: 'Effacer',
+      refresh: 'Actualiser',
+      noLogs: 'Aucun log',
+    },
+    settings: {
+      tabs: { connections: '🔌 Connexions', paths: '📂 Chemins', series: '📺 Séries', automation: '⚙️ Automation', genres: '🎭 Genres', studios: '🎬 Studios', platforms: '📺 Plateformes', exclusions: '🚫 Exclusions' },
+      save: 'Sauvegarder',
+      saved: 'Sauvegardé !',
+      saving: 'Sauvegarde…',
+      add: 'Ajouter',
+      remove: 'Supprimer',
+      radarrUrl: 'URL Radarr',
+      radarrKey: 'Clé API Radarr',
+      tmdbKey: 'Clé API TMDB',
+      tmdbCountry: 'Pays TMDB (ex: FR)',
+      jellyfinUrl: 'URL Jellyfin',
+      jellyfinKey: 'Clé API Jellyfin',
+      jellystatUrl: 'URL Jellystat',
+      jellystatKey: 'Clé API Jellystat',
+      cronEnabled: 'Cron activé',
+      cronSchedule: 'Schedule cron',
+      cronTrigger: 'Lancer manuellement',
+      cronStatus: 'Statut cron',
+      sourcePath: 'Chemin source (films)',
+      genresPath: 'Chemin genres',
+      studiosPath: 'Chemin studios',
+      platformsPath: 'Chemin plateformes',
+      seriesPath: 'Chemin séries orphelines',
+      genreName: 'Nom du genre',
+      genreFolder: 'Dossier cible',
+      studioName: 'Nom du studio',
+      studioFolder: 'Dossier cible',
+      platformName: 'Nom de la plateforme',
+      platformFolder: 'Dossier cible',
+      exclusionType: 'Type',
+      exclusionName: 'Nom',
+    },
+    statusBar: {
+      total: 'Films',
+      ok: 'OK',
+      missing: 'Manquants',
+      genres: 'Genres',
+      studios: 'Studios',
+      platforms: 'Plateformes',
+    },
+    common: {
+      yes: 'Oui',
+      no: 'Non',
+      cancel: 'Annuler',
+      confirm: 'Confirmer',
+      error: 'Erreur',
+      success: 'Succès',
+      loading: 'Chargement…',
+    }
   },
   en: {
-    // Header
-    appSubtitle: 'Radarr · Sonarr · Media Library',
-    scan: 'Scan',
-    settings: 'Settings',
-    // Nav tabs
-    library: 'Library',
-    moviesIssues: 'Movies',
-    seriesTab: 'Series',
-    logs: 'Logs',
-    // Stats
-    statMovies: 'Movies',
-    statLinksOk: 'Links OK',
-    statMissing: 'Missing',
-    statActiveGenres: 'Active genres',
-    statOrphanSeries: 'Orphan series',
-    // Library
-    searchPlaceholder: 'Search a movie...',
-    allGenres: 'All genres',
-    withoutLinks: '⚠ Missing links',
-    all: 'All',
-    deselect: 'Deselect all',
-    selectAll: 'Select all',
-    create: 'Create',
-    createAll: '⚡ Create all',
-    emptyLibrary: 'Empty library',
-    emptyLibrarySub: 'Click "Scan" to load movies',
-    filtered: '(filtered)',
-    missingLinks: '⚠ Missing links',
-    noGenre: '— No genre',
-    notWatched: '· Not watched',
-    deleteMovieTip: 'Delete movie and its hardlinks',
-    confirmDeleteMovie: (title, watchCount) => `Delete "${title}"?\n\nSource + all genre hardlinks will be removed. Irreversible.${watchCount > 0 ? `\n\n⚠ This movie has been watched ${watchCount} time(s) on Jellyfin.` : ''}`,
-    deletedMovie: (title, count) => `"${title}" deleted (${count} folder${count > 1 ? 's' : ''})`,
-    moviesScanned: (n) => `${n} movie(s) scanned`,
-    selectMoviesWarn: 'Select movies first',
-    moviesProcessed: (n) => `${n} movie(s) processed`,
-    confirmCreateAll: 'Create all missing hardlinks?',
-    linksCreated: 'Hardlinks created',
-    // Issues
-    issuesTitle: 'Movie Issues',
-    issuesSub: 'Orphans, duplicates and wrong genres — via Radarr',
-    noIssues: 'No issues detected',
-    noIssuesSub: 'Click "Scan" to analyze the library',
-    orphans: 'Orphans',
-    orphansDesc: 'Source removed from "Unsorted"',
-    duplicates: 'Duplicates',
-    duplicatesDesc: 'Older unofficial version',
-    wrongGenre: 'Wrong genre',
-    wrongGenreDesc: 'Movie in the wrong genre folder',
-    deleteAll: '🗑 Delete all',
-    ignoreTip: 'Stop showing this movie in issues',
-    ignore: '🚫 Ignore',
-    movieIgnored: (title) => `"${title}" ignored`,
-    confirmDeleteFile: 'Delete this file?',
-    fileDeleted: 'File deleted',
-    confirmDeleteByType: (n) => `Delete ${n} file(s)?`,
-    deletedByType: (n) => `${n} file(s) deleted`,
-    // Series
-    orphanSeriesTitle: 'Orphan Series',
-    orphanSeriesSub: 'Series in Check folder with no active files in Sonarr',
-    noOrphanSeries: 'No orphan series',
-    noOrphanSeriesSub: 'A series is orphaned if Sonarr reports 0 files, not monitored, and not downloading',
-    episodes: 'episodes',
-    knownBySonarr: '↗ Known by Sonarr',
-    deleteAllSeries: (n) => `🗑 Delete all (${n})`,
-    confirmDeleteSeries: (name) => `Permanently delete "${name}"?\nIrreversible.`,
-    confirmDeleteAllSeries: (n) => `Delete ${n} orphan series?\nIrreversible.`,
-    seriesDeleted: 'Series deleted',
-    seriesDeletedN: (n) => `${n} series deleted`,
-    seriesIgnoredTip: 'Stop showing this series in orphan list',
-    seriesIgnored: (name) => `"${name}" ignored`,
-    orphanScanResult: (n) => `${n} orphan series`,
-    // Logs
-    activityLog: 'Activity Log',
-    entries: (n) => `${n} entr${n !== 1 ? 'ies' : 'y'}`,
-    filteredSuffix: '(filtered)',
-    allLevels: 'All levels',
-    levelSuccess: 'Success',
-    levelInfo: 'Info',
-    levelWarning: 'Warning',
-    levelError: 'Error',
-    allCategories: 'All categories',
-    catSeries: 'Series',
-    catDelete: 'Delete',
-    catIgnored: 'Ignored',
-    refresh: '⟳ Refresh',
-    auto5s: 'Auto 5s',
-    clearLogs: '🗑 Clear',
-    confirmClearLogs: 'Clear all logs?',
-    logsCleared: 'Logs cleared',
-    noLogs: 'No logs',
-    noLogsSub: 'Actions (hardlinks, scans, deletions…) will appear here',
-    timestamp: 'Timestamp',
-    level: 'Level',
-    category: 'Category',
-    message: 'Message',
-    badgeOk: '✓ OK',
-    badgeErr: '✕ Err',
-    badgeWarn: '⚠ Warn',
-    badgeInfo: 'ℹ Info',
-    badgeLevelSuccess: 'Success',
-    badgeLevelError: 'Error',
-    badgeLevelWarning: 'Warn.',
-    badgeLevelInfo: 'Info',
-    catLabelSeries: 'Series',
-    catLabelDelete: 'Delete',
-    catLabelIgnored: 'Ignored',
-    // Settings modal
-    settingsTitle: 'Settings',
-    tabConnections: '🔗 Connections',
-    tabPaths: '📁 Paths',
-    tabSeries: '📺 Series',
-    tabAutomation: '⏰ Automation',
-    tabGenres: '🎭 Genres',
-    tabExclusions: (n) => `🚫 Exclusions${n > 0 ? ` (${n})` : ''}`,
-    // Connections tab
-    apiKeyLabel: 'API Key',
-    jellystatUrlHint: 'e.g. http://jellystat:3000',
-    jellystatApiKeyLabel: 'Jellystat API Key',
-    jellystatDesc: `Shows watch count and playback history in the library (via <code style="font-size:10px">/api/getItemsPlaybackActivity</code>). Generate the API key in Jellystat → Settings → API Key.`,
-    fileOwnerTitle: 'File Owner',
-    ownerUserLabel: 'User (chown)',
-    ownerUserHint: 'Leave empty to skip',
-    ownerGroupLabel: 'Group (GID or name)',
-    ownerGroupHint: 'Leave empty to skip',
-    ownerUserPlaceholder: 'media',
-    ownerGroupPlaceholder: '1000',
-    // Paths tab
-    pathsTitle: 'Movie Paths',
-    sourceLabel: 'Source "Unsorted"',
-    sourceHint: 'Folder where original files arrive',
-    destLabel: 'Destination (library root)',
-    destHint: 'Root of the genre folders',
-    // Series tab
-    seriesCheckTitle: 'Orphan Series Check',
-    seriesSourceLabel: 'Source Folder (managed by Sonarr)',
-    seriesSourceHint: 'Optional reference if Sonarr is not configured',
-    seriesCheckLabel: 'Check Folder (to scan)',
-    seriesCheckHint: 'This folder is scanned to detect orphan series',
-    seriesInfoBox: '<strong>Detection:</strong> For each folder in Check, the Sonarr API is queried. A series is <strong>orphaned</strong> only if Sonarr reports 0 files, not monitored, and not downloading. Use the <strong>Ignore</strong> button to exclude a series from this list without deleting it.',
-    // Automation tab
-    autoHardlinkTitle: 'Movie Hardlinks (automatic)',
-    cronLabel: 'Cron schedule',
-    cronHint: 'Example: 0 */6 * * * = every 6h',
-    lastRunLabel: 'Last run',
-    lastFullScanLabel: 'Last full scan',
-    optimizedScanLabel: 'Optimized scan',
-    optimizedScanHint: 'Only scans recent movies between full scans',
-    recentWindowLabel: 'Recent window (hours)',
-    fullScanIntervalLabel: 'Full scan every (hours)',
-    autoSeriesTitle: 'Series Check (automatic)',
-    cronSeriesHint: 'Example: 0 */12 * * * = every 12h',
-    activeJobsTitle: 'Active scheduled jobs',
-    noActiveJobs: 'No active jobs',
-    jobMovies: '🎬 Movies',
-    jobSeries: '📺 Series',
-    jobNext: 'Next',
-    webhooksTitle: 'Webhooks',
-    webhookSecretLabel: 'Secret (optional)',
-    webhookSecretHint: 'Leave empty to disable verification',
-    availableEndpoints: 'Available endpoints:',
-    // Genres tab
-    genreMappingTitle: 'Genre → Folder Mapping',
-    loadFromRadarr: 'Load from Radarr',
-    noGenresLoaded: 'Click "Load from Radarr" to get the genre list',
-    folderPlaceholder: 'Folder name',
-    // Studios tab
-    tabStudios: '🎬 Studios',
-    studioMappingTitle: 'Studio → Folder Mapping',
-    loadStudiosFromRadarr: 'Load from Radarr',
-    noStudiosLoaded: 'Click "Load from Radarr" to get the studio list',
-    studioFolderPlaceholder: 'Folder name',
-    tmdbApiKeyLabel: 'TMDB API Key (optional)',
-    tmdbApiKeyHint: 'Used to enrich studios missing from Radarr',
-    errorStudios: 'Error loading studios',
-    // Exclusions tab
-    excludedSeriesTitle: 'Excluded Series',
-    excludedMoviesTitle: 'Excluded Movies',
-    noExcludedSeries: 'No excluded series',
-    noExcludedMovies: 'No excluded movies',
-    exclusionInfo: 'Excluded items no longer appear in orphan and issue lists. No files are deleted. To remove from exclusions, click <strong>×</strong>.',
-    remove: '× Remove',
-    removedFromExclusion: 'Removed from exclusion list',
-    // Save
-    saveConfig: '💾 Save configuration',
-    configSaved: 'Configuration saved',
-    // Errors
-    errorLoadConfig: 'Error loading config',
-    errorGenres: 'Error loading genres',
-    errorLoadLogs: 'Error loading logs',
-    errorScanSeries: 'Error scanning series',
-    errorScan: 'Scan error',
-    errorSave: 'Save error',
-    errorDelete: 'Delete error',
-    error: 'Error',
-    wrongFormat: 'Wrong format',
-    loading: 'Loading...',
-    never: 'Never',
-    issuesScanResult: (n) => `${n} issue(s) detected`,
+    appTitle: 'Radarr Manager',
+    tabs: { library: '🎬 Library', issues: '⚠️ Issues', series: '📁 Series', stats: '📊 Stats', logs: '📋 Logs', settings: '⚙️ Settings' },
+    library: {
+      search: 'Search movie…',
+      allGenres: 'All genres',
+      allStudios: 'All studios',
+      allPlatforms: 'All platforms',
+      missingOnly: 'Missing only',
+      selectAll: 'Select all',
+      deselectAll: 'Deselect all',
+      createLinks: 'Create hardlinks',
+      runAll: 'Run all',
+      selected: 'selected',
+      noMovies: 'No movies found',
+      loading: 'Loading…',
+    },
+    stats: {
+      title: 'Statistics',
+      fetch: 'Compute stats',
+      loading: 'Computing…',
+      totalMovies: 'Total movies',
+      totalSize: 'Total size',
+      linked: 'Links OK',
+      missing: 'Missing',
+      byGenre: 'By genre',
+      byStudio: 'By studio',
+      byPlatform: 'By platform',
+      name: 'Name',
+      count: 'Movies',
+      size: 'Size',
+      linkedCol: 'Linked',
+      progress: 'Progress',
+    },
+    modal: {
+      genres: '🎭 Genres',
+      studios: '🎬 Studios',
+      platforms: '📺 Platforms',
+      createLinks: '🔗 Create hardlinks',
+      deleteMovie: '🗑 Delete movie',
+      ok: '✓ OK',
+      missing: '⚠ Missing',
+      delete: '🗑 Delete',
+      fileSize: 'Size',
+      watchCount: 'Views',
+      close: 'Close',
+      confirmDelete: 'Delete this movie and all its hardlinks?',
+      confirmHardlinkDel: 'Delete this hardlink?',
+    },
+    issues: {
+      title: 'Detected Issues',
+      duplicates: 'Duplicates',
+      orphans: 'Orphans',
+      wrongGenre: 'Wrong genre',
+      noIssues: 'No issues detected',
+      refresh: 'Refresh',
+      loading: 'Analyzing…',
+      ignore: 'Ignore',
+      fix: 'Fix',
+    },
+    series: {
+      title: 'Orphan Series',
+      noSeries: 'No orphan series',
+      refresh: 'Refresh',
+    },
+    logs: {
+      title: 'Logs',
+      clear: 'Clear',
+      refresh: 'Refresh',
+      noLogs: 'No logs',
+    },
+    settings: {
+      tabs: { connections: '🔌 Connections', paths: '📂 Paths', series: '📺 Series', automation: '⚙️ Automation', genres: '🎭 Genres', studios: '🎬 Studios', platforms: '📺 Platforms', exclusions: '🚫 Exclusions' },
+      save: 'Save',
+      saved: 'Saved!',
+      saving: 'Saving…',
+      add: 'Add',
+      remove: 'Remove',
+      radarrUrl: 'Radarr URL',
+      radarrKey: 'Radarr API Key',
+      tmdbKey: 'TMDB API Key',
+      tmdbCountry: 'TMDB Country (e.g. FR)',
+      jellyfinUrl: 'Jellyfin URL',
+      jellyfinKey: 'Jellyfin API Key',
+      jellystatUrl: 'Jellystat URL',
+      jellystatKey: 'Jellystat API Key',
+      cronEnabled: 'Cron enabled',
+      cronSchedule: 'Cron schedule',
+      cronTrigger: 'Run manually',
+      cronStatus: 'Cron status',
+      sourcePath: 'Source path (movies)',
+      genresPath: 'Genres path',
+      studiosPath: 'Studios path',
+      platformsPath: 'Platforms path',
+      seriesPath: 'Orphan series path',
+      genreName: 'Genre name',
+      genreFolder: 'Target folder',
+      studioName: 'Studio name',
+      studioFolder: 'Target folder',
+      platformName: 'Platform name',
+      platformFolder: 'Target folder',
+      exclusionType: 'Type',
+      exclusionName: 'Name',
+    },
+    statusBar: {
+      total: 'Movies',
+      ok: 'OK',
+      missing: 'Missing',
+      genres: 'Genres',
+      studios: 'Studios',
+      platforms: 'Platforms',
+    },
+    common: {
+      yes: 'Yes',
+      no: 'No',
+      cancel: 'Cancel',
+      confirm: 'Confirm',
+      error: 'Error',
+      success: 'Success',
+      loading: 'Loading…',
+    }
   }
 };
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
-const Spinner = ({ size = 18 }) => (
-  <svg className="spin" style={{ width: size, height: size }} viewBox="0 0 24 24" fill="none">
-    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="40" strokeDashoffset="10" strokeLinecap="round"/>
-  </svg>
-);
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+function formatBytes(bytes) {
+  if (!bytes || bytes === 0) return '0 B';
+  const k = 1024, sizes = ['B','KB','MB','GB','TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
 
-const StatCard = ({ icon, label, value, sub, color, onClick }) => {
-  const colors = {
-    blue:   { bg: 'rgba(59,130,246,0.12)',  text: '#60a5fa' },
-    green:  { bg: 'rgba(16,185,129,0.12)', text: '#34d399' },
-    red:    { bg: 'rgba(239,68,68,0.12)',   text: '#f87171' },
-    purple: { bg: 'rgba(139,92,246,0.12)', text: '#a78bfa' },
-    amber:  { bg: 'rgba(245,158,11,0.12)', text: '#fbbf24' },
-  };
-  const c = colors[color] || colors.blue;
+function api(path, options = {}) {
+  return fetch(path, {
+    headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+    ...options,
+    body: options.body ? JSON.stringify(options.body) : undefined,
+  }).then(r => r.json());
+}
+
+// ─── Confirm Dialog ───────────────────────────────────────────────────────────
+function ConfirmDialog({ message, onConfirm, onCancel, lang }) {
+  const t = T[lang].common;
   return (
-    <div onClick={onClick}
-      className={`glass rounded-2xl p-5 ${onClick ? 'cursor-pointer hover:border-white/20 transition-all' : ''}`}
-      style={{ borderColor: onClick ? undefined : 'rgba(255,255,255,0.07)' }}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex-1 min-w-0">
-          <p className="text-xs font-medium uppercase tracking-wider mb-2" style={{ color: 'rgba(148,163,184,0.7)' }}>{label}</p>
-          <p className="text-3xl font-bold" style={{ color: c.text }}>{value}</p>
-          {sub && <p className="text-xs mt-1" style={{ color: 'rgba(148,163,184,0.5)' }}>{sub}</p>}
-        </div>
-        <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg flex-shrink-0" style={{ background: c.bg }}>
-          {icon}
+    <div className="modal-backdrop" style={{zIndex: 200}}>
+      <div className="glass" style={{padding: 24, maxWidth: 380, width: '100%', textAlign: 'center'}}>
+        <p style={{marginBottom: 20, fontSize: 15}}>{message}</p>
+        <div style={{display:'flex', gap: 10, justifyContent:'center'}}>
+          <button className="grad-btn" style={{padding:'8px 20px'}} onClick={onConfirm}>{t.confirm}</button>
+          <button style={{padding:'8px 20px', background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:8, color:'var(--text)', cursor:'pointer'}} onClick={onCancel}>{t.cancel}</button>
         </div>
       </div>
     </div>
   );
-};
+}
 
-const ToggleSwitch = ({ checked, onChange }) => (
-  <label className="toggle-switch">
-    <input type="checkbox" checked={checked} onChange={e => onChange(e.target.checked)} />
-    <span className="toggle-slider" />
-  </label>
-);
-
-const SectionCard = ({ title, icon, children, action, toggle, onToggle }) => (
-  <div className="glass rounded-xl p-5">
-    <div className="flex items-center gap-2 mb-4 pb-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-      {icon && <span className="text-base">{icon}</span>}
-      <h3 className="text-sm font-semibold flex-1 text-white/90">{title}</h3>
-      {action}
-      {onToggle !== undefined && <ToggleSwitch checked={toggle} onChange={onToggle} />}
+// ─── Toast ────────────────────────────────────────────────────────────────────
+function Toast({ toasts }) {
+  return (
+    <div style={{position:'fixed', bottom: 24, right: 24, zIndex: 300, display:'flex', flexDirection:'column', gap: 8}}>
+      {toasts.map(t => (
+        <div key={t.id} className="glass" style={{padding:'10px 16px', fontSize:13, borderLeft:`3px solid ${t.type==='error'?'#ef4444':t.type==='success'?'#22c55e':'#6366f1'}`, minWidth:220, maxWidth:340}}>
+          {t.message}
+        </div>
+      ))}
     </div>
-    <div className="space-y-4">{children}</div>
-  </div>
-);
+  );
+}
 
-const Field = ({ label, hint, children }) => (
-  <div>
-    <label className="text-xs font-medium block mb-1.5" style={{ color: 'rgba(148,163,184,0.8)' }}>{label}</label>
-    {hint && <p className="text-xs mb-2" style={{ color: 'rgba(100,116,139,0.8)' }}>{hint}</p>}
-    {children}
-  </div>
-);
+// ─── Status Bar ───────────────────────────────────────────────────────────────
+function StatusBar({ movies, genres, studios, platforms, lang }) {
+  const t = T[lang].statusBar;
+  const total = movies.length;
+  const allLinks = movies.flatMap(m => m.hardlinks || []);
+  const ok = allLinks.filter(h => h.exists).length;
+  const missing = allLinks.filter(h => !h.exists).length;
+  const activeGenres = genres.length;
+  const activeStudios = studios.length;
+  const activePlatforms = platforms.length;
 
-// ─── Level badge for logs ──────────────────────────────────────────────────────
-const LevelBadge = ({ level, t }) => {
-  const styles = {
-    success: { bg: 'rgba(16,185,129,0.15)', color: '#34d399' },
-    error:   { bg: 'rgba(239,68,68,0.15)',  color: '#f87171' },
-    warning: { bg: 'rgba(245,158,11,0.15)', color: '#fbbf24' },
-    info:    { bg: 'rgba(59,130,246,0.15)', color: '#60a5fa' },
-  };
-  const labelMap = { success: 'badgeLevelSuccess', error: 'badgeLevelError', warning: 'badgeLevelWarning', info: 'badgeLevelInfo' };
-  const s = styles[level] || styles.info;
-  return <span className="badge" style={{ background: s.bg, color: s.color }}>{t(labelMap[level] || 'badgeLevelInfo')}</span>;
-};
+  const items = [
+    { label: t.total, value: total, color: '#818cf8' },
+    { label: t.ok, value: ok, color: '#4ade80' },
+    { label: t.missing, value: missing, color: '#f87171' },
+    { label: t.genres, value: activeGenres, color: '#c084fc' },
+    { label: t.studios, value: activeStudios, color: '#2dd4bf' },
+    { label: t.platforms, value: activePlatforms, color: '#facc15' },
+  ];
 
-const CategoryBadge = ({ category, t }) => {
-  const styles = {
-    hardlink: { bg: 'rgba(139,92,246,0.15)', color: '#a78bfa' },
-    series:   { bg: 'rgba(245,158,11,0.15)', color: '#fbbf24' },
-    cron:     { bg: 'rgba(16,185,129,0.15)', color: '#34d399' },
-    delete:   { bg: 'rgba(239,68,68,0.15)',  color: '#f87171' },
-    webhook:  { bg: 'rgba(59,130,246,0.15)', color: '#60a5fa' },
-    scan:     { bg: 'rgba(99,102,241,0.15)', color: '#818cf8' },
-    ignore:   { bg: 'rgba(100,116,139,0.2)', color: '#94a3b8' },
-  };
-  const s = styles[category] || { bg: 'rgba(100,116,139,0.15)', color: '#94a3b8' };
-  const labels = { hardlink: 'Hardlink', series: t('catLabelSeries'), cron: 'Cron', delete: t('catLabelDelete'), webhook: 'Webhook', scan: 'Scan', ignore: t('catLabelIgnored') };
-  return <span className="badge" style={{ background: s.bg, color: s.color }}>{labels[category] || category}</span>;
-};
+  return (
+    <div className="glass" style={{padding:'10px 20px', marginBottom:16, display:'flex', gap:24, flexWrap:'wrap', alignItems:'center'}}>
+      {items.map(item => (
+        <div key={item.label} style={{display:'flex', alignItems:'center', gap:8}}>
+          <span style={{fontSize:20, fontWeight:700, color:item.color}}>{item.value}</span>
+          <span style={{fontSize:12, color:'var(--muted)'}}>{item.label}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
 
-// ─── Main App ─────────────────────────────────────────────────────────────────
-const App = () => {
-  const [lang, setLang] = useState(() => localStorage.getItem('hlm_lang') || 'en');
-  const t = (key) => {
-    const val = TRANSLATIONS[lang][key];
-    return typeof val === 'function' ? val : (val ?? TRANSLATIONS['en'][key] ?? key);
-  };
-  const toggleLang = () => {
-    const next = lang === 'fr' ? 'en' : 'fr';
-    setLang(next);
-    localStorage.setItem('hlm_lang', next);
-  };
-  const [activeView, setActiveView] = useState('library');
-  const [config, setConfig] = useState(null);
-  const [movies, setMovies] = useState([]);
-  const [duplicates, setDuplicates] = useState([]);
-  const [seriesIssues, setSeriesIssues] = useState([]);
-  const [allGenres, setAllGenres] = useState([]);
-  const [allStudios, setAllStudios] = useState([]);
-  const [logs, setLogs] = useState([]);
-  const [ignored, setIgnored] = useState({ series: [], movies: [] });
-  const [loading, setLoading] = useState(false);
-  const [search, setSearch] = useState('');
-  const [genreFilter, setGenreFilter] = useState('');
-  const [showOnlyMissing, setShowOnlyMissing] = useState(false);
-  const [selectedMovies, setSelectedMovies] = useState(new Set());
-  const [stats, setStats] = useState({ total: 0, linked: 0, errors: 0, activeGenres: 0 });
-  const [showSettings, setShowSettings] = useState(false);
-  const [settingsTab, setSettingsTab] = useState('general');
-  const [cronStatus, setCronStatus] = useState(null);
-  const [logLevel, setLogLevel] = useState('');
-  const [logCategory, setLogCategory] = useState('');
-  const [logAutoRefresh, setLogAutoRefresh] = useState(false);
-  const logRefreshRef = useRef(null);
+// ─── Movie Detail Modal ───────────────────────────────────────────────────────
+function MovieDetailModal({ movie, onClose, onRefresh, lang, addToast }) {
+  const t = T[lang].modal;
+  const [confirm, setConfirm] = useState(null);
+  const [running, setRunning] = useState(false);
 
-  useEffect(() => { fetchConfig(); fetchCronStatus(); fetchIgnored(); }, []);
+  if (!movie) return null;
 
-  // Auto-refresh logs
-  useEffect(() => {
-    if (logAutoRefresh && activeView === 'logs') {
-      logRefreshRef.current = setInterval(fetchLogs, 5000);
-    } else {
-      clearInterval(logRefreshRef.current);
-    }
-    return () => clearInterval(logRefreshRef.current);
-  }, [logAutoRefresh, activeView]);
+  const genreLinks = (movie.hardlinks || []).filter(h => h.type === 'genre');
+  const studioLinks = (movie.hardlinks || []).filter(h => h.type === 'studio');
+  const platformLinks = (movie.hardlinks || []).filter(h => h.type === 'platform');
 
-  useEffect(() => {
-    if (activeView === 'logs') fetchLogs();
-  }, [activeView]);
-
-  const fetchConfig = async () => {
+  async function handleCreateLinks() {
+    setRunning(true);
     try {
-      const data = await apiFetch('/api/settings');
-      setConfig(data);
-      setStats(prev => ({
-        ...prev,
-        activeGenres: Object.values(data.genreMapping || {}).filter(g => g.enabled).length
-      }));
-    } catch { showToast(t('errorLoadConfig'), 'error'); }
-  };
+      await api('/api/run', { method: 'POST', body: { movie_paths: [movie.path] } });
+      addToast({ message: 'Hardlinks créés !', type: 'success' });
+      onRefresh();
+      onClose();
+    } catch(e) { addToast({ message: 'Erreur: ' + e.message, type: 'error' }); }
+    setRunning(false);
+  }
 
-  const fetchCronStatus = async () => {
-    try { setCronStatus(await apiFetch('/api/cron/status')); } catch {}
-  };
-
-  const fetchAllGenres = async () => {
+  async function handleDeleteHardlink(link) {
     try {
-      const data = await apiFetch('/api/genres');
-      if (Array.isArray(data)) setAllGenres(data);
-    } catch { showToast(t('errorGenres'), 'error'); }
-  };
+      await api('/api/delete-hardlink', { method: 'POST', body: { folderName: movie.folderName, targetFolder: link.folder } });
+      addToast({ message: 'Hardlink supprimé', type: 'success' });
+      onRefresh();
+    } catch(e) { addToast({ message: 'Erreur: ' + e.message, type: 'error' }); }
+  }
 
-  const fetchAllStudios = async () => {
+  async function handleDeleteMovie() {
     try {
-      const data = await apiFetch('/api/studios');
-      if (Array.isArray(data)) setAllStudios(data);
-    } catch { showToast(t('errorStudios'), 'error'); }
-  };
+      await api('/api/delete-movie', { method: 'POST', body: { sourcePath: movie.path, folderName: movie.folderName, title: movie.title } });
+      addToast({ message: 'Film supprimé', type: 'success' });
+      onRefresh();
+      onClose();
+    } catch(e) { addToast({ message: 'Erreur: ' + e.message, type: 'error' }); }
+  }
 
-  const updateStudioMapping = (studio, field, value) => {
-    setConfig(prev => {
-      const newMapping = { ...prev.studioMapping };
-      if (!newMapping[studio]) newMapping[studio] = { enabled: false, folder: studio };
-      newMapping[studio][field] = value;
-      return { ...prev, studioMapping: newMapping };
-    });
-  };
-
-  const fetchIgnored = async () => {
-    try { setIgnored(await apiFetch('/api/ignore')); } catch {}
-  };
-
-  const fetchLogs = async () => {
-    try {
-      const params = new URLSearchParams({ limit: 300 });
-      if (logLevel) params.set('level', logLevel);
-      if (logCategory) params.set('category', logCategory);
-      setLogs(await apiFetch('/api/logs?' + params));
-    } catch { showToast(t('errorLoadLogs'), 'error'); }
-  };
-
-  const clearLogs = async () => {
-    if (!confirm(t('confirmClearLogs'))) return;
-    await apiFetch('/api/logs', { method: 'DELETE' });
-    setLogs([]);
-    showToast(t('logsCleared'), 'success');
-  };
-
-  const fetchSeriesIssues = async () => {
-    setLoading(true);
-    try {
-      const data = await apiFetch('/api/series-issues');
-      if (Array.isArray(data)) {
-        setSeriesIssues(data);
-        showToast(t('orphanScanResult')(data.length), data.length ? 'warning' : 'success');
-      }
-    } catch { showToast(t('errorScanSeries'), 'error'); }
-    finally { setLoading(false); }
-  };
-
-  const ignoreSeries = async (seriesName) => {
-    try {
-      const res = await apiFetch('/api/ignore', { method: 'POST', body: { type: 'series', name: seriesName, label: seriesName } });
-      setIgnored(res.ignored || await apiFetch('/api/ignore'));
-      setSeriesIssues(prev => prev.filter(s => s.series !== seriesName));
-      showToast(t('seriesIgnored')(seriesName), 'info');
-    } catch { showToast(t('error'), 'error'); }
-  };
-
-  const ignoreMovie = async (movieFolder, movieTitle) => {
-    try {
-      const res = await apiFetch('/api/ignore', { method: 'POST', body: { type: 'movies', name: movieFolder, label: movieTitle } });
-      setIgnored(res.ignored || await apiFetch('/api/ignore'));
-      setDuplicates(prev => prev.filter(d => d.movie !== movieFolder));
-      showToast(t('movieIgnored')(movieTitle), 'info');
-    } catch { showToast(t('error'), 'error'); }
-  };
-
-  const removeIgnored = async (type, name) => {
-    try {
-      await apiFetch(`/api/ignore/${type}/${encodeURIComponent(name)}`, { method: 'DELETE' });
-      await fetchIgnored();
-      showToast(t('removedFromExclusion'), 'success');
-    } catch { showToast(t('error'), 'error'); }
-  };
-
-  const deleteSeries = async (path, name) => {
-    if (!confirm(t('confirmDeleteSeries')(name))) return;
-    try {
-      await apiFetch('/api/delete-series', { method: 'POST', body: { path, name } });
-      setSeriesIssues(prev => prev.filter(s => s.path !== path));
-      showToast(t('seriesDeleted'), 'success');
-    } catch { showToast(t('errorDelete'), 'error'); }
-  };
-
-  const deleteAllSeries = async () => {
-    if (!seriesIssues.length) return;
-    if (!confirm(t('confirmDeleteAllSeries')(seriesIssues.length))) return;
-    setLoading(true);
-    try {
-      const data = await apiFetch('/api/delete-all-series', { method: 'POST' });
-      showToast(t('seriesDeletedN')(data.deleted), 'success');
-      fetchSeriesIssues();
-    } catch { showToast(t('error'), 'error'); }
-    finally { setLoading(false); }
-  };
-
-  const fetchDuplicates = async () => {
-    setLoading(true);
-    try {
-      const data = await apiFetch('/api/duplicates');
-      if (Array.isArray(data)) {
-        setDuplicates(data);
-        showToast(t('issuesScanResult')(data.length), data.length ? 'warning' : 'success');
-      }
-    } catch { showToast(t('errorScan'), 'error'); }
-    finally { setLoading(false); }
-  };
-
-  const scanMovies = async () => {
-    setLoading(true);
-    try {
-      const data = await apiFetch('/api/status');
-      if (data.error) { showToast(t('error') + ': ' + data.error, 'error'); return; }
-      if (!Array.isArray(data)) { showToast(t('wrongFormat'), 'error'); return; }
-      setMovies(data);
-      let linked = 0, errors = 0;
-      data.forEach(m => (m.hardlinks || []).forEach(h => h.exists ? linked++ : errors++));
-      setStats(prev => ({ ...prev, total: data.length, linked, errors }));
-      showToast(t('moviesScanned')(data.length), 'success');
-    } catch (e) { showToast(t('error') + ': ' + e.message, 'error'); }
-    finally { setLoading(false); }
-  };
-
-  const createSelectedLinks = async () => {
-    if (!selectedMovies.size) { showToast(t('selectMoviesWarn'), 'warning'); return; }
-    setLoading(true);
-    try {
-      const count = selectedMovies.size;
-      await apiFetch('/api/run', { method: 'POST', body: { movie_paths: Array.from(selectedMovies) } });
-      setSelectedMovies(new Set());
-      showToast(t('moviesProcessed')(count), 'success');
-    } catch { showToast(t('error'), 'error'); }
-    finally { setLoading(false); }
-  };
-
-  const createAllLinks = async () => {
-    if (!confirm(t('confirmCreateAll'))) return;
-    setLoading(true);
-    try {
-      await apiFetch('/api/run-all', { method: 'POST' });
-      showToast(t('linksCreated'), 'success');
-    } catch { showToast(t('error'), 'error'); }
-    finally { setLoading(false); }
-  };
-
-  const deleteMovieWithHardlinks = async (movie) => {
-    if (!confirm(t('confirmDeleteMovie')(movie.title, movie.watchCount))) return;
-    try {
-      const data = await apiFetch('/api/delete-movie', {
-        method: 'POST',
-        body: { sourcePath: movie.path, folderName: movie.folderName, title: movie.title }
-      });
-      if (data.error) { showToast(t('error') + ': ' + data.error, 'error'); return; }
-      setMovies(prev => prev.filter(m => m.path !== movie.path));
-      const count = (data.deleted || []).length;
-      showToast(t('deletedMovie')(movie.title, count), 'success');
-    } catch { showToast(t('errorDelete'), 'error'); }
-  };
-
-  const deleteDuplicate = async (path) => {
-    if (!confirm(t('confirmDeleteFile'))) return;
-    try {
-      await apiFetch('/api/delete-file', { method: 'POST', body: { path } });
-      setDuplicates(prev => prev.filter(d => d.path !== path));
-      showToast(t('fileDeleted'), 'success');
-    } catch { showToast(t('error'), 'error'); }
-  };
-
-  const deleteAllByType = async (type) => {
-    const filtered = duplicates.filter(d => d.type === type);
-    if (!filtered.length) return;
-    if (!confirm(t('confirmDeleteByType')(filtered.length))) return;
-    setLoading(true);
-    try {
-      const data = await apiFetch('/api/delete-duplicates', { method: 'POST', body: { paths: filtered.map(d => d.path) } });
-      showToast(t('deletedByType')(data.deleted), 'success');
-      fetchDuplicates();
-    } catch { showToast(t('error'), 'error'); }
-    finally { setLoading(false); }
-  };
-
-  const saveConfig = async () => {
-    try {
-      await apiFetch('/api/settings', { method: 'POST', body: config });
-      setStats(prev => ({
-        ...prev,
-        activeGenres: Object.values(config.genreMapping || {}).filter(g => g.enabled).length
-      }));
-      await fetchCronStatus();
-      showToast(t('configSaved'), 'success');
-    } catch { showToast(t('errorSave'), 'error'); }
-  };
-
-  const updateGenreMapping = (genre, field, value) => {
-    setConfig(prev => {
-      const newMapping = { ...prev.genreMapping };
-      if (!newMapping[genre]) newMapping[genre] = { enabled: false, folder: genre };
-      newMapping[genre][field] = value;
-      return { ...prev, genreMapping: newMapping };
-    });
-  };
-
-  const toggleMovieSelection = (path) => {
-    setSelectedMovies(prev => {
-      const s = new Set(prev);
-      s.has(path) ? s.delete(path) : s.add(path);
-      return s;
-    });
-  };
-
-  const filteredMovies = movies.filter(m => {
-    const s = m.title.toLowerCase().includes(search.toLowerCase());
-    const g = !genreFilter || (m.hardlinks || []).some(h => h.folder === genreFilter);
-    const miss = !showOnlyMissing || (m.hardlinks || []).some(h => !h.exists);
-    return s && g && miss;
-  });
-
-  const filteredLogs = logs.filter(l => {
-    const lv = !logLevel || l.level === logLevel;
-    const ct = !logCategory || l.category === logCategory;
-    return lv && ct;
-  });
-
-  const uniqueFolders = [...new Set(movies.flatMap(m => (m.hardlinks || []).map(h => h.folder)))].sort();
-  const seriesEnabled = config?.seriesCheck?.enabled;
-  const totalIgnored = (ignored.series || []).length + (ignored.movies || []).length;
-
-  if (!config) {
+  function HardlinkSection({ title, links }) {
+    if (!links.length) return null;
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <Spinner size={40} />
-          <p className="text-white/60 text-sm mt-4">{t('loading')}</p>
+      <div style={{marginBottom:16}}>
+        <h4 style={{fontSize:13, fontWeight:600, color:'var(--muted)', marginBottom:8, textTransform:'uppercase', letterSpacing:'0.05em'}}>{title}</h4>
+        {links.map((link, i) => (
+          <div key={i} style={{display:'flex', alignItems:'center', justifyContent:'space-between', padding:'6px 10px', background:'rgba(255,255,255,0.03)', borderRadius:6, marginBottom:4}}>
+            <span style={{fontSize:13}}>{link.genre || link.folder}</span>
+            <div style={{display:'flex', alignItems:'center', gap:8}}>
+              {link.exists
+                ? <span className="badge badge-green" style={{fontSize:11}}>{t.ok}</span>
+                : <span className="badge badge-yellow" style={{fontSize:11}}>{t.missing}</span>
+              }
+              <button
+                onClick={() => setConfirm({ msg: t.confirmHardlinkDel, action: () => handleDeleteHardlink(link) })}
+                style={{background:'rgba(239,68,68,0.15)', border:'1px solid rgba(239,68,68,0.3)', color:'#f87171', padding:'3px 8px', borderRadius:6, fontSize:11, cursor:'pointer'}}
+              >{t.delete}</button>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="modal-backdrop" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal-box" style={{padding:0}}>
+        <div style={{display:'flex', gap:0}}>
+          {/* Left: Poster */}
+          <div style={{width:200, flexShrink:0}}>
+            <img src={movie.poster || 'https://via.placeholder.com/200x300?text=No+Poster'} alt={movie.title}
+              style={{width:'100%', height:'100%', objectFit:'cover', borderRadius:'16px 0 0 16px', display:'block', minHeight:300}} />
+          </div>
+          {/* Right: Info */}
+          <div style={{flex:1, padding:24, overflowY:'auto'}}>
+            <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:12}}>
+              <div>
+                <h2 style={{margin:'0 0 4px', fontSize:20, fontWeight:700}}>{movie.title}</h2>
+                <span style={{color:'var(--muted)', fontSize:14}}>{movie.folderName?.match(/\((\d{4})\)/)?.[1] || ''}</span>
+              </div>
+              <button onClick={onClose} style={{background:'rgba(255,255,255,0.07)', border:'none', color:'var(--muted)', padding:'4px 10px', borderRadius:6, cursor:'pointer', fontSize:13}}>{t.close}</button>
+            </div>
+
+            {/* Badges */}
+            <div style={{display:'flex', flexWrap:'wrap', gap:4, marginBottom:12}}>
+              {(movie.genres || []).map(g => <span key={g} className="badge badge-blue">{g}</span>)}
+              {movie.studio && <span className="badge badge-purple">{movie.studio}</span>}
+              {(movie.platforms || []).map(p => <span key={p} className="badge badge-teal">{p}</span>)}
+            </div>
+
+            {/* Meta */}
+            <div style={{display:'flex', gap:16, marginBottom:16, fontSize:13, color:'var(--muted)'}}>
+              {movie.fileSize > 0 && <span>{t.fileSize}: <strong style={{color:'var(--text)'}}>{formatBytes(movie.fileSize)}</strong></span>}
+              {movie.watchCount > 0 && <span>{t.watchCount}: <strong style={{color:'var(--text)'}}>{movie.watchCount}</strong></span>}
+            </div>
+
+            {/* Hardlinks */}
+            <div style={{borderTop:'1px solid var(--border)', paddingTop:16}}>
+              <HardlinkSection title={t.genres} links={genreLinks} />
+              <HardlinkSection title={t.studios} links={studioLinks} />
+              <HardlinkSection title={t.platforms} links={platformLinks} />
+              {!genreLinks.length && !studioLinks.length && !platformLinks.length && (
+                <p style={{color:'var(--muted)', fontSize:13}}>Aucun hardlink configuré</p>
+              )}
+            </div>
+
+            {/* Action Buttons */}
+            <div style={{display:'flex', gap:10, marginTop:16, borderTop:'1px solid var(--border)', paddingTop:16}}>
+              <button className="grad-btn" style={{padding:'8px 16px', fontSize:13}} onClick={handleCreateLinks} disabled={running}>
+                {running ? '…' : t.createLinks}
+              </button>
+              <button
+                onClick={() => setConfirm({ msg: t.confirmDelete, action: handleDeleteMovie })}
+                style={{padding:'8px 16px', fontSize:13, background:'rgba(239,68,68,0.15)', border:'1px solid rgba(239,68,68,0.3)', color:'#f87171', borderRadius:8, cursor:'pointer'}}
+              >{t.deleteMovie}</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      {confirm && <ConfirmDialog message={confirm.msg} lang={lang} onConfirm={() => { confirm.action(); setConfirm(null); }} onCancel={() => setConfirm(null)} />}
+    </div>
+  );
+}
+
+// ─── Library Tab ──────────────────────────────────────────────────────────────
+function LibraryTab({ movies, genres, studios, platforms, loading, onRefresh, lang, addToast }) {
+  const t = T[lang].library;
+  const [search, setSearch] = useState('');
+  const [filterGenre, setFilterGenre] = useState('');
+  const [filterStudio, setFilterStudio] = useState('');
+  const [filterPlatform, setFilterPlatform] = useState('');
+  const [missingOnly, setMissingOnly] = useState(false);
+  const [selected, setSelected] = useState(new Set());
+  const [detailMovie, setDetailMovie] = useState(null);
+  const [running, setRunning] = useState(false);
+
+  const filtered = useMemo(() => {
+    return movies.filter(m => {
+      if (search && !m.title.toLowerCase().includes(search.toLowerCase())) return false;
+      if (filterGenre && !(m.genres||[]).includes(filterGenre)) return false;
+      if (filterStudio && m.studio !== filterStudio) return false;
+      if (filterPlatform && !(m.platforms||[]).includes(filterPlatform)) return false;
+      if (missingOnly) {
+        const hasMissing = (m.hardlinks||[]).some(h => !h.exists);
+        if (!hasMissing) return false;
+      }
+      return true;
+    });
+  }, [movies, search, filterGenre, filterStudio, filterPlatform, missingOnly]);
+
+  function toggleSelect(path) {
+    setSelected(prev => {
+      const n = new Set(prev);
+      n.has(path) ? n.delete(path) : n.add(path);
+      return n;
+    });
+  }
+
+  function selectAll() { setSelected(new Set(filtered.map(m => m.path))); }
+  function deselectAll() { setSelected(new Set()); }
+
+  async function handleCreateLinks() {
+    if (!selected.size) return;
+    setRunning(true);
+    try {
+      await api('/api/run', { method: 'POST', body: { movie_paths: Array.from(selected) } });
+      addToast({ message: `Hardlinks créés pour ${selected.size} film(s)`, type: 'success' });
+      setSelected(new Set());
+      onRefresh();
+    } catch(e) { addToast({ message: 'Erreur: ' + e.message, type: 'error' }); }
+    setRunning(false);
+  }
+
+  async function handleRunAll() {
+    setRunning(true);
+    try {
+      await api('/api/run-all', { method: 'POST' });
+      addToast({ message: 'Tous les hardlinks relancés', type: 'success' });
+      onRefresh();
+    } catch(e) { addToast({ message: 'Erreur: ' + e.message, type: 'error' }); }
+    setRunning(false);
+  }
+
+  function getCardStatus(movie) {
+    const links = movie.hardlinks || [];
+    if (!links.length) return 'none';
+    if (links.every(h => h.exists)) return 'ok';
+    if (links.some(h => !h.exists)) return 'partial';
+    return 'missing';
+  }
+
+  return (
+    <div>
+      {/* Filters */}
+      <div style={{display:'flex', gap:10, marginBottom:16, flexWrap:'wrap', alignItems:'center'}}>
+        <input value={search} onChange={e => setSearch(e.target.value)} placeholder={t.search} style={{flex:'1 1 200px', minWidth:140}} />
+        <select value={filterGenre} onChange={e => setFilterGenre(e.target.value)} style={{minWidth:130}}>
+          <option value="">{t.allGenres}</option>
+          {genres.map(g => <option key={g.name||g} value={g.name||g}>{g.name||g}</option>)}
+        </select>
+        <select value={filterStudio} onChange={e => setFilterStudio(e.target.value)} style={{minWidth:130}}>
+          <option value="">{t.allStudios}</option>
+          {studios.map(s => <option key={s.name||s} value={s.name||s}>{s.name||s}</option>)}
+        </select>
+        <select value={filterPlatform} onChange={e => setFilterPlatform(e.target.value)} style={{minWidth:150}}>
+          <option value="">{t.allPlatforms}</option>
+          {platforms.map(p => <option key={p.name||p} value={p.name||p}>{p.name||p}</option>)}
+        </select>
+        <label style={{display:'flex', alignItems:'center', gap:6, fontSize:13, cursor:'pointer', color: missingOnly ? '#818cf8' : 'var(--muted)'}}>
+          <input type="checkbox" checked={missingOnly} onChange={e => setMissingOnly(e.target.checked)} style={{width:14, height:14}} />
+          {t.missingOnly}
+        </label>
+      </div>
+
+      {/* Toolbar */}
+      <div style={{display:'flex', gap:10, marginBottom:16, alignItems:'center', flexWrap:'wrap'}}>
+        <button onClick={selectAll} style={{padding:'6px 12px', fontSize:12, background:'rgba(255,255,255,0.06)', border:'1px solid var(--border)', borderRadius:6, color:'var(--text)', cursor:'pointer'}}>{t.selectAll}</button>
+        <button onClick={deselectAll} style={{padding:'6px 12px', fontSize:12, background:'rgba(255,255,255,0.06)', border:'1px solid var(--border)', borderRadius:6, color:'var(--text)', cursor:'pointer'}}>{t.deselectAll}</button>
+        {selected.size > 0 && (
+          <span style={{fontSize:13, color:'#818cf8'}}>{selected.size} {t.selected}</span>
+        )}
+        <div style={{marginLeft:'auto', display:'flex', gap:8}}>
+          <button className="grad-btn" style={{padding:'7px 14px', fontSize:13}} onClick={handleCreateLinks} disabled={!selected.size || running}>
+            {running ? '…' : t.createLinks}
+          </button>
+          <button onClick={handleRunAll} disabled={running} style={{padding:'7px 14px', fontSize:13, background:'rgba(255,255,255,0.07)', border:'1px solid var(--border)', borderRadius:8, color:'var(--text)', cursor:'pointer'}}>
+            {t.runAll}
+          </button>
+        </div>
+      </div>
+
+      {/* Grid */}
+      {loading ? (
+        <div style={{textAlign:'center', padding:60, color:'var(--muted)'}}>{t.loading}</div>
+      ) : !filtered.length ? (
+        <div style={{textAlign:'center', padding:60, color:'var(--muted)'}}>{t.noMovies}</div>
+      ) : (
+        <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(130px, 1fr))', gap:10}}>
+          {filtered.map(movie => {
+            const status = getCardStatus(movie);
+            const isSelected = selected.has(movie.path);
+            return (
+              <div key={movie.path} className="movie-card" style={{border: isSelected ? '2px solid #6366f1' : '2px solid transparent'}}>
+                {/* Checkbox overlay */}
+                <div className="checkbox-overlay" onClick={e => { e.stopPropagation(); toggleSelect(movie.path); }}>
+                  <input type="checkbox" checked={isSelected} onChange={() => {}} style={{width:16, height:16, cursor:'pointer', accentColor:'#6366f1'}} />
+                </div>
+                {/* Status dot */}
+                <div style={{position:'absolute', top:6, right:6, zIndex:10}}>
+                  <span className="status-dot" style={{background: status==='ok'?'#22c55e':status==='partial'?'#eab308':status==='missing'?'#ef4444':'#64748b'}}></span>
+                </div>
+                <img
+                  src={movie.poster || 'https://via.placeholder.com/130x195?text=' + encodeURIComponent(movie.title)}
+                  alt={movie.title}
+                  onClick={() => setDetailMovie(movie)}
+                  onError={e => { e.target.src = 'https://via.placeholder.com/130x195?text=No+Poster'; }}
+                />
+                <div className="overlay" onClick={() => setDetailMovie(movie)}></div>
+                <div className="card-info" onClick={() => setDetailMovie(movie)}>
+                  <p style={{margin:0, fontSize:10, fontWeight:600, lineHeight:1.3, color:'white'}}>{movie.title}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {detailMovie && (
+        <MovieDetailModal
+          movie={detailMovie}
+          onClose={() => setDetailMovie(null)}
+          onRefresh={onRefresh}
+          lang={lang}
+          addToast={addToast}
+        />
+      )}
+    </div>
+  );
+}
+
+// ─── Stats Tab ────────────────────────────────────────────────────────────────
+function StatsTab({ lang, addToast }) {
+  const t = T[lang].stats;
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  async function fetchStats() {
+    setLoading(true);
+    try {
+      const data = await api('/api/stats');
+      setStats(data);
+    } catch(e) { addToast({ message: 'Erreur stats: ' + e.message, type: 'error' }); }
+    setLoading(false);
+  }
+
+  function BreakdownTable({ data, title }) {
+    if (!data || !data.length) return null;
+    const maxCount = Math.max(...data.map(r => r.count || 0), 1);
+    return (
+      <div className="glass" style={{padding:20, marginBottom:16}}>
+        <h3 style={{margin:'0 0 14px', fontSize:15, fontWeight:600}}>{title}</h3>
+        <table style={{width:'100%', borderCollapse:'collapse', fontSize:13}}>
+          <thead>
+            <tr style={{color:'var(--muted)'}}>
+              <th style={{textAlign:'left', padding:'6px 8px', fontWeight:500}}>{t.name}</th>
+              <th style={{textAlign:'right', padding:'6px 8px', fontWeight:500}}>{t.count}</th>
+              <th style={{textAlign:'right', padding:'6px 8px', fontWeight:500}}>{t.size}</th>
+              <th style={{textAlign:'right', padding:'6px 8px', fontWeight:500}}>{t.linkedCol}</th>
+              <th style={{textAlign:'left', padding:'6px 8px', fontWeight:500, minWidth:120}}>{t.progress}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.map((row, i) => {
+              const pct = row.count ? Math.round((row.linked / row.count) * 100) : 0;
+              return (
+                <tr key={i} style={{borderTop:'1px solid var(--border)'}}>
+                  <td style={{padding:'8px 8px'}}>{row.name}</td>
+                  <td style={{textAlign:'right', padding:'8px 8px'}}>{row.count}</td>
+                  <td style={{textAlign:'right', padding:'8px 8px', color:'var(--muted)'}}>{formatBytes(row.totalSize)}</td>
+                  <td style={{textAlign:'right', padding:'8px 8px', color: row.linked === row.count ? '#4ade80' : '#f87171'}}>{row.linked}</td>
+                  <td style={{padding:'8px 8px'}}>
+                    <div style={{display:'flex', alignItems:'center', gap:8}}>
+                      <div className="progress-bar" style={{flex:1}}>
+                        <div className="progress-fill" style={{width: pct + '%'}}></div>
+                      </div>
+                      <span style={{fontSize:11, color:'var(--muted)', minWidth:32, textAlign:'right'}}>{pct}%</span>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20}}>
+        <h2 style={{margin:0, fontSize:18}}>{t.title}</h2>
+        <button className="grad-btn" style={{padding:'8px 18px', fontSize:13}} onClick={fetchStats} disabled={loading}>
+          {loading ? t.loading : t.fetch}
+        </button>
+      </div>
+
+      {stats && (
+        <>
+          {/* Summary Cards */}
+          <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(160px, 1fr))', gap:12, marginBottom:24}}>
+            {[
+              { label: t.totalMovies, value: stats.total, color: '#818cf8' },
+              { label: t.totalSize, value: formatBytes(stats.totalSize), color: '#c084fc' },
+              { label: t.linked, value: stats.linked, color: '#4ade80' },
+              { label: t.missing, value: stats.missing, color: '#f87171' },
+            ].map(card => (
+              <div key={card.label} className="glass" style={{padding:20, textAlign:'center'}}>
+                <div style={{fontSize:28, fontWeight:700, color:card.color}}>{card.value}</div>
+                <div style={{fontSize:12, color:'var(--muted)', marginTop:4}}>{card.label}</div>
+              </div>
+            ))}
+          </div>
+
+          <BreakdownTable data={stats.byGenre} title={t.byGenre} />
+          <BreakdownTable data={stats.byStudio} title={t.byStudio} />
+          <BreakdownTable data={stats.byPlatform} title={t.byPlatform} />
+        </>
+      )}
+
+      {!stats && !loading && (
+        <div className="glass" style={{padding:40, textAlign:'center', color:'var(--muted)'}}>
+          Cliquez sur "{t.fetch}" pour calculer les statistiques
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Issues Tab ───────────────────────────────────────────────────────────────
+function IssuesTab({ lang, addToast }) {
+  const t = T[lang].issues;
+  const [issues, setIssues] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [ignored, setIgnored] = useState([]);
+
+  useEffect(() => {
+    fetchIgnored();
+    fetchIssues();
+  }, []);
+
+  async function fetchIgnored() {
+    try {
+      const data = await api('/api/ignore');
+      setIgnored(data || []);
+    } catch(e) {}
+  }
+
+  async function fetchIssues() {
+    setLoading(true);
+    try {
+      const data = await api('/api/duplicates');
+      setIssues(data);
+    } catch(e) { addToast({ message: 'Erreur: ' + e.message, type: 'error' }); }
+    setLoading(false);
+  }
+
+  async function ignoreItem(type, name) {
+    try {
+      await api('/api/ignore', { method: 'POST', body: { type, name } });
+      addToast({ message: 'Ignoré', type: 'success' });
+      fetchIgnored();
+      fetchIssues();
+    } catch(e) { addToast({ message: 'Erreur: ' + e.message, type: 'error' }); }
+  }
+
+  async function unignoreItem(type, name) {
+    try {
+      await fetch(`/api/ignore/${type}/${encodeURIComponent(name)}`, { method: 'DELETE' });
+      addToast({ message: 'Réactivé', type: 'success' });
+      fetchIgnored();
+    } catch(e) { addToast({ message: 'Erreur: ' + e.message, type: 'error' }); }
+  }
+
+  const allIssues = issues ? [
+    ...(issues.duplicates || []).map(i => ({ ...i, issueType: 'duplicate' })),
+    ...(issues.orphans || []).map(i => ({ ...i, issueType: 'orphan' })),
+    ...(issues.wrongGenre || []).map(i => ({ ...i, issueType: 'wrongGenre' })),
+  ] : [];
+
+  return (
+    <div>
+      <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20}}>
+        <h2 style={{margin:0, fontSize:18}}>{t.title}</h2>
+        <button onClick={fetchIssues} disabled={loading} style={{padding:'7px 14px', fontSize:13, background:'rgba(255,255,255,0.07)', border:'1px solid var(--border)', borderRadius:8, color:'var(--text)', cursor:'pointer'}}>
+          {loading ? t.loading : t.refresh}
+        </button>
+      </div>
+
+      {/* Ignored list */}
+      {ignored.length > 0 && (
+        <div className="glass" style={{padding:16, marginBottom:16}}>
+          <h3 style={{margin:'0 0 10px', fontSize:14, color:'var(--muted)'}}>Éléments ignorés ({ignored.length})</h3>
+          <div style={{display:'flex', flexWrap:'wrap', gap:6}}>
+            {ignored.map((item, i) => (
+              <div key={i} style={{display:'flex', alignItems:'center', gap:6, background:'rgba(255,255,255,0.05)', padding:'4px 10px', borderRadius:6, fontSize:12}}>
+                <span className="badge badge-gray" style={{fontSize:10}}>{item.type}</span>
+                <span>{item.name}</span>
+                <button onClick={() => unignoreItem(item.type, item.name)} style={{background:'none', border:'none', color:'#f87171', cursor:'pointer', fontSize:14, lineHeight:1}}>×</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {loading ? (
+        <div style={{textAlign:'center', padding:40, color:'var(--muted)'}}>{t.loading}</div>
+      ) : !allIssues.length ? (
+        <div className="glass" style={{padding:40, textAlign:'center', color:'var(--muted)'}}>{t.noIssues}</div>
+      ) : (
+        <div style={{display:'flex', flexDirection:'column', gap:8}}>
+          {allIssues.map((issue, i) => (
+            <div key={i} className="glass" style={{padding:14, display:'flex', alignItems:'center', justifyContent:'space-between', gap:12}}>
+              <div style={{display:'flex', alignItems:'center', gap:10}}>
+                <span className={`badge ${issue.issueType==='duplicate'?'badge-red':issue.issueType==='orphan'?'badge-yellow':'badge-blue'}`} style={{fontSize:10}}>
+                  {issue.issueType==='duplicate'?t.duplicates:issue.issueType==='orphan'?t.orphans:t.wrongGenre}
+                </span>
+                <span style={{fontSize:13}}>{issue.title || issue.path || issue.name || JSON.stringify(issue)}</span>
+                {issue.path && <span style={{fontSize:11, color:'var(--muted)'}}>{issue.path}</span>}
+              </div>
+              <button onClick={() => ignoreItem(issue.issueType, issue.title||issue.name||issue.path)}
+                style={{padding:'4px 10px', fontSize:12, background:'rgba(255,255,255,0.06)', border:'1px solid var(--border)', borderRadius:6, color:'var(--muted)', cursor:'pointer', whiteSpace:'nowrap'}}>
+                {t.ignore}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Series Tab ───────────────────────────────────────────────────────────────
+function SeriesTab({ lang, addToast }) {
+  const t = T[lang].series;
+  const [series, setSeries] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => { fetchSeries(); }, []);
+
+  async function fetchSeries() {
+    setLoading(true);
+    try {
+      const data = await api('/api/series-issues');
+      setSeries(data || []);
+    } catch(e) { addToast({ message: 'Erreur: ' + e.message, type: 'error' }); }
+    setLoading(false);
+  }
+
+  return (
+    <div>
+      <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20}}>
+        <h2 style={{margin:0, fontSize:18}}>{t.title}</h2>
+        <button onClick={fetchSeries} disabled={loading} style={{padding:'7px 14px', fontSize:13, background:'rgba(255,255,255,0.07)', border:'1px solid var(--border)', borderRadius:8, color:'var(--text)', cursor:'pointer'}}>
+          {loading ? T[lang].common.loading : t.refresh}
+        </button>
+      </div>
+      {loading ? (
+        <div style={{textAlign:'center', padding:40, color:'var(--muted)'}}>{T[lang].common.loading}</div>
+      ) : !series.length ? (
+        <div className="glass" style={{padding:40, textAlign:'center', color:'var(--muted)'}}>{t.noSeries}</div>
+      ) : (
+        <div style={{display:'flex', flexDirection:'column', gap:6}}>
+          {series.map((s, i) => (
+            <div key={i} className="glass" style={{padding:14}}>
+              <div style={{fontSize:14, fontWeight:500}}>{s.title || s.name || s.path}</div>
+              {s.path && <div style={{fontSize:12, color:'var(--muted)', marginTop:2}}>{s.path}</div>}
+              {s.details && <div style={{fontSize:12, color:'#facc15', marginTop:4}}>{s.details}</div>}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Logs Tab ─────────────────────────────────────────────────────────────────
+function LogsTab({ lang, addToast }) {
+  const t = T[lang].logs;
+  const [logs, setLogs] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const bottomRef = useRef(null);
+
+  useEffect(() => { fetchLogs(); }, []);
+
+  async function fetchLogs() {
+    setLoading(true);
+    try {
+      const data = await api('/api/logs');
+      setLogs(Array.isArray(data) ? data : (data.logs || []));
+    } catch(e) {}
+    setLoading(false);
+  }
+
+  async function clearLogs() {
+    try {
+      await fetch('/api/logs', { method: 'DELETE' });
+      setLogs([]);
+    } catch(e) {}
+  }
+
+  function getLogColor(line) {
+    const l = (line||'').toLowerCase();
+    if (l.includes('error') || l.includes('erreur')) return '#f87171';
+    if (l.includes('warn') || l.includes('avert')) return '#facc15';
+    if (l.includes('success') || l.includes('ok') || l.includes('créé')) return '#4ade80';
+    return 'var(--text)';
+  }
+
+  return (
+    <div>
+      <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16}}>
+        <h2 style={{margin:0, fontSize:18}}>{t.title}</h2>
+        <div style={{display:'flex', gap:8}}>
+          <button onClick={fetchLogs} disabled={loading} style={{padding:'6px 12px', fontSize:12, background:'rgba(255,255,255,0.07)', border:'1px solid var(--border)', borderRadius:6, color:'var(--text)', cursor:'pointer'}}>{t.refresh}</button>
+          <button onClick={clearLogs} style={{padding:'6px 12px', fontSize:12, background:'rgba(239,68,68,0.1)', border:'1px solid rgba(239,68,68,0.3)', borderRadius:6, color:'#f87171', cursor:'pointer'}}>{t.clear}</button>
+        </div>
+      </div>
+      <div className="glass" style={{padding:16, maxHeight:600, overflowY:'auto', fontFamily:'monospace'}}>
+        {!logs.length ? (
+          <p style={{color:'var(--muted)', textAlign:'center', padding:20}}>{t.noLogs}</p>
+        ) : (
+          logs.map((line, i) => (
+            <div key={i} className="log-line" style={{color: getLogColor(line)}}>{line}</div>
+          ))
+        )}
+        <div ref={bottomRef} />
+      </div>
+    </div>
+  );
+}
+
+// ─── Settings Tab ─────────────────────────────────────────────────────────────
+function SettingsTab({ lang, addToast }) {
+  const t = T[lang].settings;
+  const [activeSettingsTab, setActiveSettingsTab] = useState('connections');
+  const [settings, setSettings] = useState({});
+  const [genres, setGenres] = useState([]);
+  const [studios, setStudios] = useState([]);
+  const [platforms, setPlatforms] = useState([]);
+  const [exclusions, setExclusions] = useState([]);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [cronStatus, setCronStatus] = useState(null);
+
+  useEffect(() => {
+    api('/api/settings').then(d => setSettings(d || {})).catch(() => {});
+    api('/api/genres').then(d => setGenres(d || [])).catch(() => {});
+    api('/api/studios').then(d => setStudios(d || [])).catch(() => {});
+    api('/api/platforms').then(d => setPlatforms(d || [])).catch(() => {});
+    api('/api/ignore').then(d => setExclusions(d || [])).catch(() => {});
+    api('/api/cron/status').then(d => setCronStatus(d)).catch(() => {});
+  }, []);
+
+  async function saveSettings() {
+    setSaving(true);
+    try {
+      await api('/api/settings', { method: 'POST', body: settings });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+      addToast({ message: t.saved, type: 'success' });
+    } catch(e) { addToast({ message: 'Erreur: ' + e.message, type: 'error' }); }
+    setSaving(false);
+  }
+
+  async function triggerCron() {
+    try {
+      await api('/api/cron/trigger', { method: 'POST' });
+      addToast({ message: 'Cron lancé', type: 'success' });
+    } catch(e) { addToast({ message: 'Erreur: ' + e.message, type: 'error' }); }
+  }
+
+  function Field({ label, field, type = 'text', placeholder = '' }) {
+    return (
+      <div style={{marginBottom:14}}>
+        <label style={{display:'block', fontSize:12, color:'var(--muted)', marginBottom:4}}>{label}</label>
+        <input type={type} value={settings[field] || ''} placeholder={placeholder}
+          onChange={e => setSettings(p => ({ ...p, [field]: e.target.value }))}
+          style={{width:'100%'}} />
+      </div>
+    );
+  }
+
+  function MappingEditor({ items, setItems, nameLabel, folderLabel }) {
+    const [newName, setNewName] = useState('');
+    const [newFolder, setNewFolder] = useState('');
+
+    function addItem() {
+      if (!newName.trim()) return;
+      setItems(prev => [...prev, { name: newName.trim(), folder: newFolder.trim() || newName.trim() }]);
+      setNewName(''); setNewFolder('');
+    }
+
+    function removeItem(idx) {
+      setItems(prev => prev.filter((_, i) => i !== idx));
+    }
+
+    function updateItem(idx, key, val) {
+      setItems(prev => prev.map((item, i) => i === idx ? { ...item, [key]: val } : item));
+    }
+
+    return (
+      <div>
+        {items.map((item, idx) => (
+          <div key={idx} style={{display:'flex', gap:8, marginBottom:6, alignItems:'center'}}>
+            <input value={item.name || ''} onChange={e => updateItem(idx, 'name', e.target.value)} placeholder={nameLabel} style={{flex:1}} />
+            <input value={item.folder || ''} onChange={e => updateItem(idx, 'folder', e.target.value)} placeholder={folderLabel} style={{flex:1}} />
+            <button onClick={() => removeItem(idx)} style={{padding:'6px 10px', background:'rgba(239,68,68,0.15)', border:'1px solid rgba(239,68,68,0.3)', color:'#f87171', borderRadius:6, cursor:'pointer', fontSize:12}}>{t.remove}</button>
+          </div>
+        ))}
+        <div style={{display:'flex', gap:8, marginTop:8}}>
+          <input value={newName} onChange={e => setNewName(e.target.value)} placeholder={nameLabel} style={{flex:1}} />
+          <input value={newFolder} onChange={e => setNewFolder(e.target.value)} placeholder={folderLabel} style={{flex:1}} />
+          <button onClick={addItem} className="grad-btn" style={{padding:'6px 14px', fontSize:13}}>{t.add}</button>
         </div>
       </div>
     );
   }
 
-  const navTabs = [
-    { id: 'library', label: t('library') },
-    { id: 'issues', label: t('moviesIssues'), badge: duplicates.length || null, badgeColor: '#ef4444' },
-    ...(seriesEnabled ? [{ id: 'series', label: t('seriesTab'), badge: seriesIssues.length || null, badgeColor: '#f59e0b' }] : []),
-    { id: 'logs', label: t('logs'), badge: null },
+  const settingsTabs = [
+    { key: 'connections', label: t.tabs.connections },
+    { key: 'paths', label: t.tabs.paths },
+    { key: 'series', label: t.tabs.series },
+    { key: 'automation', label: t.tabs.automation },
+    { key: 'genres', label: t.tabs.genres },
+    { key: 'studios', label: t.tabs.studios },
+    { key: 'platforms', label: t.tabs.platforms },
+    { key: 'exclusions', label: t.tabs.exclusions },
   ];
 
   return (
-    <div className="min-h-screen text-white" style={{ padding: '24px', maxWidth: 1700, margin: '0 auto' }}>
-
-      {/* ── HEADER ── */}
-      <header className="mb-7">
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
-              style={{ background: 'linear-gradient(135deg,#3b82f6,#7c3aed)', boxShadow: '0 4px 20px rgba(59,130,246,0.3)' }}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101"/>
-                <path d="M10.172 13.828a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
-              </svg>
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold gradient-text">Hardlink Manager</h1>
-              <p className="text-xs" style={{ color: 'rgba(100,116,139,0.9)' }}>{t('appSubtitle')}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <button onClick={toggleLang}
-              className="btn-ghost text-white/70"
-              title={lang === 'fr' ? 'Switch to English' : 'Passer en français'}
-              style={{ minWidth: 42, fontWeight: 700, fontSize: 13 }}>
-              {lang === 'fr' ? '🇬🇧 EN' : '🇫🇷 FR'}
-            </button>
-            <button onClick={scanMovies} disabled={loading} className="btn-primary flex items-center gap-2 text-white">
-              {loading ? <Spinner size={14}/> : <span>⟳</span>} {t('scan')}
-            </button>
-            <button onClick={() => { setShowSettings(true); setSettingsTab('general'); }} className="btn-ghost text-white/80">
-              ⚙ {t('settings')}
-            </button>
-          </div>
-        </div>
-
-        {/* NAV */}
-        <nav className="flex gap-6 mt-6" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-          {navTabs.map(tab => (
-            <button key={tab.id} onClick={() => setActiveView(tab.id)}
-              className={`nav-tab flex items-center gap-2 ${activeView === tab.id ? 'active' : ''}`}>
-              {tab.label}
-              {tab.badge > 0 && (
-                <span style={{ background: tab.badgeColor, fontSize: 10, padding: '1px 7px', borderRadius: 20, fontWeight: 700 }}>
-                  {tab.badge}
-                </span>
-              )}
-            </button>
-          ))}
-        </nav>
-      </header>
-
-      {/* ── STATS ── */}
-      <div className={`grid gap-4 mb-7 ${seriesEnabled ? 'grid-cols-5' : 'grid-cols-4'}`}>
-        <StatCard icon="🎬" label={t('statMovies')} value={stats.total} color="blue" />
-        <StatCard icon="✓" label={t('statLinksOk')} value={stats.linked} color="green" />
-        <StatCard icon="⚠" label={t('statMissing')} value={stats.errors} color="red" />
-        <StatCard icon="🎭" label={t('statActiveGenres')} value={stats.activeGenres} color="purple" />
-        {seriesEnabled && (
-          <StatCard icon="📺" label={t('statOrphanSeries')} value={seriesIssues.length}
-            color="amber" onClick={() => setActiveView('series')} />
-        )}
+    <div>
+      <div style={{display:'flex', gap:6, marginBottom:20, flexWrap:'wrap'}}>
+        {settingsTabs.map(tab => (
+          <button key={tab.key} className={`tab-btn ${activeSettingsTab===tab.key?'active':''}`} onClick={() => setActiveSettingsTab(tab.key)} style={{fontSize:12}}>
+            {tab.label}
+          </button>
+        ))}
       </div>
 
-      {/* ═══════════════════════════════════════════════════════════════ */}
-      {/* LIBRARY VIEW */}
-      {/* ═══════════════════════════════════════════════════════════════ */}
-      {activeView === 'library' && (
-        <div className="glass rounded-2xl p-6">
-          <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-            <div className="flex gap-2 flex-wrap">
-              <input type="text" value={search} onChange={e => setSearch(e.target.value)}
-                placeholder={t('searchPlaceholder')} className="input-field" style={{ width: 240 }} />
-              <select value={genreFilter} onChange={e => setGenreFilter(e.target.value)}
-                className="input-field" style={{ width: 170 }}>
-                <option value="">{t('allGenres')}</option>
-                {uniqueFolders.map(g => <option key={g} value={g}>{g}</option>)}
-              </select>
-              <button onClick={() => setShowOnlyMissing(!showOnlyMissing)}
-                className={showOnlyMissing ? 'btn-danger text-white' : 'btn-ghost text-white/70'}>
-                {showOnlyMissing ? t('withoutLinks') : t('all')}
-              </button>
+      <div className="glass" style={{padding:24}}>
+        {activeSettingsTab === 'connections' && (
+          <div>
+            <Field label={t.radarrUrl} field="radarrUrl" placeholder="http://localhost:7878" />
+            <Field label={t.radarrKey} field="radarrApiKey" />
+            <Field label={t.tmdbKey} field="tmdbApiKey" />
+            <Field label={t.tmdbCountry} field="tmdbCountry" placeholder="FR" />
+            <Field label={t.jellyfinUrl} field="jellyfinUrl" placeholder="http://localhost:8096" />
+            <Field label={t.jellyfinKey} field="jellyfinApiKey" />
+            <Field label={t.jellystatUrl} field="jellystatUrl" placeholder="http://localhost:3004" />
+            <Field label={t.jellystatKey} field="jellystatApiKey" />
+          </div>
+        )}
+
+        {activeSettingsTab === 'paths' && (
+          <div>
+            <Field label={t.sourcePath} field="sourcePath" placeholder="/media/movies/A trier" />
+            <Field label={t.genresPath} field="genresPath" placeholder="/media/movies/Genres" />
+            <Field label={t.studiosPath} field="studiosPath" placeholder="/media/movies/Studios" />
+            <Field label={t.platformsPath} field="platformsPath" placeholder="/media/movies/Plateformes" />
+          </div>
+        )}
+
+        {activeSettingsTab === 'series' && (
+          <div>
+            <Field label={t.seriesPath} field="seriesPath" placeholder="/media/series" />
+          </div>
+        )}
+
+        {activeSettingsTab === 'automation' && (
+          <div>
+            <div style={{marginBottom:14}}>
+              <label style={{display:'flex', alignItems:'center', gap:8, fontSize:14, cursor:'pointer'}}>
+                <input type="checkbox" checked={!!settings.cronEnabled} onChange={e => setSettings(p => ({ ...p, cronEnabled: e.target.checked }))} style={{width:16, height:16}} />
+                {t.cronEnabled}
+              </label>
             </div>
-            {filteredMovies.length > 0 && (
-              <div className="flex gap-2">
-                <button onClick={() => setSelectedMovies(selectedMovies.size === filteredMovies.length ? new Set() : new Set(filteredMovies.map(m => m.path)))}
-                  className="btn-ghost text-white/70">
-                  {selectedMovies.size === filteredMovies.length ? t('deselect') : t('selectAll')}
-                </button>
-                {selectedMovies.size > 0 && (
-                  <button onClick={createSelectedLinks} disabled={loading} className="btn-primary text-white">
-                    🔗 {t('create')} ({selectedMovies.size})
-                  </button>
-                )}
-                <button onClick={createAllLinks} disabled={loading}
-                  className="text-white font-semibold text-sm px-4 py-2 rounded-xl transition-all"
-                  style={{ background: 'rgba(16,185,129,0.2)', border: '1px solid rgba(16,185,129,0.3)' }}>
-                  {t('createAll')}
-                </button>
+            <Field label={t.cronSchedule} field="cronSchedule" placeholder="0 3 * * *" />
+            <div style={{display:'flex', gap:10, marginTop:10, alignItems:'center'}}>
+              <button onClick={triggerCron} style={{padding:'7px 14px', fontSize:13, background:'rgba(255,255,255,0.07)', border:'1px solid var(--border)', borderRadius:8, color:'var(--text)', cursor:'pointer'}}>
+                {t.cronTrigger}
+              </button>
+              {cronStatus && (
+                <span style={{fontSize:12, color:'var(--muted)'}}>{t.cronStatus}: <span style={{color: cronStatus.running ? '#4ade80' : 'var(--muted)'}}>
+                  {cronStatus.running ? 'En cours' : 'Arrêté'} {cronStatus.lastRun ? `• Dernier: ${new Date(cronStatus.lastRun).toLocaleString()}` : ''}
+                </span></span>
+              )}
+            </div>
+          </div>
+        )}
+
+        {activeSettingsTab === 'genres' && (
+          <div>
+            <p style={{fontSize:13, color:'var(--muted)', marginTop:0}}>Mappings genre → dossier</p>
+            <MappingEditor items={genres} setItems={setGenres} nameLabel={t.genreName} folderLabel={t.genreFolder} />
+          </div>
+        )}
+
+        {activeSettingsTab === 'studios' && (
+          <div>
+            <p style={{fontSize:13, color:'var(--muted)', marginTop:0}}>Mappings studio → dossier</p>
+            <MappingEditor items={studios} setItems={setStudios} nameLabel={t.studioName} folderLabel={t.studioFolder} />
+          </div>
+        )}
+
+        {activeSettingsTab === 'platforms' && (
+          <div>
+            <p style={{fontSize:13, color:'var(--muted)', marginTop:0}}>Mappings plateforme → dossier</p>
+            <MappingEditor items={platforms} setItems={setPlatforms} nameLabel={t.platformName} folderLabel={t.platformFolder} />
+          </div>
+        )}
+
+        {activeSettingsTab === 'exclusions' && (
+          <div>
+            <p style={{fontSize:13, color:'var(--muted)', marginTop:0}}>Films/genres/studios exclus du traitement</p>
+            {exclusions.length === 0 ? (
+              <p style={{color:'var(--muted)', fontSize:13}}>Aucune exclusion</p>
+            ) : (
+              <div style={{display:'flex', flexDirection:'column', gap:6}}>
+                {exclusions.map((ex, i) => (
+                  <div key={i} style={{display:'flex', alignItems:'center', gap:10, padding:'8px 12px', background:'rgba(255,255,255,0.03)', borderRadius:8}}>
+                    <span className="badge badge-gray" style={{fontSize:11}}>{ex.type}</span>
+                    <span style={{fontSize:13, flex:1}}>{ex.name}</span>
+                    <button onClick={async () => {
+                      try {
+                        await fetch(`/api/ignore/${ex.type}/${encodeURIComponent(ex.name)}`, { method: 'DELETE' });
+                        setExclusions(prev => prev.filter((_, j) => j !== i));
+                      } catch(e) {}
+                    }} style={{padding:'3px 8px', fontSize:12, background:'rgba(239,68,68,0.15)', border:'1px solid rgba(239,68,68,0.3)', color:'#f87171', borderRadius:6, cursor:'pointer'}}>
+                      {t.remove}
+                    </button>
+                  </div>
+                ))}
               </div>
             )}
           </div>
+        )}
 
-          {movies.length === 0 ? (
-            <div className="text-center py-24" style={{ color: 'rgba(100,116,139,0.7)' }}>
-              <div className="text-5xl mb-4">🎬</div>
-              <p className="text-base font-medium">{t('emptyLibrary')}</p>
-              <p className="text-sm mt-1">{t('emptyLibrarySub')}</p>
-            </div>
-          ) : (
-            <>
-              <p className="text-xs mb-4" style={{ color: 'rgba(100,116,139,0.7)' }}>
-                {filteredMovies.length} {lang === 'fr' ? `film${filteredMovies.length !== 1 ? 's' : ''}` : `movie${filteredMovies.length !== 1 ? 's' : ''}`}
-                {search || genreFilter || showOnlyMissing ? ` ${t('filtered')}` : ''}
-              </p>
-              <div className="grid grid-cols-6 gap-3">
-                {filteredMovies.map((movie, idx) => {
-                  const hasErrors = (movie.hardlinks || []).some(h => !h.exists);
-                  const allOk = (movie.hardlinks || []).length > 0 && (movie.hardlinks || []).every(h => h.exists);
-                  const isSelected = selectedMovies.has(movie.path);
-                  const addedRadarr = movie.addedToRadarr
-                    ? new Date(movie.addedToRadarr).toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-CA', { day:'2-digit', month:'2-digit', year:'2-digit' })
-                    : null;
-                  return (
-                    <div key={idx} onClick={() => toggleMovieSelection(movie.path)}
-                      className={`poster-card rounded-xl cursor-pointer overflow-hidden`}
-                      style={{ border: isSelected ? '2px solid #3b82f6' : '1px solid rgba(255,255,255,0.07)', background: 'rgba(15,23,42,0.6)' }}>
-                      <div style={{ aspectRatio: '2/3', position: 'relative' }}>
-                        {movie.poster
-                          ? <img src={movie.poster} alt={movie.title} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
-                          : <div style={{ width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(30,41,59,0.8)', fontSize:36 }}>🎬</div>
-                        }
-                        {/* Bouton suppression (visible au survol) */}
-                        <button
-                          className="movie-delete-btn"
-                          onClick={e => { e.stopPropagation(); deleteMovieWithHardlinks(movie); }}
-                          title={t('deleteMovieTip')}
-                          style={{ position:'absolute', top:7, left:7, width:24, height:24, borderRadius:'50%', background:'rgba(239,68,68,0.9)', border:'none', cursor:'pointer', color:'white', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, lineHeight:1, zIndex:10 }}>
-                          🗑
-                        </button>
-                        {/* Indicateur sélection / liens OK */}
-                        {isSelected && (
-                          <div style={{ position:'absolute', top:8, right:8, width:22, height:22, borderRadius:'50%', background:'#3b82f6', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:700 }}>✓</div>
-                        )}
-                        {allOk && !isSelected && (
-                          <div style={{ position:'absolute', top:8, right:8, width:22, height:22, borderRadius:'50%', background:'rgba(16,185,129,0.85)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11 }}>✓</div>
-                        )}
-                        {/* Badge vues Jellystat */}
-                        {movie.jellystatEnabled && movie.watchCount > 0 && (
-                          <div title={lang === 'fr' ? `Vu ${movie.watchCount} fois${movie.watchDates && movie.watchDates[0] ? ' · Dernière fois : ' + new Date(movie.watchDates[0]).toLocaleDateString('fr-FR') : ''}` : `Watched ${movie.watchCount} time(s)${movie.watchDates && movie.watchDates[0] ? ' · Last: ' + new Date(movie.watchDates[0]).toLocaleDateString('en-CA') : ''}`}
-                            style={{ position:'absolute', top:8, right: isSelected || allOk ? 36 : 8, background:'rgba(59,130,246,0.85)', borderRadius:10, padding:'2px 6px', fontSize:9, fontWeight:700, color:'white', display:'flex', alignItems:'center', gap:3 }}>
-                            👁 {movie.watchCount}
-                          </div>
-                        )}
-                        {/* Overlay bas : titre + statut + méta */}
-                        <div style={{ position:'absolute', bottom:0, left:0, right:0, padding:'28px 8px 7px', background:'linear-gradient(to top, rgba(0,0,0,0.97) 0%, rgba(0,0,0,0.6) 60%, rgba(0,0,0,0) 100%)' }}>
-                          <p style={{ fontSize:11, fontWeight:600, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{movie.title}</p>
-                          {hasErrors && <p style={{ fontSize:10, color:'#f87171', marginTop:2 }}>{t('missingLinks')}</p>}
-                          {allOk && <p style={{ fontSize:10, color:'#34d399', marginTop:2 }}>✓ OK</p>}
-                          {(movie.hardlinks||[]).length === 0 && <p style={{ fontSize:10, color:'rgba(100,116,139,0.7)', marginTop:2 }}>{t('noGenre')}</p>}
-                          {/* Ligne méta : taille + date Radarr */}
-                          <div style={{ display:'flex', gap:5, marginTop:3, flexWrap:'wrap', alignItems:'center' }}>
-                            {movie.fileSize > 0 && (
-                              <span style={{ fontSize:9, color:'rgba(148,163,184,0.65)', fontWeight:500 }}>{formatSize(movie.fileSize)}</span>
-                            )}
-                            {addedRadarr && (
-                              <span style={{ fontSize:9, color:'rgba(100,116,139,0.55)' }}>· {addedRadarr}</span>
-                            )}
-                            {movie.jellystatEnabled && movie.watchCount === 0 && (
-                              <span style={{ fontSize:9, color:'rgba(100,116,139,0.45)' }}>{t('notWatched')}</span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </>
-          )}
-        </div>
-      )}
-
-      {/* ═══════════════════════════════════════════════════════════════ */}
-      {/* ISSUES VIEW (films) */}
-      {/* ═══════════════════════════════════════════════════════════════ */}
-      {activeView === 'issues' && (
-        <div className="glass rounded-2xl p-6">
-          <div className="flex items-center justify-between mb-6 gap-4">
-            <div>
-              <h2 className="text-lg font-bold">{t('issuesTitle')}</h2>
-              <p className="text-xs mt-1" style={{ color: 'rgba(100,116,139,0.8)' }}>{t('issuesSub')}</p>
-            </div>
-            <button onClick={fetchDuplicates} disabled={loading}
-              className="btn-primary flex items-center gap-2 text-white">
-              {loading ? <Spinner size={14}/> : '🔍'} Scanner
-            </button>
-          </div>
-
-          {duplicates.length === 0 ? (
-            <div className="text-center py-20" style={{ color: 'rgba(100,116,139,0.7)' }}>
-              <div className="text-5xl mb-4">✓</div>
-              <p className="text-base font-medium">{t('noIssues')}</p>
-              <p className="text-sm mt-1">{t('noIssuesSub')}</p>
-            </div>
-          ) : (
-            <div className="space-y-8">
-              {[
-                { type: 'orphan',     icon: '👻', label: t('orphans'),    desc: t('orphansDesc'),    color: 'rgba(239,68,68,0.1)',   border: 'rgba(239,68,68,0.25)' },
-                { type: 'duplicate',  icon: '📄', label: t('duplicates'), desc: t('duplicatesDesc'), color: 'rgba(245,158,11,0.1)',  border: 'rgba(245,158,11,0.25)' },
-                { type: 'wrong_genre',icon: '🎭', label: t('wrongGenre'), desc: t('wrongGenreDesc'), color: 'rgba(139,92,246,0.1)', border: 'rgba(139,92,246,0.25)' }
-              ].map(({ type, icon, label, desc, color, border }) => {
-                const items = duplicates.filter(d => d.type === type);
-                if (!items.length) return null;
-                // Group by movie for ignore button
-                const movieNames = [...new Set(items.map(d => d.movie))];
-                return (
-                  <div key={type}>
-                    <div className="flex justify-between items-start mb-3 gap-4">
-                      <div>
-                        <h3 className="text-sm font-bold">{icon} {label}
-                          <span style={{ color: 'rgba(100,116,139,0.7)', fontWeight: 400 }}> ({items.length})</span>
-                        </h3>
-                        <p className="text-xs mt-0.5" style={{ color: 'rgba(100,116,139,0.7)' }}>{desc}</p>
-                      </div>
-                      <button onClick={() => deleteAllByType(type)} className="btn-danger text-white flex-shrink-0">
-                        {t('deleteAll')}
-                      </button>
-                    </div>
-                    <div className="space-y-2">
-                      {items.map((dup, idx) => (
-                        <div key={idx} className="rounded-xl p-4 flex items-center gap-4"
-                          style={{ background: color, border: `1px solid ${border}` }}>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold truncate">{dup.title || dup.movie}</p>
-                            <p className="text-xs truncate mt-0.5" style={{ color: 'rgba(148,163,184,0.7)' }}>
-                              {dup.genre} / {dup.file}
-                            </p>
-                            <div className="flex items-center gap-3 mt-1.5">
-                              <span className="text-xs" style={{ color: '#fbbf24' }}>{dup.reason}</span>
-                              <span className="text-xs" style={{ color: 'rgba(100,116,139,0.7)' }}>{formatSize(dup.size)}</span>
-                            </div>
-                          </div>
-                          <div className="flex gap-2 flex-shrink-0">
-                            <button onClick={() => ignoreMovie(dup.movie, dup.title || dup.movie)}
-                              title={t('ignoreTip')}
-                              className="btn-ghost text-white/60" style={{ padding: '7px 12px' }}>
-                              {t('ignore')}
-                            </button>
-                            <button onClick={() => deleteDuplicate(dup.path)}
-                              className="btn-danger text-white" style={{ padding: '7px 12px' }}>
-                              🗑
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ═══════════════════════════════════════════════════════════════ */}
-      {/* SERIES VIEW */}
-      {/* ═══════════════════════════════════════════════════════════════ */}
-      {activeView === 'series' && (
-        <div className="glass rounded-2xl p-6">
-          <div className="flex items-center justify-between mb-6 gap-4">
-            <div>
-              <h2 className="text-lg font-bold">{t('orphanSeriesTitle')}</h2>
-              <p className="text-xs mt-1" style={{ color: 'rgba(100,116,139,0.8)' }}>
-                {t('orphanSeriesSub')}
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <button onClick={fetchSeriesIssues} disabled={loading}
-                className="btn-primary flex items-center gap-2 text-white">
-                {loading ? <Spinner size={14}/> : '🔍'} {t('scan')}
-              </button>
-              {seriesIssues.length > 0 && (
-                <button onClick={deleteAllSeries} disabled={loading} className="btn-danger text-white">
-                  {t('deleteAllSeries')(seriesIssues.length)}
-                </button>
-              )}
-            </div>
-          </div>
-
-          {seriesIssues.length === 0 ? (
-            <div className="text-center py-20" style={{ color: 'rgba(100,116,139,0.7)' }}>
-              <div className="text-5xl mb-4">📺</div>
-              <p className="text-base font-medium">{t('noOrphanSeries')}</p>
-              <p className="text-sm mt-1">{t('noOrphanSeriesSub')}</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {seriesIssues.map((series, idx) => (
-                <div key={idx} className="rounded-xl p-5 flex items-start gap-4"
-                  style={{ background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.2)' }}>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex flex-wrap items-center gap-2 mb-2">
-                      <h3 className="text-sm font-bold">📺 {series.series}</h3>
-                      {series.fileCount > 0 && (
-                        <span className="badge" style={{ background: 'rgba(245,158,11,0.15)', color: '#fbbf24' }}>
-                          {series.fileCount} {t('episodes')}
-                        </span>
-                      )}
-                      {series.size > 0 && (
-                        <span className="badge" style={{ background: 'rgba(100,116,139,0.2)', color: '#94a3b8' }}>
-                          {formatSize(series.size)}
-                        </span>
-                      )}
-                      {series.sonarrPath && (
-                        <span className="badge" style={{ background: 'rgba(139,92,246,0.15)', color: '#a78bfa' }}>
-                          {t('knownBySonarr')}
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs font-mono truncate" style={{ color: 'rgba(100,116,139,0.8)' }}>
-                      📁 {series.path}
-                    </p>
-                    {series.sonarrPath && (
-                      <p className="text-xs font-mono truncate mt-0.5" style={{ color: 'rgba(100,116,139,0.6)' }}>
-                        🎯 {series.sonarrPath}
-                      </p>
-                    )}
-                    <p className="text-xs mt-2" style={{ color: '#fbbf24' }}>⚠ {series.reason}</p>
-                  </div>
-                  <div className="flex gap-2 flex-shrink-0">
-                    <button onClick={() => ignoreSeries(series.series)}
-                      title={t('seriesIgnoredTip')}
-                      className="btn-ghost text-white/60" style={{ padding: '7px 12px' }}>
-                      {t('ignore')}
-                    </button>
-                    <button onClick={() => deleteSeries(series.path, series.series)}
-                      className="btn-danger text-white" style={{ padding: '7px 12px' }}>
-                      🗑 {lang === 'fr' ? 'Supprimer' : 'Delete'}
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ═══════════════════════════════════════════════════════════════ */}
-      {/* LOGS VIEW */}
-      {/* ═══════════════════════════════════════════════════════════════ */}
-      {activeView === 'logs' && (
-        <div className="glass rounded-2xl p-6">
-          <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
-            <div>
-              <h2 className="text-lg font-bold">{t('activityLog')}</h2>
-              <p className="text-xs mt-1" style={{ color: 'rgba(100,116,139,0.8)' }}>
-                {t('entries')(filteredLogs.length)}
-                {logLevel || logCategory ? ` ${t('filteredSuffix')}` : ''}
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              {/* Filters */}
-              <select value={logLevel} onChange={e => setLogLevel(e.target.value)}
-                className="input-field" style={{ width: 130 }}>
-                <option value="">{t('allLevels')}</option>
-                <option value="success">{t('levelSuccess')}</option>
-                <option value="info">{t('levelInfo')}</option>
-                <option value="warning">{t('levelWarning')}</option>
-                <option value="error">{t('levelError')}</option>
-              </select>
-              <select value={logCategory} onChange={e => setLogCategory(e.target.value)}
-                className="input-field" style={{ width: 140 }}>
-                <option value="">{t('allCategories')}</option>
-                <option value="hardlink">Hardlink</option>
-                <option value="series">{t('catSeries')}</option>
-                <option value="cron">Cron</option>
-                <option value="delete">{t('catDelete')}</option>
-                <option value="webhook">Webhook</option>
-                <option value="scan">Scan</option>
-                <option value="ignore">{t('catIgnored')}</option>
-              </select>
-              <button onClick={fetchLogs} className="btn-ghost text-white/70">{t('refresh')}</button>
-              <label className="flex items-center gap-2 text-xs cursor-pointer select-none" style={{ color: 'rgba(148,163,184,0.8)' }}>
-                <ToggleSwitch checked={logAutoRefresh} onChange={setLogAutoRefresh} />
-                {t('auto5s')}
-              </label>
-              <button onClick={clearLogs} className="btn-danger text-white" style={{ padding: '7px 14px' }}>
-                {t('clearLogs')}
-              </button>
-            </div>
-          </div>
-
-          {filteredLogs.length === 0 ? (
-            <div className="text-center py-20" style={{ color: 'rgba(100,116,139,0.7)' }}>
-              <div className="text-5xl mb-4">📋</div>
-              <p className="text-base font-medium">{t('noLogs')}</p>
-              <p className="text-sm mt-1">{t('noLogsSub')}</p>
-            </div>
-          ) : (
-            <div className="rounded-xl overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.07)' }}>
-              {/* Header */}
-              <div className="grid px-4 py-2.5" style={{ gridTemplateColumns: '155px 80px 100px 1fr', gap: 12, background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(255,255,255,0.07)', fontSize: 11, fontWeight: 600, color: 'rgba(100,116,139,0.8)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                <span>{t('timestamp')}</span>
-                <span>{t('level')}</span>
-                <span>{t('category')}</span>
-                <span>{t('message')}</span>
-              </div>
-              {/* Rows */}
-              <div className="overflow-y-auto scrollbar-thin" style={{ maxHeight: 600 }}>
-                {filteredLogs.map((log, idx) => (
-                  <LogRow key={idx} log={log} lang={lang} t={t} />
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ═══════════════════════════════════════════════════════════════ */}
-      {/* SETTINGS MODAL */}
-      {/* ═══════════════════════════════════════════════════════════════ */}
-      {showSettings && (
-        <div className="fixed inset-0 flex items-center justify-center z-50 p-4"
-          style={{ background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)' }}
-          onClick={() => setShowSettings(false)}>
-          <div className="glass rounded-2xl w-full max-w-4xl flex flex-col" style={{ maxHeight: '92vh' }}
-            onClick={e => e.stopPropagation()}>
-
-            {/* Modal header */}
-            <div className="flex justify-between items-center p-6" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-              <h2 className="text-lg font-bold">{t('settingsTitle')}</h2>
-              <button onClick={() => setShowSettings(false)}
-                className="w-8 h-8 flex items-center justify-center rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition-all text-xl">
-                ×
-              </button>
-            </div>
-
-            {/* Tabs */}
-            <div className="flex gap-1 px-6 pt-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-              {[
-                { id: 'general',    label: t('tabConnections') },
-                { id: 'paths',      label: t('tabPaths') },
-                { id: 'series',     label: t('tabSeries') },
-                { id: 'automation', label: t('tabAutomation') },
-                { id: 'genres',     label: t('tabGenres') },
-                { id: 'studios',    label: t('tabStudios') },
-                { id: 'ignored',    label: t('tabExclusions')(totalIgnored) },
-              ].map(tab => (
-                <button key={tab.id} onClick={() => setSettingsTab(tab.id)}
-                  className="px-4 py-2 text-xs font-medium rounded-t-lg transition-all"
-                  style={{ color: settingsTab === tab.id ? '#60a5fa' : 'rgba(100,116,139,0.8)', borderBottom: settingsTab === tab.id ? '2px solid #3b82f6' : '2px solid transparent', background: settingsTab === tab.id ? 'rgba(59,130,246,0.08)' : 'transparent' }}>
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Tab content */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-4 scrollbar-thin">
-
-              {/* CONNEXIONS */}
-              {settingsTab === 'general' && (
-                <>
-                  <SectionCard title="Radarr" icon="🎬">
-                    <div className="grid grid-cols-2 gap-3">
-                      <Field label="URL">
-                        <input type="text" value={config.radarrUrl} onChange={e => setConfig({...config, radarrUrl: e.target.value})} className="input-field" placeholder="http://radarr:7878" />
-                      </Field>
-                      <Field label={t('apiKeyLabel')}>
-                        <input type="password" value={config.apiKey} onChange={e => setConfig({...config, apiKey: e.target.value})} className="input-field" placeholder="••••••••••••••••" />
-                      </Field>
-                    </div>
-                  </SectionCard>
-                  <SectionCard title="Sonarr" icon="📺">
-                    <div className="grid grid-cols-2 gap-3">
-                      <Field label="URL">
-                        <input type="text" value={config.sonarrUrl || ''} onChange={e => setConfig({...config, sonarrUrl: e.target.value})} className="input-field" placeholder="http://sonarr:8989" />
-                      </Field>
-                      <Field label={t('apiKeyLabel')}>
-                        <input type="password" value={config.sonarrApiKey || ''} onChange={e => setConfig({...config, sonarrApiKey: e.target.value})} className="input-field" placeholder="••••••••••••••••" />
-                      </Field>
-                    </div>
-                  </SectionCard>
-                  <SectionCard title="Jellystat" icon="📊">
-                    <div className="grid grid-cols-2 gap-3">
-                      <Field label="URL Jellystat" hint={t('jellystatUrlHint')}>
-                        <input type="text" value={config.jellystatUrl || ''} onChange={e => setConfig({...config, jellystatUrl: e.target.value})} className="input-field" placeholder="http://jellystat:3000" />
-                      </Field>
-                      <Field label={t('jellystatApiKeyLabel')}>
-                        <input type="password" value={config.jellystatApiKey || ''} onChange={e => setConfig({...config, jellystatApiKey: e.target.value})} className="input-field" placeholder="••••••••••••••••" />
-                      </Field>
-                    </div>
-                    <p className="text-xs" style={{ color: 'rgba(100,116,139,0.7)' }}
-                      dangerouslySetInnerHTML={{ __html: t('jellystatDesc') }} />
-                  </SectionCard>
-                  <SectionCard title={t('fileOwnerTitle')} icon="👤">
-                    <div className="grid grid-cols-2 gap-3">
-                      <Field label={t('ownerUserLabel')} hint={t('ownerUserHint')}>
-                        <input type="text" value={config.ownerUser} onChange={e => setConfig({...config, ownerUser: e.target.value})} className="input-field" placeholder={t('ownerUserPlaceholder')} />
-                      </Field>
-                      <Field label={t('ownerGroupLabel')} hint={t('ownerGroupHint')}>
-                        <input type="text" value={config.ownerGroup} onChange={e => setConfig({...config, ownerGroup: e.target.value})} className="input-field" placeholder={t('ownerGroupPlaceholder')} />
-                      </Field>
-                    </div>
-                  </SectionCard>
-                </>
-              )}
-
-              {/* CHEMINS */}
-              {settingsTab === 'paths' && (
-                <SectionCard title={t('pathsTitle')} icon="🎬">
-                  <Field label={t('sourceLabel')} hint={t('sourceHint')}>
-                    <input type="text" value={config.sourceRoot} onChange={e => setConfig({...config, sourceRoot: e.target.value})} className="input-field font-mono text-xs" />
-                  </Field>
-                  <Field label={t('destLabel')} hint={t('destHint')}>
-                    <input type="text" value={config.mediaRoot} onChange={e => setConfig({...config, mediaRoot: e.target.value})} className="input-field font-mono text-xs" />
-                  </Field>
-                </SectionCard>
-              )}
-
-              {/* SÉRIES */}
-              {settingsTab === 'series' && (
-                <SectionCard title={t('seriesCheckTitle')} icon="📺"
-                  toggle={config.seriesCheck?.enabled || false}
-                  onToggle={v => setConfig({...config, seriesCheck: {...config.seriesCheck, enabled: v}})}>
-                  <Field label={t('seriesSourceLabel')} hint={t('seriesSourceHint')}>
-                    <input type="text" value={config.seriesSourceRoot || ''} onChange={e => setConfig({...config, seriesSourceRoot: e.target.value})} className="input-field font-mono text-xs" placeholder="/media/series/Source" />
-                  </Field>
-                  <Field label={t('seriesCheckLabel')} hint={t('seriesCheckHint')}>
-                    <input type="text" value={config.seriesCheckRoot || ''} onChange={e => setConfig({...config, seriesCheckRoot: e.target.value})} className="input-field font-mono text-xs" placeholder="/media/series/Check" />
-                  </Field>
-                  <div className="rounded-xl p-4" style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)' }}>
-                    <p className="text-xs leading-relaxed" style={{ color: 'rgba(147,197,253,0.9)' }}
-                      dangerouslySetInnerHTML={{ __html: t('seriesInfoBox') }} />
-                  </div>
-                </SectionCard>
-              )}
-
-              {/* AUTOMATISATION */}
-              {settingsTab === 'automation' && (
-                <>
-                  <SectionCard title={t('autoHardlinkTitle')} icon="🎬"
-                    toggle={config.autoSync?.enabled || false}
-                    onToggle={v => setConfig({...config, autoSync: {...config.autoSync, enabled: v}})}>
-                    <Field label={t('cronLabel')} hint={t('cronHint')}>
-                      <input type="text" value={config.autoSync?.cronSchedule || '0 */6 * * *'} onChange={e => setConfig({...config, autoSync: {...config.autoSync, cronSchedule: e.target.value}})} className="input-field font-mono text-xs" />
-                    </Field>
-                    <div className="grid grid-cols-2 gap-3">
-                      <Field label={t('lastRunLabel')}>
-                        <p className="text-xs px-3 py-2.5 rounded-lg" style={{ background: 'rgba(255,255,255,0.04)', color: 'rgba(148,163,184,0.8)' }}>{formatDate(config.autoSync?.lastRun, lang)}</p>
-                      </Field>
-                      <Field label={t('lastFullScanLabel')}>
-                        <p className="text-xs px-3 py-2.5 rounded-lg" style={{ background: 'rgba(255,255,255,0.04)', color: 'rgba(148,163,184,0.8)' }}>{formatDate(config.autoSync?.lastFullScan, lang)}</p>
-                      </Field>
-                    </div>
-                    <label className="flex items-center gap-3 cursor-pointer">
-                      <ToggleSwitch checked={config.scanOptimization?.enabled !== false} onChange={v => setConfig({...config, scanOptimization: {...config.scanOptimization, enabled: v}})} />
-                      <div>
-                        <p className="text-xs font-medium">{t('optimizedScanLabel')}</p>
-                        <p className="text-xs" style={{ color: 'rgba(100,116,139,0.7)' }}>{t('optimizedScanHint')}</p>
-                      </div>
-                    </label>
-                    {config.scanOptimization?.enabled !== false && (
-                      <div className="grid grid-cols-2 gap-3 ml-12">
-                        <Field label={t('recentWindowLabel')}>
-                          <input type="number" value={config.scanOptimization?.recentHours || 3} onChange={e => setConfig({...config, scanOptimization: {...config.scanOptimization, recentHours: parseInt(e.target.value)}})} className="input-field text-sm" min="1" />
-                        </Field>
-                        <Field label={t('fullScanIntervalLabel')}>
-                          <input type="number" value={config.scanOptimization?.fullScanInterval || 24} onChange={e => setConfig({...config, scanOptimization: {...config.scanOptimization, fullScanInterval: parseInt(e.target.value)}})} className="input-field text-sm" min="1" />
-                        </Field>
-                      </div>
-                    )}
-                  </SectionCard>
-
-                  <SectionCard title={t('autoSeriesTitle')} icon="📺"
-                    toggle={config.seriesAutoCheck?.enabled || false}
-                    onToggle={v => setConfig({...config, seriesAutoCheck: {...config.seriesAutoCheck, enabled: v}})}>
-                    <Field label={t('cronLabel')} hint={t('cronSeriesHint')}>
-                      <input type="text" value={config.seriesAutoCheck?.cronSchedule || '0 */12 * * *'} onChange={e => setConfig({...config, seriesAutoCheck: {...config.seriesAutoCheck, cronSchedule: e.target.value}})} className="input-field font-mono text-xs" />
-                    </Field>
-                    <Field label={t('lastRunLabel')}>
-                      <p className="text-xs px-3 py-2.5 rounded-lg" style={{ background: 'rgba(255,255,255,0.04)', color: 'rgba(148,163,184,0.8)' }}>{formatDate(config.seriesAutoCheck?.lastRun, lang)}</p>
-                    </Field>
-                  </SectionCard>
-
-                  {cronStatus && (
-                    <SectionCard title={t('activeJobsTitle')} icon="⏰">
-                      {!cronStatus.jobs?.length ? (
-                        <p className="text-xs" style={{ color: 'rgba(100,116,139,0.7)' }}>{t('noActiveJobs')}</p>
-                      ) : (
-                        <div className="space-y-2">
-                          {(cronStatus.jobs || []).map((job, i) => (
-                            <div key={i} className="flex justify-between items-center p-3 rounded-lg" style={{ background: 'rgba(255,255,255,0.04)' }}>
-                              <div>
-                                <p className="text-xs font-semibold">{job.id === 'auto_hardlink' ? t('jobMovies') : t('jobSeries')}</p>
-                                <p className="text-xs mt-0.5" style={{ color: 'rgba(100,116,139,0.7)' }}>{job.trigger}</p>
-                              </div>
-                              <div className="text-right">
-                                <p className="text-xs" style={{ color: 'rgba(100,116,139,0.7)' }}>{t('jobNext')}</p>
-                                <p className="text-xs font-mono mt-0.5" style={{ color: '#34d399' }}>{job.next_run ? formatDate(job.next_run, lang) : '—'}</p>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </SectionCard>
-                  )}
-
-                  <SectionCard title={t('webhooksTitle')} icon="🔔"
-                    toggle={config.webhookEnabled || false}
-                    onToggle={v => setConfig({...config, webhookEnabled: v})}>
-                    <Field label={t('webhookSecretLabel')} hint={t('webhookSecretHint')}>
-                      <input type="password" value={config.webhookSecret || ''} onChange={e => setConfig({...config, webhookSecret: e.target.value})} className="input-field text-xs" placeholder="secret" />
-                    </Field>
-                    <div className="rounded-lg p-3 space-y-1" style={{ background: 'rgba(255,255,255,0.04)' }}>
-                      <p className="text-xs" style={{ color: 'rgba(100,116,139,0.7)' }}>{t('availableEndpoints')}</p>
-                      <p className="text-xs font-mono" style={{ color: '#60a5fa' }}>POST /api/webhook/radarr</p>
-                      <p className="text-xs font-mono" style={{ color: '#60a5fa' }}>POST /api/webhook/jellyfin</p>
-                    </div>
-                  </SectionCard>
-                </>
-              )}
-
-              {/* GENRES */}
-              {settingsTab === 'genres' && (
-                <SectionCard title={t('genreMappingTitle')} icon="🎭"
-                  action={<button onClick={fetchAllGenres} className="btn-primary text-white text-xs px-3 py-1.5">{t('loadFromRadarr')}</button>}>
-                  {allGenres.length === 0 ? (
-                    <p className="text-xs text-center py-6" style={{ color: 'rgba(100,116,139,0.7)' }}>
-                      {t('noGenresLoaded')}
-                    </p>
-                  ) : (
-                    <div className="grid grid-cols-2 gap-2">
-                      {allGenres.map(genre => (
-                        <div key={genre.name} className="p-3 rounded-xl transition-all"
-                          style={{ background: genre.enabled ? 'rgba(59,130,246,0.08)' : 'rgba(255,255,255,0.03)', border: `1px solid ${genre.enabled ? 'rgba(59,130,246,0.3)' : 'rgba(255,255,255,0.06)'}`, opacity: genre.enabled ? 1 : 0.55 }}>
-                          <div className="flex items-center gap-2 mb-2">
-                            <ToggleSwitch checked={genre.enabled} onChange={v => {
-                              updateGenreMapping(genre.name, 'enabled', v);
-                              setAllGenres(allGenres.map(g => g.name === genre.name ? {...g, enabled: v} : g));
-                            }} />
-                            <span className="text-xs font-semibold">{genre.name}</span>
-                          </div>
-                          <input type="text" value={genre.folder} onChange={e => {
-                            updateGenreMapping(genre.name, 'folder', e.target.value);
-                            setAllGenres(allGenres.map(g => g.name === genre.name ? {...g, folder: e.target.value} : g));
-                          }} className="input-field text-xs font-mono" placeholder={t('folderPlaceholder')} disabled={!genre.enabled} />
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </SectionCard>
-              )}
-
-              {/* STUDIOS */}
-              {settingsTab === 'studios' && (
-                <>
-                  <SectionCard title="TMDB" icon="🔑">
-                    <Field label={t('tmdbApiKeyLabel')} hint={t('tmdbApiKeyHint')}>
-                      <input type="password" value={config.tmdbApiKey || ''} onChange={e => setConfig({...config, tmdbApiKey: e.target.value})} className="input-field" placeholder="••••••••••••••••" />
-                    </Field>
-                  </SectionCard>
-                  <SectionCard title={t('studioMappingTitle')} icon="🎬"
-                    action={<button onClick={fetchAllStudios} className="btn-primary text-white text-xs px-3 py-1.5">{t('loadStudiosFromRadarr')}</button>}>
-                    {allStudios.length === 0 ? (
-                      <p className="text-xs text-center py-6" style={{ color: 'rgba(100,116,139,0.7)' }}>
-                        {t('noStudiosLoaded')}
-                      </p>
-                    ) : (
-                      <div className="grid grid-cols-2 gap-2">
-                        {allStudios.map(studio => (
-                          <div key={studio.name} className="p-3 rounded-xl transition-all"
-                            style={{ background: studio.enabled ? 'rgba(234,179,8,0.08)' : 'rgba(255,255,255,0.03)', border: `1px solid ${studio.enabled ? 'rgba(234,179,8,0.3)' : 'rgba(255,255,255,0.06)'}`, opacity: studio.enabled ? 1 : 0.55 }}>
-                            <div className="flex items-center gap-2 mb-2">
-                              <ToggleSwitch checked={studio.enabled} onChange={v => {
-                                updateStudioMapping(studio.name, 'enabled', v);
-                                setAllStudios(allStudios.map(s => s.name === studio.name ? {...s, enabled: v} : s));
-                              }} />
-                              <span className="text-xs font-semibold">{studio.name}</span>
-                            </div>
-                            <input type="text" value={studio.folder} onChange={e => {
-                              updateStudioMapping(studio.name, 'folder', e.target.value);
-                              setAllStudios(allStudios.map(s => s.name === studio.name ? {...s, folder: e.target.value} : s));
-                            }} className="input-field text-xs font-mono" placeholder={t('studioFolderPlaceholder')} disabled={!studio.enabled} />
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </SectionCard>
-                </>
-              )}
-
-              {/* EXCLUSIONS */}
-              {settingsTab === 'ignored' && (
-                <div className="space-y-4">
-                  <div className="rounded-xl p-4" style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)' }}>
-                    <p className="text-xs leading-relaxed" style={{ color: 'rgba(147,197,253,0.9)' }}
-                      dangerouslySetInnerHTML={{ __html: t('exclusionInfo') }} />
-                  </div>
-
-                  <SectionCard title={t('excludedSeriesTitle')} icon="📺">
-                    {!(ignored.series || []).length ? (
-                      <p className="text-xs" style={{ color: 'rgba(100,116,139,0.6)' }}>{t('noExcludedSeries')}</p>
-                    ) : (
-                      <div className="space-y-2">
-                        {(ignored.series || []).map((name, i) => (
-                          <div key={i} className="flex items-center justify-between p-3 rounded-lg" style={{ background: 'rgba(255,255,255,0.04)' }}>
-                            <span className="text-xs font-medium">📺 {name}</span>
-                            <button onClick={() => removeIgnored('series', name)}
-                              className="text-xs px-2 py-1 rounded transition-all hover:bg-white/10" style={{ color: 'rgba(239,68,68,0.8)' }}>
-                              {t('remove')}
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </SectionCard>
-
-                  <SectionCard title={t('excludedMoviesTitle')} icon="🎬">
-                    {!(ignored.movies || []).length ? (
-                      <p className="text-xs" style={{ color: 'rgba(100,116,139,0.6)' }}>{t('noExcludedMovies')}</p>
-                    ) : (
-                      <div className="space-y-2">
-                        {(ignored.movies || []).map((name, i) => (
-                          <div key={i} className="flex items-center justify-between p-3 rounded-lg" style={{ background: 'rgba(255,255,255,0.04)' }}>
-                            <span className="text-xs font-medium">🎬 {name}</span>
-                            <button onClick={() => removeIgnored('movies', name)}
-                              className="text-xs px-2 py-1 rounded transition-all hover:bg-white/10" style={{ color: 'rgba(239,68,68,0.8)' }}>
-                              {t('remove')}
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </SectionCard>
-                </div>
-              )}
-            </div>
-
-            {/* Footer */}
-            <div className="p-5" style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}>
-              <button onClick={saveConfig} className="btn-primary w-full text-white text-sm font-bold py-3">
-                {t('saveConfig')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
-// ─── Log Row component ────────────────────────────────────────────────────────
-const LogRow = ({ log, lang, t }) => {
-  const [expanded, setExpanded] = useState(false);
-  const levelColors = { success: '#34d399', error: '#f87171', warning: '#fbbf24', info: '#60a5fa' };
-  const lc = levelColors[log.level] || '#94a3b8';
-  const locale = lang === 'fr' ? 'fr-FR' : 'en-CA';
-
-  return (
-    <div className="log-row" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-      <div className="grid px-4 py-2.5 items-center"
-        style={{ gridTemplateColumns: '155px 80px 100px 1fr', gap: 12, cursor: log.details ? 'pointer' : 'default' }}
-        onClick={() => log.details && setExpanded(!expanded)}>
-        <span className="text-xs font-mono" style={{ color: 'rgba(100,116,139,0.7)' }}>
-          {new Date(log.timestamp).toLocaleString(locale, { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit', second:'2-digit' })}
-        </span>
-        <span>
-          <span className="badge text-xs" style={{ background: `${lc}18`, color: lc }}>
-            {log.level === 'success' ? t('badgeOk') : log.level === 'error' ? t('badgeErr') : log.level === 'warning' ? t('badgeWarn') : t('badgeInfo')}
-          </span>
-        </span>
-        <span><CategoryBadge category={log.category} t={t} /></span>
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="text-xs truncate" style={{ color: 'rgba(203,213,225,0.9)' }}>{log.message}</span>
-          {log.details && (
-            <span style={{ color: 'rgba(100,116,139,0.5)', fontSize: 10 }}>{expanded ? '▲' : '▼'}</span>
-          )}
+        <div style={{marginTop:20, paddingTop:16, borderTop:'1px solid var(--border)', display:'flex', gap:10}}>
+          <button className="grad-btn" style={{padding:'9px 22px', fontSize:14}} onClick={saveSettings} disabled={saving}>
+            {saving ? t.saving : saved ? t.saved : t.save}
+          </button>
         </div>
       </div>
-      {expanded && log.details && (
-        <div className="px-4 pb-3">
-          <pre className="text-xs rounded-lg p-3 overflow-x-auto scrollbar-thin"
-            style={{ background: 'rgba(0,0,0,0.3)', color: 'rgba(148,163,184,0.8)', fontFamily: 'monospace', fontSize: 11 }}>
-            {JSON.stringify(log.details, null, 2)}
-          </pre>
-        </div>
-      )}
     </div>
   );
-};
+}
+
+// ─── App Root ─────────────────────────────────────────────────────────────────
+function App() {
+  const [lang, setLang] = useState('fr');
+  const [activeTab, setActiveTab] = useState('library');
+  const [movies, setMovies] = useState([]);
+  const [genres, setGenres] = useState([]);
+  const [studios, setStudios] = useState([]);
+  const [platforms, setPlatforms] = useState([]);
+  const [loadingMovies, setLoadingMovies] = useState(false);
+  const [toasts, setToasts] = useState([]);
+  const toastId = useRef(0);
+
+  const t = T[lang];
+
+  function addToast(toast) {
+    const id = ++toastId.current;
+    setToasts(prev => [...prev, { ...toast, id }]);
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3500);
+  }
+
+  async function fetchMovies() {
+    setLoadingMovies(true);
+    try {
+      const data = await api('/api/status');
+      setMovies(Array.isArray(data) ? data : (data.movies || []));
+    } catch(e) { addToast({ message: 'Erreur chargement films: ' + e.message, type: 'error' }); }
+    setLoadingMovies(false);
+  }
+
+  async function fetchMeta() {
+    try {
+      const [g, s, p] = await Promise.all([api('/api/genres'), api('/api/studios'), api('/api/platforms')]);
+      setGenres(Array.isArray(g) ? g : []);
+      setStudios(Array.isArray(s) ? s : []);
+      setPlatforms(Array.isArray(p) ? p : []);
+    } catch(e) {}
+  }
+
+  useEffect(() => {
+    fetchMovies();
+    fetchMeta();
+  }, []);
+
+  const tabs = [
+    { key: 'library', label: t.tabs.library },
+    { key: 'issues', label: t.tabs.issues },
+    { key: 'series', label: t.tabs.series },
+    { key: 'stats', label: t.tabs.stats },
+    { key: 'logs', label: t.tabs.logs },
+    { key: 'settings', label: t.tabs.settings },
+  ];
+
+  return (
+    <div style={{minHeight:'100vh', padding:'0 0 40px'}}>
+      {/* Header */}
+      <div style={{borderBottom:'1px solid var(--border)', padding:'14px 24px', display:'flex', alignItems:'center', justifyContent:'space-between', background:'rgba(10,15,30,0.8)', backdropFilter:'blur(12px)', position:'sticky', top:0, zIndex:50}}>
+        <h1 className="grad-text" style={{margin:0, fontSize:20, fontWeight:700, letterSpacing:'-0.02em'}}>{t.appTitle}</h1>
+        <div style={{display:'flex', alignItems:'center', gap:16}}>
+          {loadingMovies && <span style={{fontSize:12, color:'var(--muted)', display:'flex', alignItems:'center', gap:6}}><span className="animate-spin" style={{display:'inline-block', width:12, height:12, border:'2px solid var(--accent)', borderTopColor:'transparent', borderRadius:'50%'}}></span> {t.common.loading}</span>}
+          <button onClick={() => setLang(l => l === 'fr' ? 'en' : 'fr')}
+            style={{padding:'5px 12px', fontSize:12, background:'rgba(255,255,255,0.07)', border:'1px solid var(--border)', borderRadius:6, color:'var(--text)', cursor:'pointer'}}>
+            {lang === 'fr' ? '🇬🇧 EN' : '🇫🇷 FR'}
+          </button>
+        </div>
+      </div>
+
+      <div style={{padding:'20px 24px'}}>
+        {/* Status Bar */}
+        <StatusBar movies={movies} genres={genres} studios={studios} platforms={platforms} lang={lang} />
+
+        {/* Tabs */}
+        <div style={{display:'flex', gap:4, marginBottom:20, flexWrap:'wrap', borderBottom:'1px solid var(--border)', paddingBottom:10}}>
+          {tabs.map(tab => (
+            <button key={tab.key} className={`tab-btn ${activeTab===tab.key?'active':''}`} onClick={() => setActiveTab(tab.key)}>
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Tab Content */}
+        {activeTab === 'library' && (
+          <LibraryTab movies={movies} genres={genres} studios={studios} platforms={platforms} loading={loadingMovies} onRefresh={fetchMovies} lang={lang} addToast={addToast} />
+        )}
+        {activeTab === 'issues' && <IssuesTab lang={lang} addToast={addToast} />}
+        {activeTab === 'series' && <SeriesTab lang={lang} addToast={addToast} />}
+        {activeTab === 'stats' && <StatsTab lang={lang} addToast={addToast} />}
+        {activeTab === 'logs' && <LogsTab lang={lang} addToast={addToast} />}
+        {activeTab === 'settings' && <SettingsTab lang={lang} addToast={addToast} />}
+      </div>
+
+      <Toast toasts={toasts} />
+    </div>
+  );
+}
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(<App />);

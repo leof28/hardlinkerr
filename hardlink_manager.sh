@@ -1,8 +1,9 @@
 #!/bin/bash
 
 ############################################################
-# HARDLINK MANAGER v2.1
+# HARDLINK MANAGER v2.2
 # Création intelligente de hardlinks pour Radarr
+# Gère : Genres, Studios (Plateforme gérée par Python)
 ############################################################
 
 # Options par défaut
