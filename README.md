@@ -41,9 +41,9 @@ Create a `docker-compose.yml` file and update **every value** marked with variab
 version: '3.8'
 
 services:
-  radarr-manager:
-    image: ghcr.io/leof28/radarr-manager:latest
-    container_name: radarr-manager
+  hardlinkerr:
+    image: ghcr.io/leof28/hardlinkerr:latest
+    container_name: hardlinkerr
     ports:
       - "5550:5000"
     volumes:

@@ -13,7 +13,7 @@ app = Flask(__name__)
 # --- CONFIGURATION ---
 CONFIG_DIR = "/app/config"
 CONFIG_PATH = os.path.join(CONFIG_DIR, "config.json")
-DB_PATH = os.path.join(CONFIG_DIR, "radarr_manager.db")
+DB_PATH = os.path.join(CONFIG_DIR, "hardlinkerr.db")
 CACHE_PATH = os.path.join(CONFIG_DIR, "scan_cache.json")
 LOGS_PATH = os.path.join(CONFIG_DIR, "logs.json")
 IGNORE_PATH = os.path.join(CONFIG_DIR, "ignored.json")
