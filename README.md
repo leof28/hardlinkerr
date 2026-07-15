@@ -1,6 +1,6 @@
 # 🔗 Hardlink Manager
 
-> **⚠️ 100% Vibe Code** — This project was entirely built using AI (Claude). I'm not a developer at all. Use at your own risk, no guarantees, no support promised. It works for me though!
+> **⚠️ 100% Vibe Code** — This project was entirely built using AI (Claude). I'm not a developer at all. C'est 100% vibe codé, je ne suis pas codeur. Use at your own risk, no guarantees, no support promised. It works for me though!
 
 A web dashboard to manage hardlinks between your media source folder and genre folders, with Radarr, Sonarr, and Jellystat integration. Built for self-hosted NAS setups (Synology, QNAP, TrueNAS, Unraid, etc.).
 
@@ -16,7 +16,8 @@ The interface supports **French and English**. Switch with the button in the top
 
 - 🎬 **Hardlink management** — Creates hardlinks from source to genre folders (Radarr metadata)
 - 📺 **Sonarr integration** — Detects orphan series in your check folder
-- 📊 **Jellystat integration** — Shows watch count and history per movie
+- 📊 **Jellystat integration** — Shows watch count and history per movie ("Vu" / "Non vu")
+- 🚀 **High Performance** — Now uses an internal SQLite database for instant UI loading
 - 🔔 **Webhooks** — Auto-create hardlinks on Radarr/Jellyfin events
 - ⏰ **Cron automation** — Schedule hardlink creation and orphan checks
 - 🔍 **Duplicate/orphan detection** — Find wrong-genre or orphaned files
@@ -30,50 +31,48 @@ The interface supports **French and English**. Switch with the button in the top
 ### Prerequisites
 
 - Docker and Docker Compose installed on your NAS
-- Git installed (optional, you can also download the ZIP)
 - Your media files must be on the **same filesystem** as your genre folders (required for hardlinks)
 
-### Step 1 — Clone the repo
+### Step 1 — Edit `docker-compose.yml`
 
-```bash
-git clone https://github.com/leof28/radarr-manager.git
-cd radarr-manager
-```
-
-Or download the ZIP from GitHub and extract it.
-
-### Step 2 — Edit `docker-compose.yml`
-
-Open `docker-compose.yml` and update **every value** marked with `YOUR_`:
+Create a `docker-compose.yml` file and update **every value** marked with variables like `${MEDIA_PATH}` or setup an `.env` file:
 
 ```yaml
-volumes:
-  - /YOUR/MEDIA/PATH:/media          # Path to your media root on the NAS
-  - /YOUR/MEDIA/PATH/config:/app/config  # Where config will be stored
+version: '3.8'
 
-environment:
-  - RADARR_URL=http://YOUR_NAS_IP:7878   # IP of your NAS (e.g. 192.168.1.100)
-  - API_KEY=YOUR_RADARR_API_KEY          # Found in Radarr → Settings → General
-  - SOURCE_ROOT=/media/movies/Unsorted   # Where new movies land (inside container)
-  - MEDIA_ROOT=/media/movies             # Root of your library (inside container)
-  - OWNER_USER=1000   # Run: id -u   on your NAS to get your UID
-  - OWNER_GROUP=1000  # Run: id -g   on your NAS to get your GID
-  - TZ=America/Toronto  # Your timezone
+services:
+  radarr-manager:
+    image: ghcr.io/leof28/radarr-manager:latest
+    container_name: radarr-manager
+    ports:
+      - "5550:5000"
+    volumes:
+      - /YOUR/MEDIA/PATH:/media          # Path to your media root on the NAS
+      - /YOUR/MEDIA/PATH/config:/app/config  # Where config will be stored
+    environment:
+      - RADARR_URL=http://YOUR_NAS_IP:7878   # IP of your NAS (e.g. 192.168.1.100)
+      - API_KEY=YOUR_RADARR_API_KEY          # Found in Radarr → Settings → General
+      - SOURCE_ROOT=/media/movies/Unsorted   # Where new movies land (inside container)
+      - MEDIA_ROOT=/media/movies             # Root of your library (inside container)
+      - OWNER_USER=1000   # Run: id -u   on your NAS to get your UID
+      - OWNER_GROUP=1000  # Run: id -g   on your NAS to get your GID
+      - TZ=Europe/Paris   # Your timezone
+    restart: unless-stopped
 ```
 
 > **Important:** `SOURCE_ROOT` and `MEDIA_ROOT` must be on the **same filesystem** (same volume mount) for hardlinks to work.
 
-### Step 3 — Build and start
+### Step 2 — Start the container
 
 ```bash
-docker compose up -d --build
+docker compose up -d
 ```
 
-### Step 4 — Open the UI
+### Step 3 — Open the UI
 
 Navigate to `http://YOUR_NAS_IP:5550` in your browser.
 
-### Step 5 — Configure in the UI
+### Step 4 — Configure in the UI
 
 1. Go to **Settings → Connections** and fill in your Radarr/Sonarr/Jellystat URLs and API keys
 2. Go to **Settings → Paths** and set your source and destination paths

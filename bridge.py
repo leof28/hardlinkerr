@@ -1,5 +1,6 @@
 from flask import Flask, jsonify, request, send_from_directory
 import os
+import sqlite3
 import subprocess
 import json
 import requests
@@ -12,6 +13,7 @@ app = Flask(__name__)
 # --- CONFIGURATION ---
 CONFIG_DIR = "/app/config"
 CONFIG_PATH = os.path.join(CONFIG_DIR, "config.json")
+DB_PATH = os.path.join(CONFIG_DIR, "radarr_manager.db")
 CACHE_PATH = os.path.join(CONFIG_DIR, "scan_cache.json")
 LOGS_PATH = os.path.join(CONFIG_DIR, "logs.json")
 IGNORE_PATH = os.path.join(CONFIG_DIR, "ignored.json")
@@ -22,6 +24,166 @@ PLATFORMS_CACHE_PATH = os.path.join(CONFIG_DIR, "platforms_cache.json")
 # --- SCHEDULER ---
 scheduler = BackgroundScheduler()
 scheduler.start()
+
+
+
+def get_db_connection():
+    os.makedirs(CONFIG_DIR, exist_ok=True)
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+
+    # Initialize tables if not exists
+    cursor = conn.cursor()
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS movies (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        folder_name TEXT UNIQUE NOT NULL,
+        title TEXT,
+        path TEXT,
+        poster TEXT,
+        genres TEXT,
+        studio TEXT,
+        platforms TEXT,
+        added_time REAL,
+        added_to_radarr TEXT,
+        file_size INTEGER,
+        tmdb_id INTEGER,
+        watch_count INTEGER,
+        watch_dates TEXT
+    )
+    ''')
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS hardlinks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        movie_folder TEXT NOT NULL,
+        genre TEXT,
+        folder TEXT,
+        found INTEGER,
+        total INTEGER,
+        exists_bool INTEGER,
+        type TEXT,
+        UNIQUE(movie_folder, folder, type)
+    )
+    ''')
+    conn.commit()
+
+    return conn
+
+
+def sync_database(config=None):
+    if not config:
+        config = load_config()
+
+    print(f"[{datetime.now()}] Démarrage synchro DB...")
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        response = requests.get(
+            f"{config['radarrUrl']}/api/v3/movie",
+            headers={"X-Api-Key": config['apiKey']},
+            timeout=30
+        )
+        response.raise_for_status()
+        all_movies = response.json()
+    except Exception as e:
+        print(f"[SYNC] Erreur Radarr: {e}")
+        conn.close()
+        return
+
+    hardlink_status = get_hardlink_status(config)
+    source_root = config.get('sourceRoot', '')
+    jellystat_history = get_jellystat_history(config)
+
+    tmdb_api_key = config.get('tmdbApiKey', '')
+    tmdb_country = config.get('tmdbCountry', 'FR')
+    platform_mapping = config.get('platformMapping', {})
+    has_platform_mapping = any(s.get('enabled') for s in platform_mapping.values())
+
+    platform_status = {}
+    if has_platform_mapping and tmdb_api_key:
+        platform_status = get_platform_hardlink_status(config, all_movies)
+
+    current_folders = set()
+
+    for movie in all_movies:
+        if not movie.get('hasFile'):
+            continue
+        folder_name = os.path.basename(movie['path'])
+        source_path = os.path.join(source_root, folder_name)
+        if not os.path.isdir(source_path):
+            continue
+        try:
+            if not any(f.lower().endswith('.mkv') for f in os.listdir(source_path)):
+                continue
+        except OSError:
+            continue
+
+        current_folders.add(folder_name)
+
+        genres = [g['name'] if isinstance(g, dict) else g for g in movie.get('genres', [])]
+        studio = movie.get('studio', '').strip()
+        poster = next((img.get('remoteUrl') for img in movie.get('images', []) if img.get('coverType') == 'poster'), None)
+
+        title_key = movie['title'].lower()
+        watch_dates_raw = jellystat_history.get(title_key, [])
+        watch_dates_sorted = sorted([d for d in watch_dates_raw if d], reverse=True)
+
+        tmdb_id = movie.get('tmdbId')
+        movie_platforms = []
+        if tmdb_api_key and tmdb_id:
+            movie_platforms = get_movie_platforms_from_tmdb(tmdb_id, tmdb_api_key, tmdb_country)
+
+        added_time = os.path.getmtime(source_path)
+        added_to_radarr = movie.get('added', '')
+        file_size = movie.get('movieFile', {}).get('size', 0)
+        watch_count = len(watch_dates_raw)
+
+        # Upsert movie
+        cursor.execute('''
+            INSERT INTO movies (folder_name, title, path, poster, genres, studio, platforms, added_time, added_to_radarr, file_size, tmdb_id, watch_count, watch_dates)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(folder_name) DO UPDATE SET
+                title=excluded.title,
+                path=excluded.path,
+                poster=excluded.poster,
+                genres=excluded.genres,
+                studio=excluded.studio,
+                platforms=excluded.platforms,
+                added_time=excluded.added_time,
+                added_to_radarr=excluded.added_to_radarr,
+                file_size=excluded.file_size,
+                tmdb_id=excluded.tmdb_id,
+                watch_count=excluded.watch_count,
+                watch_dates=excluded.watch_dates
+        ''', (
+            folder_name, movie['title'], source_path, poster, json.dumps(genres), studio, json.dumps(movie_platforms),
+            added_time, added_to_radarr, file_size, tmdb_id, watch_count, json.dumps(watch_dates_sorted[:10])
+        ))
+
+        # Upsert hardlinks
+        all_hardlinks = hardlink_status.get(folder_name, []) + platform_status.get(folder_name, [])
+
+        # Delete old hardlinks for this movie
+        cursor.execute('DELETE FROM hardlinks WHERE movie_folder = ?', (folder_name,))
+
+        for hl in all_hardlinks:
+            cursor.execute('''
+                INSERT INTO hardlinks (movie_folder, genre, folder, found, total, exists_bool, type)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', (folder_name, hl.get('genre'), hl.get('folder'), hl.get('found', 0), hl.get('total', 0), 1 if hl.get('exists') else 0, hl.get('type')))
+
+    # Cleanup deleted movies
+    cursor.execute('SELECT folder_name FROM movies')
+    db_folders = {row['folder_name'] for row in cursor.fetchall()}
+    to_delete = db_folders - current_folders
+    for fd in to_delete:
+        cursor.execute('DELETE FROM movies WHERE folder_name = ?', (fd,))
+        cursor.execute('DELETE FROM hardlinks WHERE movie_folder = ?', (fd,))
+
+    conn.commit()
+    conn.close()
+    print(f"[{datetime.now()}] Synchro DB terminée.")
 
 
 def load_config():
@@ -581,6 +743,7 @@ def cron_job_handler():
     config['autoSync']['lastRun'] = datetime.now().isoformat()
     save_config(config)
     append_log("success", "cron", "Cron films terminé")
+    start_sync_thread()
     print(f"[{datetime.now()}] Cron films terminé")
 
 
@@ -634,7 +797,7 @@ setup_cron_jobs(load_config())
 # --- SERIES DETECTION ---
 
 def _sonarr_folder_name(raw_path):
-    """Extrait le nom du dossier depuis un chemin Sonarr (gère \ et /)."""
+    """Extrait le nom du dossier depuis un chemin Sonarr (gère \\ et /)."""
     return os.path.basename(raw_path.replace('\\', '/').rstrip('/'))
 
 
@@ -964,6 +1127,14 @@ def get_jellystat_history(config):
         return {}
 
 
+
+import threading
+def start_sync_thread():
+    threading.Thread(target=sync_database, daemon=True).start()
+
+# Sync on startup
+start_sync_thread()
+
 # --- ROUTES ---
 
 @app.route('/')
@@ -1069,95 +1240,62 @@ def scan():
         return jsonify({"error": str(e)}), 500
 
 
+
+
+
 @app.route('/api/status', methods=['GET'])
 def get_status():
+    force = request.args.get('force', 'false').lower() == 'true'
     config = load_config()
-    try:
-        response = requests.get(
-            f"{config['radarrUrl']}/api/v3/movie",
-            headers={"X-Api-Key": config['apiKey']},
-            timeout=30
-        )
-        response.raise_for_status()
-        all_movies = response.json()
 
-        print(f"[SCAN] {len(all_movies)} films depuis Radarr")
-        hardlink_status = get_hardlink_status(config)
-        source_root = config['sourceRoot']
+    if force:
+        sync_database(config)
 
-        # Récupération Jellystat (une seule fois pour tous les films)
-        jellystat_history = get_jellystat_history(config)
-        jellystat_enabled = bool(config.get('jellystatUrl') and config.get('jellystatApiKey'))
+    conn = get_db_connection()
+    cursor = conn.cursor()
 
-        # Platform hardlink status (only if platform mapping configured)
-        platform_status = {}
-        tmdb_api_key = config.get('tmdbApiKey', '')
-        tmdb_country = config.get('tmdbCountry', 'FR')
-        platform_mapping = config.get('platformMapping', {})
-        has_platform_mapping = any(s.get('enabled') for s in platform_mapping.values())
-        if has_platform_mapping and tmdb_api_key:
-            platform_status = get_platform_hardlink_status(config, all_movies)
+    cursor.execute('SELECT * FROM movies ORDER BY added_time DESC')
+    movies = cursor.fetchall()
 
-        result = []
+    result = []
+    jellystat_enabled = bool(config.get('jellystatUrl') and config.get('jellystatApiKey'))
 
-        for movie in all_movies:
-            if not movie.get('hasFile'):
-                continue
-            folder_name = os.path.basename(movie['path'])
-            source_path = os.path.join(source_root, folder_name)
-            if not os.path.isdir(source_path):
-                continue
-            try:
-                if not any(f.lower().endswith('.mkv') for f in os.listdir(source_path)):
-                    continue
-            except OSError:
-                continue
+    for m in movies:
+        folder_name = m['folder_name']
+        cursor.execute('SELECT * FROM hardlinks WHERE movie_folder = ?', (folder_name,))
+        hls = cursor.fetchall()
 
-            genres = [g['name'] if isinstance(g, dict) else g for g in movie.get('genres', [])]
-            studio = movie.get('studio', '').strip()
-            poster = next((img.get('remoteUrl') for img in movie.get('images', [])
-                           if img.get('coverType') == 'poster'), None)
-
-            # Données Jellystat : matching par titre (insensible à la casse)
-            title_key = movie['title'].lower()
-            watch_dates_raw = jellystat_history.get(title_key, [])
-            watch_dates_sorted = sorted([d for d in watch_dates_raw if d], reverse=True)
-
-            # Platforms from TMDB cache (fast, cache already populated)
-            tmdb_id = movie.get('tmdbId')
-            movie_platforms = []
-            if tmdb_api_key and tmdb_id:
-                movie_platforms = get_movie_platforms_from_tmdb(tmdb_id, tmdb_api_key, tmdb_country)
-
-            # Merge genre/studio hardlinks with platform hardlinks
-            all_hardlinks = hardlink_status.get(folder_name, []) + platform_status.get(folder_name, [])
-
-            result.append({
-                "title": movie['title'],
-                "path": source_path,
-                "folderName": folder_name,
-                "poster": poster,
-                "genres": genres,
-                "studio": studio,
-                "platforms": movie_platforms,
-                "hardlinks": all_hardlinks,
-                "addedTime": os.path.getmtime(source_path),
-                "addedToRadarr": movie.get('added', ''),
-                "fileSize": movie.get('movieFile', {}).get('size', 0),
-                "tmdbId": tmdb_id,
-                "watchCount": len(watch_dates_raw),
-                "watchDates": watch_dates_sorted[:10],
-                "jellystatEnabled": jellystat_enabled
+        hardlinks = []
+        for h in hls:
+            hardlinks.append({
+                "genre": h['genre'],
+                "folder": h['folder'],
+                "found": h['found'],
+                "total": h['total'],
+                "exists": bool(h['exists_bool']),
+                "type": h['type']
             })
 
-        result.sort(key=lambda x: x['addedTime'], reverse=True)
-        append_log("info", "scan", f"Scan bibliothèque — {len(result)} film(s) trouvé(s)")
-        print(f"[SCAN] {len(result)} films retournés")
-        return jsonify(result)
-    except Exception as e:
-        print(f"[ERREUR] {e}")
-        return jsonify({"error": str(e)}), 500
+        result.append({
+            "title": m['title'],
+            "path": m['path'],
+            "folderName": folder_name,
+            "poster": m['poster'],
+            "genres": json.loads(m['genres']) if m['genres'] else [],
+            "studio": m['studio'],
+            "platforms": json.loads(m['platforms']) if m['platforms'] else [],
+            "hardlinks": hardlinks,
+            "addedTime": m['added_time'],
+            "addedToRadarr": m['added_to_radarr'],
+            "fileSize": m['file_size'],
+            "tmdbId": m['tmdb_id'],
+            "watchCount": m['watch_count'],
+            "watchDates": json.loads(m['watch_dates']) if m['watch_dates'] else [],
+            "jellystatEnabled": jellystat_enabled
+        })
 
+    conn.close()
+    return jsonify(result)
 
 @app.route('/api/series-issues', methods=['GET'])
 def get_series_issues():
@@ -1333,6 +1471,7 @@ def delete_movie():
 
 @app.route('/api/run', methods=['POST'])
 def run_action():
+    start_sync_thread()  # Sync DB in background
     data = request.json or {}
     config = load_config()
     movie_paths = data.get('movie_paths', [])
@@ -1353,6 +1492,7 @@ def run_action():
 
 @app.route('/api/run-all', methods=['POST'])
 def run_all():
+    start_sync_thread()  # Sync DB in background
     config = load_config()
     result = execute_hardlinks(config)
     create_platform_hardlinks(config)
@@ -1361,6 +1501,7 @@ def run_all():
 
 @app.route('/api/run-by-genre', methods=['POST'])
 def run_by_genre():
+    start_sync_thread()  # Sync DB in background
     data = request.json or {}
     genres = data.get('genres', [])
     if not genres:
@@ -1372,6 +1513,7 @@ def run_by_genre():
 
 @app.route('/api/run-by-studio', methods=['POST'])
 def run_by_studio():
+    start_sync_thread()  # Sync DB in background
     data = request.json or {}
     studios = data.get('studios', [])
     if not studios:
@@ -1566,99 +1708,66 @@ def get_all_platforms():
     ])
 
 
+
+
 @app.route('/api/stats', methods=['GET'])
 def get_library_stats():
-    """Returns library statistics: totals + breakdown by genre, studio and platform."""
-    config = load_config()
-    try:
-        resp = requests.get(
-            f"{config['radarrUrl']}/api/v3/movie",
-            headers={"X-Api-Key": config['apiKey']},
-            timeout=30
-        )
-        resp.raise_for_status()
-        all_movies = resp.json()
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    conn = get_db_connection()
+    cursor = conn.cursor()
 
-    hardlink_status = get_hardlink_status(config)
-    source_root = config.get('sourceRoot', '')
-    media_root = config.get('mediaRoot', '')
-    genre_mapping = config.get('genreMapping', {})
-    studio_mapping = config.get('studioMapping', {})
-    platform_mapping = config.get('platformMapping', {})
-    tmdb_api_key = config.get('tmdbApiKey', '')
-    tmdb_country = config.get('tmdbCountry', 'FR')
+    cursor.execute('SELECT COUNT(*) as total, SUM(file_size) as total_size FROM movies')
+    row = cursor.fetchone()
+    total = row['total'] or 0
+    total_size = row['total_size'] or 0
+
+    # Un film est "linked" si tous ses hardlinks existent (et qu'il a des hardlinks configurés).
+    # Et ce total "linked" est un peu différent, on va le recalculer :
+    cursor.execute('SELECT folder_name, file_size FROM movies')
+    movies = cursor.fetchall()
+
+    total_linked = 0
 
     by_genre = {}
     by_studio = {}
     by_platform = {}
-    total = 0
-    total_size = 0
-    total_linked = 0
 
-    for movie in all_movies:
-        if not movie.get('hasFile'):
-            continue
-        folder_name = os.path.basename(movie['path'])
-        source_path = os.path.join(source_root, folder_name)
-        if not os.path.isdir(source_path):
-            continue
-        try:
-            if not any(f.lower().endswith('.mkv') for f in os.listdir(source_path)):
-                continue
-        except OSError:
-            continue
+    for m in movies:
+        cursor.execute('SELECT * FROM hardlinks WHERE movie_folder = ?', (m['folder_name'],))
+        hls = cursor.fetchall()
 
-        total += 1
-        file_size = movie.get('movieFile', {}).get('size', 0)
-        total_size += file_size
-        movie_hl = hardlink_status.get(folder_name, [])
-        if movie_hl and all(h['exists'] for h in movie_hl):
+        if hls and all(h['exists_bool'] for h in hls):
             total_linked += 1
 
-        # Genre stats
-        movie_genres = [g['name'] if isinstance(g, dict) else g for g in movie.get('genres', [])]
-        for genre in movie_genres:
-            g_settings = genre_mapping.get(genre)
-            if g_settings and g_settings.get('enabled'):
-                folder = g_settings.get('folder', genre)
+        file_size = m['file_size'] or 0
+
+        for hl in hls:
+            folder = hl['folder']
+            htype = hl['type']
+            exists = hl['exists_bool']
+
+            if htype == 'genre':
                 if folder not in by_genre:
                     by_genre[folder] = {"name": folder, "count": 0, "size": 0, "linked": 0}
                 by_genre[folder]["count"] += 1
                 by_genre[folder]["size"] += file_size
-                hl = next((h for h in movie_hl if h['folder'] == folder and h['type'] == 'genre'), None)
-                if hl and hl['exists']:
+                if exists:
                     by_genre[folder]["linked"] += 1
-
-        # Studio stats
-        studio = movie.get('studio', '').strip()
-        if studio:
-            s_settings = studio_mapping.get(studio)
-            if s_settings and s_settings.get('enabled'):
-                folder = s_settings.get('folder', studio)
+            elif htype == 'studio':
                 if folder not in by_studio:
                     by_studio[folder] = {"name": folder, "count": 0, "size": 0, "linked": 0}
                 by_studio[folder]["count"] += 1
                 by_studio[folder]["size"] += file_size
-                hl = next((h for h in movie_hl if h['folder'] == folder and h['type'] == 'studio'), None)
-                if hl and hl['exists']:
+                if exists:
                     by_studio[folder]["linked"] += 1
+            elif htype == 'platform':
+                if folder not in by_platform:
+                    by_platform[folder] = {"name": folder, "count": 0, "size": 0, "linked": 0}
+                by_platform[folder]["count"] += 1
+                by_platform[folder]["size"] += file_size
+                if exists:
+                    by_platform[folder]["linked"] += 1
 
-        # Platform stats
-        if tmdb_api_key and movie.get('tmdbId'):
-            movie_platforms = get_movie_platforms_from_tmdb(movie['tmdbId'], tmdb_api_key, tmdb_country)
-            for platform_name in movie_platforms:
-                p_settings = platform_mapping.get(platform_name)
-                if p_settings and p_settings.get('enabled'):
-                    folder = p_settings.get('folder', platform_name)
-                    if folder not in by_platform:
-                        by_platform[folder] = {"name": folder, "count": 0, "size": 0, "linked": 0}
-                    by_platform[folder]["count"] += 1
-                    by_platform[folder]["size"] += file_size
-                    target_dir = os.path.join(media_root, folder, folder_name)
-                    if os.path.isdir(target_dir):
-                        by_platform[folder]["linked"] += 1
+    conn.close()
 
     return jsonify({
         "total": total,
@@ -1672,7 +1781,6 @@ def get_library_stats():
         "byPlatform": sorted([v for v in by_platform.values() if v["count"] > 0],
                              key=lambda x: x["count"], reverse=True),
     })
-
 
 @app.route('/api/delete-hardlink', methods=['POST'])
 def delete_hardlink_folder():
@@ -1703,6 +1811,7 @@ def delete_hardlink_folder():
 
 @app.route('/api/run-by-platform', methods=['POST'])
 def run_by_platform():
+    start_sync_thread()  # Sync DB in background
     data = request.json or {}
     platforms = data.get('platforms', [])
     if not platforms:
