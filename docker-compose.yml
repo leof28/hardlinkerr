@@ -2,14 +2,14 @@ version: '3.8'
 
 services:
   radarr-manager:
-    build: .
+    image: ghcr.io/leof28/radarr-manager:latest
     container_name: radarr-manager
     ports:
       - "5550:5000"
     volumes:
       # IMPORTANT: Mount the common root to allow hardlinks (same filesystem)
       - ${MEDIA_PATH}:/media
-      # Persistent configuration
+      # Persistent configuration and SQLite database
       - ${APP_PATH}/config:/app/config
     environment:
       - RADARR_URL=${NAS_IP}:7878

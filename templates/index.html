@@ -115,6 +115,8 @@ const T = {
       delete: '🗑 Supprimer',
       fileSize: 'Taille',
       watchCount: 'Visions',
+      seen: 'Vu',
+      notSeen: 'Non vu',
       close: 'Fermer',
       confirmDelete: 'Supprimer ce film et tous ses hardlinks ?',
       confirmHardlinkDel: 'Supprimer ce hardlink ?',
@@ -237,6 +239,8 @@ const T = {
       delete: '🗑 Delete',
       fileSize: 'Size',
       watchCount: 'Views',
+      seen: 'Seen',
+      notSeen: 'Not seen',
       close: 'Close',
       confirmDelete: 'Delete this movie and all its hardlinks?',
       confirmHardlinkDel: 'Delete this hardlink?',
@@ -478,6 +482,11 @@ function MovieDetailModal({ movie, onClose, onRefresh, lang, addToast }) {
 
             {/* Badges */}
             <div style={{display:'flex', flexWrap:'wrap', gap:4, marginBottom:12}}>
+              {movie.jellystatEnabled && (
+                <span className={`badge ${movie.watchCount > 0 ? 'badge-green' : 'badge-gray'}`}>
+                  {movie.watchCount > 0 ? t.seen : t.notSeen} {movie.watchCount > 0 && `(${movie.watchCount})`}
+                </span>
+              )}
               {(movie.genres || []).map(g => <span key={g} className="badge badge-blue">{g}</span>)}
               {movie.studio && <span className="badge badge-purple">{movie.studio}</span>}
               {(movie.platforms || []).map(p => <span key={p} className="badge badge-teal">{p}</span>)}
@@ -653,6 +662,11 @@ function LibraryTab({ movies, genres, studios, platforms, loading, onRefresh, la
                 <div className="overlay" onClick={() => setDetailMovie(movie)}></div>
                 <div className="card-info" onClick={() => setDetailMovie(movie)}>
                   <p style={{margin:0, fontSize:10, fontWeight:600, lineHeight:1.3, color:'white'}}>{movie.title}</p>
+                  {movie.jellystatEnabled && (
+                    <p style={{margin:'4px 0 0', fontSize:9, color: movie.watchCount > 0 ? '#4ade80' : '#94a3b8'}}>
+                      {movie.watchCount > 0 ? T[lang].modal.seen : T[lang].modal.notSeen}
+                    </p>
+                  )}
                 </div>
               </div>
             );
