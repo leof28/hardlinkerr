@@ -125,8 +125,20 @@ def sync_database(config=None):
         studio = movie.get('studio', '').strip()
         poster = next((img.get('remoteUrl') for img in movie.get('images', []) if img.get('coverType') == 'poster'), None)
 
+        import re
         title_key = movie['title'].lower()
+        clean_title_key = re.sub(r'\s*\(\d{4}\)$', '', movie['title']).strip().lower()
+        original_title_key = movie.get('originalTitle', '').lower()
+        clean_original_title_key = re.sub(r'\s*\(\d{4}\)$', '', movie.get('originalTitle', '')).strip().lower()
+
         watch_dates_raw = jellystat_history.get(title_key, [])
+        if not watch_dates_raw and clean_title_key:
+            watch_dates_raw = jellystat_history.get(clean_title_key, [])
+        if not watch_dates_raw and original_title_key:
+            watch_dates_raw = jellystat_history.get(original_title_key, [])
+        if not watch_dates_raw and clean_original_title_key:
+            watch_dates_raw = jellystat_history.get(clean_original_title_key, [])
+
         watch_dates_sorted = sorted([d for d in watch_dates_raw if d], reverse=True)
 
         tmdb_id = movie.get('tmdbId')
@@ -198,6 +210,9 @@ def load_config():
         "seriesCheckRoot": "/media/series/Check",
         "ownerUser": "",
         "ownerGroup": "",
+        "enableGenres": True,
+        "enableStudios": True,
+        "enablePlatforms": True,
         "genreMapping": {},
         "studioMapping": {},
         "platformMapping": {},
@@ -321,16 +336,20 @@ def save_ignored(ignored):
 # --- HARDLINK HELPERS ---
 
 def get_env(config, movie="", genres="", studios=""):
-    mapping_str = "|".join([
-        f"{genre}:{settings['folder']}"
-        for genre, settings in config.get('genreMapping', {}).items()
-        if settings.get('enabled', False)
-    ])
-    studio_mapping_str = "|".join([
-        f"{studio}:{settings['folder']}"
-        for studio, settings in config.get('studioMapping', {}).items()
-        if settings.get('enabled', False)
-    ])
+    mapping_str = ""
+    if config.get('enableGenres', True):
+        mapping_str = "|".join([
+            f"{genre}:{settings['folder']}"
+            for genre, settings in config.get('genreMapping', {}).items()
+            if settings.get('enabled', False)
+        ])
+    studio_mapping_str = ""
+    if config.get('enableStudios', True):
+        studio_mapping_str = "|".join([
+            f"{studio}:{settings['folder']}"
+            for studio, settings in config.get('studioMapping', {}).items()
+            if settings.get('enabled', False)
+        ])
     env = os.environ.copy()
     env.update({
         "RADARR_URL": config.get('radarrUrl', ''),
@@ -483,6 +502,8 @@ def get_movie_platforms_from_tmdb(tmdb_id, api_key, country='FR'):
 
 def get_platform_hardlink_status(config, movies_data=None):
     """Returns platform hardlink status per movie folder (dict: folder_name → list of hardlink info)."""
+    if not config.get('enablePlatforms', True):
+        return {}
     platform_mapping = {
         p: s for p, s in config.get('platformMapping', {}).items()
         if s.get('enabled', False)
@@ -568,6 +589,8 @@ def get_platform_hardlink_status(config, movies_data=None):
 
 def create_platform_hardlinks(config, movie_path=''):
     """Creates platform hardlinks using Python's os.link(). Called after genre/studio hardlinks."""
+    if not config.get('enablePlatforms', True):
+        return {"status": "ok", "linked": 0, "skipped": 0, "errors": 0}
     platform_mapping = {
         p: s for p, s in config.get('platformMapping', {}).items()
         if s.get('enabled', False)
@@ -1118,8 +1141,12 @@ def get_jellystat_history(config):
                 item.get('MediaType') or ''
             ).lower()
             if name and ('episode' not in item_type and 'series' not in item_type):
-                key = name.lower()
-                history.setdefault(key, []).append(date_str)
+                import re
+                clean_name = re.sub(r'\s*\(\d{4}\)$', '', name).strip().lower()
+                history.setdefault(clean_name, []).append(date_str)
+                raw_key = name.lower()
+                if raw_key != clean_name:
+                    history.setdefault(raw_key, []).append(date_str)
         print(f"[JELLYSTAT] {len(history)} titre(s) avec historique")
         return history
     except Exception as e:
