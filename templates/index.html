@@ -808,7 +808,17 @@ function IssuesTab({ lang, addToast }) {
   async function fetchIgnored() {
     try {
       const data = await api('/api/ignore');
-      setIgnored(data || []);
+      if (data && !Array.isArray(data)) {
+        const flat = [];
+        Object.keys(data).forEach(key => {
+          (data[key] || []).forEach(name => {
+            flat.push({ type: key, name });
+          });
+        });
+        setIgnored(flat);
+      } else {
+        setIgnored(data || []);
+      }
     } catch(e) {}
   }
 
@@ -838,11 +848,7 @@ function IssuesTab({ lang, addToast }) {
     } catch(e) { addToast({ message: 'Erreur: ' + e.message, type: 'error' }); }
   }
 
-  const allIssues = issues ? [
-    ...(issues.duplicates || []).map(i => ({ ...i, issueType: 'duplicate' })),
-    ...(issues.orphans || []).map(i => ({ ...i, issueType: 'orphan' })),
-    ...(issues.wrongGenre || []).map(i => ({ ...i, issueType: 'wrongGenre' })),
-  ] : [];
+  const allIssues = Array.isArray(issues) ? issues.map(i => ({ ...i, issueType: i.type || 'unknown' })) : [];
 
   return (
     <div>
@@ -965,11 +971,10 @@ function LogsTab({ lang, addToast }) {
     } catch(e) {}
   }
 
-  function getLogColor(line) {
-    const l = (line||'').toLowerCase();
-    if (l.includes('error') || l.includes('erreur')) return '#f87171';
-    if (l.includes('warn') || l.includes('avert')) return '#facc15';
-    if (l.includes('success') || l.includes('ok') || l.includes('créé')) return '#4ade80';
+  function getLogColor(level) {
+    if (level === 'error') return '#f87171';
+    if (level === 'warning') return '#facc15';
+    if (level === 'success') return '#4ade80';
     return 'var(--text)';
   }
 
@@ -986,8 +991,12 @@ function LogsTab({ lang, addToast }) {
         {!logs.length ? (
           <p style={{color:'var(--muted)', textAlign:'center', padding:20}}>{t.noLogs}</p>
         ) : (
-          logs.map((line, i) => (
-            <div key={i} className="log-line" style={{color: getLogColor(line)}}>{line}</div>
+          logs.map((log, i) => (
+            <div key={i} className="log-line" style={{color: getLogColor(log.level), display: 'flex', gap: 8}}>
+              <span style={{color: 'var(--muted)'}}>[{new Date(log.timestamp).toLocaleString()}]</span>
+              <span style={{color: 'var(--muted)', width: 60}}>[{log.category}]</span>
+              <span>{log.message}</span>
+            </div>
           ))
         )}
         <div ref={bottomRef} />
@@ -1014,7 +1023,19 @@ function SettingsTab({ lang, addToast }) {
     api('/api/genres').then(d => setGenres(d || [])).catch(() => {});
     api('/api/studios').then(d => setStudios(d || [])).catch(() => {});
     api('/api/platforms').then(d => setPlatforms(d || [])).catch(() => {});
-    api('/api/ignore').then(d => setExclusions(d || [])).catch(() => {});
+    api('/api/ignore').then(d => {
+      if (d && !Array.isArray(d)) {
+        const flat = [];
+        Object.keys(d).forEach(key => {
+          (d[key] || []).forEach(name => {
+            flat.push({ type: key, name });
+          });
+        });
+        setExclusions(flat);
+      } else {
+        setExclusions(d || []);
+      }
+    }).catch(() => {});
     api('/api/cron/status').then(d => setCronStatus(d)).catch(() => {});
   }, []);
 
