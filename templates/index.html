@@ -82,8 +82,7 @@ const T = {
       selectAll: 'Tout sélectionner',
       deselectAll: 'Tout désélectionner',
       createLinks: 'Créer hardlinks (sélection)',
-      runAll: 'Recréer TOUS les hardlinks',
-      scanLibrary: 'Scan complet (DB)',
+      scanDisk: 'Scan complet (disque)',
       selected: 'sélectionné(s)',
       noMovies: 'Aucun film trouvé',
       loading: 'Chargement…',
@@ -151,6 +150,10 @@ const T = {
       saving: 'Sauvegarde…',
       add: 'Ajouter',
       remove: 'Supprimer',
+      enableAll: 'Tout activer',
+      disableAll: 'Tout désactiver',
+      onlyClassics: 'Classiques uniquement',
+      runAllHardlinks: 'Recréer TOUS les hardlinks',
       radarrUrl: 'URL Radarr',
       radarrKey: 'Clé API Radarr',
       tmdbKey: 'Clé API TMDB',
@@ -207,7 +210,7 @@ const T = {
       selectAll: 'Select all',
       deselectAll: 'Deselect all',
       createLinks: 'Create hardlinks',
-      runAll: 'Run all',
+      scanDisk: 'Full scan (disk)',
       selected: 'selected',
       noMovies: 'No movies found',
       loading: 'Loading…',
@@ -275,6 +278,10 @@ const T = {
       saving: 'Saving…',
       add: 'Add',
       remove: 'Remove',
+      enableAll: 'Enable all',
+      disableAll: 'Disable all',
+      onlyClassics: 'Classics only',
+      runAllHardlinks: 'Recreate ALL hardlinks',
       radarrUrl: 'Radarr URL',
       radarrKey: 'Radarr API Key',
       tmdbKey: 'TMDB API Key',
@@ -576,12 +583,12 @@ function LibraryTab({ movies, genres, studios, platforms, loading, onRefresh, la
     setRunning(false);
   }
 
-  async function handleRunAll() {
+  async function handleScanDisk() {
     setRunning(true);
     try {
-      await api('/api/run-all', { method: 'POST' });
-      addToast({ message: 'Tous les hardlinks relancés', type: 'success' });
-      onRefresh();
+      addToast({ message: 'Lancement du scan complet du disque...', type: 'info' });
+      await onRefresh(true);
+      addToast({ message: 'Scan complet terminé', type: 'success' });
     } catch(e) { addToast({ message: 'Erreur: ' + e.message, type: 'error' }); }
     setRunning(false);
   }
@@ -628,8 +635,8 @@ function LibraryTab({ movies, genres, studios, platforms, loading, onRefresh, la
           <button className="grad-btn" style={{padding:'7px 14px', fontSize:13}} onClick={handleCreateLinks} disabled={!selected.size || running}>
             {running ? '…' : t.createLinks}
           </button>
-          <button onClick={handleRunAll} disabled={running} style={{padding:'7px 14px', fontSize:13, background:'rgba(255,255,255,0.07)', border:'1px solid var(--border)', borderRadius:8, color:'var(--text)', cursor:'pointer'}}>
-            {t.runAll}
+          <button onClick={handleScanDisk} disabled={running} style={{padding:'7px 14px', fontSize:13, background:'rgba(255,255,255,0.07)', border:'1px solid var(--border)', borderRadius:8, color:'var(--text)', cursor:'pointer'}}>
+            {t.scanDisk}
           </button>
         </div>
       </div>
@@ -1014,12 +1021,28 @@ function SettingsTab({ lang, addToast }) {
   async function saveSettings() {
     setSaving(true);
     try {
-      await api('/api/settings', { method: 'POST', body: settings });
+      const payload = { ...settings };
+      payload.genreMapping = {};
+      genres.forEach(g => { payload.genreMapping[g.name] = { folder: g.folder, enabled: g.enabled }; });
+      payload.studioMapping = {};
+      studios.forEach(s => { payload.studioMapping[s.name] = { folder: s.folder, enabled: s.enabled }; });
+      payload.platformMapping = {};
+      platforms.forEach(p => { payload.platformMapping[p.name] = { folder: p.folder, enabled: p.enabled }; });
+
+      await api('/api/settings', { method: 'POST', body: payload });
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
       addToast({ message: t.saved, type: 'success' });
     } catch(e) { addToast({ message: 'Erreur: ' + e.message, type: 'error' }); }
     setSaving(false);
+  }
+
+  async function handleRunAllHardlinks() {
+    try {
+      addToast({ message: 'Recréation de TOUS les hardlinks...', type: 'info' });
+      await api('/api/run-all', { method: 'POST' });
+      addToast({ message: 'Hardlinks relancés', type: 'success' });
+    } catch(e) { addToast({ message: 'Erreur: ' + e.message, type: 'error' }); }
   }
 
   async function triggerCron() {
@@ -1040,13 +1063,16 @@ function SettingsTab({ lang, addToast }) {
     );
   }
 
-  function MappingEditor({ items, setItems, nameLabel, folderLabel }) {
+  function MappingEditor({ items, setItems, nameLabel, folderLabel, type }) {
     const [newName, setNewName] = useState('');
     const [newFolder, setNewFolder] = useState('');
 
+    const classicStudios = ["20th Century Studios", "Universal Pictures", "Warner Bros. Pictures", "Paramount", "Columbia Pictures", "Walt Disney Pictures", "Marvel Studios", "DreamWorks Animation", "Pixar", "Fox", "Sony", "Lionsgate"];
+    const classicPlatforms = ["Netflix", "Amazon Prime Video", "Disney+", "Apple TV+", "Apple TV Plus", "Hulu", "HBO Max", "Max", "Peacock", "Paramount+"];
+
     function addItem() {
       if (!newName.trim()) return;
-      setItems(prev => [...prev, { name: newName.trim(), folder: newFolder.trim() || newName.trim() }]);
+      setItems(prev => [...prev, { name: newName.trim(), folder: newFolder.trim() || newName.trim(), enabled: true }]);
       setNewName(''); setNewFolder('');
     }
 
@@ -1058,16 +1084,42 @@ function SettingsTab({ lang, addToast }) {
       setItems(prev => prev.map((item, i) => i === idx ? { ...item, [key]: val } : item));
     }
 
+    function toggleAll(enable) {
+      setItems(prev => prev.map(item => ({ ...item, enabled: enable })));
+    }
+
+    function applyClassicsOnly() {
+      const classicsList = type === 'studios' ? classicStudios : (type === 'platforms' ? classicPlatforms : []);
+      const lowerClassics = classicsList.map(s => s.toLowerCase());
+
+      setItems(prev => {
+        if(classicsList.length === 0) return prev;
+        return prev.filter(item => {
+           const itemNameLower = (item.name || '').toLowerCase();
+           return lowerClassics.some(c => itemNameLower.includes(c));
+        });
+      });
+    }
+
     return (
       <div>
+        <div style={{display:'flex', gap:8, marginBottom: 16}}>
+          <button onClick={() => toggleAll(true)} style={{padding:'6px 12px', fontSize:12, background:'rgba(34,197,94,0.1)', border:'1px solid rgba(34,197,94,0.3)', borderRadius:6, color:'#4ade80', cursor:'pointer'}}>{t.enableAll || "Tout activer"}</button>
+          <button onClick={() => toggleAll(false)} style={{padding:'6px 12px', fontSize:12, background:'rgba(239,68,68,0.1)', border:'1px solid rgba(239,68,68,0.3)', borderRadius:6, color:'#f87171', cursor:'pointer'}}>{t.disableAll || "Tout désactiver"}</button>
+          {type !== 'genres' && (
+            <button onClick={applyClassicsOnly} style={{padding:'6px 12px', fontSize:12, background:'rgba(99,102,241,0.1)', border:'1px solid rgba(99,102,241,0.3)', borderRadius:6, color:'#818cf8', cursor:'pointer'}}>{t.onlyClassics || "Classiques uniquement"}</button>
+          )}
+        </div>
         {items.map((item, idx) => (
           <div key={idx} style={{display:'flex', gap:8, marginBottom:6, alignItems:'center'}}>
+            <input type="checkbox" checked={!!item.enabled} onChange={e => updateItem(idx, 'enabled', e.target.checked)} style={{width: 16, height: 16, cursor:'pointer'}} />
             <input value={item.name || ''} onChange={e => updateItem(idx, 'name', e.target.value)} placeholder={nameLabel} style={{flex:1}} />
             <input value={item.folder || ''} onChange={e => updateItem(idx, 'folder', e.target.value)} placeholder={folderLabel} style={{flex:1}} />
             <button onClick={() => removeItem(idx)} style={{padding:'6px 10px', background:'rgba(239,68,68,0.15)', border:'1px solid rgba(239,68,68,0.3)', color:'#f87171', borderRadius:6, cursor:'pointer', fontSize:12}}>{t.remove}</button>
           </div>
         ))}
         <div style={{display:'flex', gap:8, marginTop:8}}>
+          <div style={{width: 16}}></div> {/* Spacer for checkbox */}
           <input value={newName} onChange={e => setNewName(e.target.value)} placeholder={nameLabel} style={{flex:1}} />
           <input value={newFolder} onChange={e => setNewFolder(e.target.value)} placeholder={folderLabel} style={{flex:1}} />
           <button onClick={addItem} className="grad-btn" style={{padding:'6px 14px', fontSize:13}}>{t.add}</button>
@@ -1135,7 +1187,7 @@ function SettingsTab({ lang, addToast }) {
               </label>
             </div>
             <Field label={t.cronSchedule} field="cronSchedule" placeholder="0 3 * * *" />
-            <div style={{display:'flex', gap:10, marginTop:10, alignItems:'center'}}>
+            <div style={{display:'flex', gap:10, marginTop:10, alignItems:'center', marginBottom: 20}}>
               <button onClick={triggerCron} style={{padding:'7px 14px', fontSize:13, background:'rgba(255,255,255,0.07)', border:'1px solid var(--border)', borderRadius:8, color:'var(--text)', cursor:'pointer'}}>
                 {t.cronTrigger}
               </button>
@@ -1145,27 +1197,33 @@ function SettingsTab({ lang, addToast }) {
                 </span></span>
               )}
             </div>
+            <div style={{borderTop: '1px solid var(--border)', paddingTop: 20}}>
+                <button onClick={handleRunAllHardlinks} style={{padding:'7px 14px', fontSize:13, background:'rgba(255,255,255,0.07)', border:'1px solid var(--border)', borderRadius:8, color:'var(--text)', cursor:'pointer'}}>
+                  {t.runAllHardlinks || "Recréer TOUS les hardlinks"}
+                </button>
+                <p style={{fontSize:12, color:'var(--muted)', marginTop: 8}}>Lance la création de tous les hardlinks pour tous les films.</p>
+            </div>
           </div>
         )}
 
         {activeSettingsTab === 'genres' && (
           <div>
             <p style={{fontSize:13, color:'var(--muted)', marginTop:0}}>Mappings genre → dossier</p>
-            <MappingEditor items={genres} setItems={setGenres} nameLabel={t.genreName} folderLabel={t.genreFolder} />
+            <MappingEditor items={genres} setItems={setGenres} nameLabel={t.genreName} folderLabel={t.genreFolder} type="genres" />
           </div>
         )}
 
         {activeSettingsTab === 'studios' && (
           <div>
             <p style={{fontSize:13, color:'var(--muted)', marginTop:0}}>Mappings studio → dossier</p>
-            <MappingEditor items={studios} setItems={setStudios} nameLabel={t.studioName} folderLabel={t.studioFolder} />
+            <MappingEditor items={studios} setItems={setStudios} nameLabel={t.studioName} folderLabel={t.studioFolder} type="studios" />
           </div>
         )}
 
         {activeSettingsTab === 'platforms' && (
           <div>
             <p style={{fontSize:13, color:'var(--muted)', marginTop:0}}>Mappings plateforme → dossier</p>
-            <MappingEditor items={platforms} setItems={setPlatforms} nameLabel={t.platformName} folderLabel={t.platformFolder} />
+            <MappingEditor items={platforms} setItems={setPlatforms} nameLabel={t.platformName} folderLabel={t.platformFolder} type="platforms" />
           </div>
         )}
 
@@ -1225,10 +1283,10 @@ function App() {
     setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3500);
   }
 
-  async function fetchMovies() {
+  async function fetchMovies(force = false) {
     setLoadingMovies(true);
     try {
-      const data = await api('/api/status');
+      const data = await api(`/api/status${force ? '?force=true' : ''}`);
       setMovies(Array.isArray(data) ? data : (data.movies || []));
     } catch(e) { addToast({ message: 'Erreur chargement films: ' + e.message, type: 'error' }); }
     setLoadingMovies(false);
