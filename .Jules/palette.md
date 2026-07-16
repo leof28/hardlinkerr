@@ -1,0 +1,3 @@
+## 2026-07-16 - Add ARIA Labels and Connect Form Labels
+**Learning:** Found multiple instances where form inputs lacked explicit labels connected via `htmlFor`/`id` and icon-only buttons (like the `×` remove button) lacked `aria-label`s. Also, some components like the `MappingEditor` relied solely on `placeholder` attributes for context, which is poor for screen reader accessibility. Additionally, UI translations are flat, meaning `t.remove` is correct, not `t.settings.remove`.
+**Action:** Applied standard a11y practices by adding `id` and `htmlFor` to form fields, `aria-label` to icon-only buttons, and ensuring dynamic inputs have descriptive `aria-label` attributes using existing translation strings.

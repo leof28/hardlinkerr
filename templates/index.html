@@ -597,7 +597,7 @@ function LibraryTab({ movies, genres, studios, platforms, loading, onRefresh, la
     <div>
       {/* Filters */}
       <div style={{display:'flex', gap:10, marginBottom:16, flexWrap:'wrap', alignItems:'center'}}>
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder={t.search} style={{flex:'1 1 200px', minWidth:140}} />
+        <input aria-label={t.search} value={search} onChange={e => setSearch(e.target.value)} placeholder={t.search} style={{flex:'1 1 200px', minWidth:140}} />
         <select value={filterGenre} onChange={e => setFilterGenre(e.target.value)} style={{minWidth:130}}>
           <option value="">{t.allGenres}</option>
           {genres.map(g => <option key={g.name||g} value={g.name||g}>{g.name||g}</option>)}
@@ -610,8 +610,8 @@ function LibraryTab({ movies, genres, studios, platforms, loading, onRefresh, la
           <option value="">{t.allPlatforms}</option>
           {platforms.map(p => <option key={p.name||p} value={p.name||p}>{p.name||p}</option>)}
         </select>
-        <label style={{display:'flex', alignItems:'center', gap:6, fontSize:13, cursor:'pointer', color: missingOnly ? '#818cf8' : 'var(--muted)'}}>
-          <input type="checkbox" checked={missingOnly} onChange={e => setMissingOnly(e.target.checked)} style={{width:14, height:14}} />
+        <label htmlFor="missing-only-checkbox" style={{display:'flex', alignItems:'center', gap:6, fontSize:13, cursor:'pointer', color: missingOnly ? '#818cf8' : 'var(--muted)'}}>
+          <input id="missing-only-checkbox" type="checkbox" checked={missingOnly} onChange={e => setMissingOnly(e.target.checked)} style={{width:14, height:14}} />
           {t.missingOnly}
         </label>
       </div>
@@ -854,7 +854,7 @@ function IssuesTab({ lang, addToast }) {
               <div key={i} style={{display:'flex', alignItems:'center', gap:6, background:'rgba(255,255,255,0.05)', padding:'4px 10px', borderRadius:6, fontSize:12}}>
                 <span className="badge badge-gray" style={{fontSize:10}}>{item.type}</span>
                 <span>{item.name}</span>
-                <button onClick={() => unignoreItem(item.type, item.name)} style={{background:'none', border:'none', color:'#f87171', cursor:'pointer', fontSize:14, lineHeight:1}}>×</button>
+                <button aria-label={t.remove} onClick={() => unignoreItem(item.type, item.name)} style={{background:'none', border:'none', color:'#f87171', cursor:'pointer', fontSize:14, lineHeight:1}}>×</button>
               </div>
             ))}
           </div>
@@ -1031,8 +1031,8 @@ function SettingsTab({ lang, addToast }) {
   function Field({ label, field, type = 'text', placeholder = '' }) {
     return (
       <div style={{marginBottom:14}}>
-        <label style={{display:'block', fontSize:12, color:'var(--muted)', marginBottom:4}}>{label}</label>
-        <input type={type} value={settings[field] || ''} placeholder={placeholder}
+        <label htmlFor={field} style={{display:'block', fontSize:12, color:'var(--muted)', marginBottom:4}}>{label}</label>
+        <input id={field} type={type} value={settings[field] || ''} placeholder={placeholder}
           onChange={e => setSettings(p => ({ ...p, [field]: e.target.value }))}
           style={{width:'100%'}} />
       </div>
@@ -1061,14 +1061,14 @@ function SettingsTab({ lang, addToast }) {
       <div>
         {items.map((item, idx) => (
           <div key={idx} style={{display:'flex', gap:8, marginBottom:6, alignItems:'center'}}>
-            <input value={item.name || ''} onChange={e => updateItem(idx, 'name', e.target.value)} placeholder={nameLabel} style={{flex:1}} />
-            <input value={item.folder || ''} onChange={e => updateItem(idx, 'folder', e.target.value)} placeholder={folderLabel} style={{flex:1}} />
+            <input aria-label={nameLabel} value={item.name || ''} onChange={e => updateItem(idx, 'name', e.target.value)} placeholder={nameLabel} style={{flex:1}} />
+            <input aria-label={folderLabel} value={item.folder || ''} onChange={e => updateItem(idx, 'folder', e.target.value)} placeholder={folderLabel} style={{flex:1}} />
             <button onClick={() => removeItem(idx)} style={{padding:'6px 10px', background:'rgba(239,68,68,0.15)', border:'1px solid rgba(239,68,68,0.3)', color:'#f87171', borderRadius:6, cursor:'pointer', fontSize:12}}>{t.remove}</button>
           </div>
         ))}
         <div style={{display:'flex', gap:8, marginTop:8}}>
-          <input value={newName} onChange={e => setNewName(e.target.value)} placeholder={nameLabel} style={{flex:1}} />
-          <input value={newFolder} onChange={e => setNewFolder(e.target.value)} placeholder={folderLabel} style={{flex:1}} />
+          <input aria-label={nameLabel} value={newName} onChange={e => setNewName(e.target.value)} placeholder={nameLabel} style={{flex:1}} />
+          <input aria-label={folderLabel} value={newFolder} onChange={e => setNewFolder(e.target.value)} placeholder={folderLabel} style={{flex:1}} />
           <button onClick={addItem} className="grad-btn" style={{padding:'6px 14px', fontSize:13}}>{t.add}</button>
         </div>
       </div>
