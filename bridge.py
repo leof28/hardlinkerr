@@ -1257,24 +1257,29 @@ def get_status():
     cursor.execute('SELECT * FROM movies ORDER BY added_time DESC')
     movies = cursor.fetchall()
 
+    # ⚡ Bolt Optimization: Fix N+1 query problem by batch fetching all hardlinks
+    cursor.execute('SELECT * FROM hardlinks')
+    all_hls = cursor.fetchall()
+    hardlinks_by_movie = {}
+    for h in all_hls:
+        mf = h['movie_folder']
+        if mf not in hardlinks_by_movie:
+            hardlinks_by_movie[mf] = []
+        hardlinks_by_movie[mf].append({
+            "genre": h['genre'],
+            "folder": h['folder'],
+            "found": h['found'],
+            "total": h['total'],
+            "exists": bool(h['exists_bool']),
+            "type": h['type']
+        })
+
     result = []
     jellystat_enabled = bool(config.get('jellystatUrl') and config.get('jellystatApiKey'))
 
     for m in movies:
         folder_name = m['folder_name']
-        cursor.execute('SELECT * FROM hardlinks WHERE movie_folder = ?', (folder_name,))
-        hls = cursor.fetchall()
-
-        hardlinks = []
-        for h in hls:
-            hardlinks.append({
-                "genre": h['genre'],
-                "folder": h['folder'],
-                "found": h['found'],
-                "total": h['total'],
-                "exists": bool(h['exists_bool']),
-                "type": h['type']
-            })
+        hardlinks = hardlinks_by_movie.get(folder_name, [])
 
         result.append({
             "title": m['title'],
@@ -1725,6 +1730,16 @@ def get_library_stats():
     cursor.execute('SELECT folder_name, file_size FROM movies')
     movies = cursor.fetchall()
 
+    # ⚡ Bolt Optimization: Fix N+1 query problem by batch fetching all hardlinks
+    cursor.execute('SELECT * FROM hardlinks')
+    all_hls = cursor.fetchall()
+    hls_by_movie = {}
+    for h in all_hls:
+        mf = h['movie_folder']
+        if mf not in hls_by_movie:
+            hls_by_movie[mf] = []
+        hls_by_movie[mf].append(h)
+
     total_linked = 0
 
     by_genre = {}
@@ -1732,8 +1747,7 @@ def get_library_stats():
     by_platform = {}
 
     for m in movies:
-        cursor.execute('SELECT * FROM hardlinks WHERE movie_folder = ?', (m['folder_name'],))
-        hls = cursor.fetchall()
+        hls = hls_by_movie.get(m['folder_name'], [])
 
         if hls and all(h['exists_bool'] for h in hls):
             total_linked += 1
