@@ -1,36 +1,28 @@
 from playwright.sync_api import sync_playwright
-import json
-
-def handle_route(route):
-    url = route.request.url
-    if '/api/status' in url:
-        route.fulfill(status=200, content_type="application/json", body="[]")
-    elif '/api/genres' in url:
-        route.fulfill(status=200, content_type="application/json", body='[{"name": "Action", "folder": "Action", "enabled": true}]')
-    elif '/api/studios' in url:
-        route.fulfill(status=200, content_type="application/json", body='[{"name": "20th Century Studios", "folder": "Fox", "enabled": false}, {"name": "Lionsgate", "folder": "Lionsgate", "enabled": true}, {"name": "SmallStudio", "folder": "SmallStudio", "enabled": true}]')
-    elif '/api/platforms' in url:
-        route.fulfill(status=200, content_type="application/json", body='[{"name": "Netflix", "folder": "Netflix", "enabled": true}]')
-    else:
-        route.continue_()
 
 def run_cuj(page):
-    page.route("**/*", handle_route)
+    page.on("console", lambda msg: print(f"Browser console: {msg.text}"))
     page.goto("http://localhost:5000")
-    page.wait_for_timeout(3000)
-
-    page.evaluate('document.querySelectorAll(".tab-btn").forEach(btn => { if(btn.innerText.includes("Paramètres")) btn.click() })')
     page.wait_for_timeout(2000)
 
-    page.evaluate('document.querySelectorAll(".tab-btn").forEach(btn => { if(btn.innerText.includes("Studios")) btn.click() })')
+    # 1. Click issues tab
+    page.evaluate('document.querySelectorAll(".tab-btn").forEach(btn => { if(btn.innerText.includes("Problèmes")) btn.click() })')
     page.wait_for_timeout(1000)
-    page.screenshot(path="/home/jules/verification/screenshots/verification1.png")
+    page.screenshot(path="/home/jules/verification/screenshots/issues_tab.png")
 
-    page.evaluate('document.querySelectorAll("button").forEach(btn => { if(btn.innerText.includes("Classiques uniquement")) btn.click() })')
+    # 2. Click settings
+    page.evaluate('document.querySelectorAll(".tab-btn").forEach(btn => { if(btn.innerText.includes("Paramètres")) btn.click() })')
     page.wait_for_timeout(1000)
 
-    page.screenshot(path="/home/jules/verification/screenshots/verification_final.png")
-    page.wait_for_timeout(1000)  # Hold final state for the video
+    # 3. Click exclusions
+    page.evaluate('document.querySelectorAll(".tab-btn").forEach(btn => { if(btn.innerText.includes("Exclusions")) btn.click() })')
+    page.wait_for_timeout(1000)
+    page.screenshot(path="/home/jules/verification/screenshots/exclusions_tab.png")
+
+    # 4. Click logs
+    page.evaluate('document.querySelectorAll(".tab-btn").forEach(btn => { if(btn.innerText.includes("Logs")) btn.click() })')
+    page.wait_for_timeout(1000)
+    page.screenshot(path="/home/jules/verification/screenshots/logs_tab.png")
 
 if __name__ == "__main__":
     with sync_playwright() as p:
