@@ -318,6 +318,27 @@ def save_ignored(ignored):
         json.dump(ignored, f, indent=2)
 
 
+def is_safe_path(path_to_check, config):
+    """Vérifie si un chemin est sûr et se trouve dans les répertoires autorisés."""
+    if not path_to_check:
+        return False
+    allowed_keys = ['mediaRoot', 'sourceRoot', 'seriesSourceRoot', 'seriesCheckRoot']
+    allowed_roots = [os.path.abspath(config.get(k)) for k in allowed_keys if config.get(k)]
+    if not allowed_roots:
+        return False
+
+    target = os.path.abspath(path_to_check)
+    for root in allowed_roots:
+        try:
+            if os.path.commonpath([root, target]) == root:
+                # Interdire la suppression du répertoire racine lui-même
+                if root != target:
+                    return True
+        except ValueError:
+            pass
+    return False
+
+
 # --- HARDLINK HELPERS ---
 
 def get_env(config, movie="", genres="", studios=""):
@@ -1319,6 +1340,12 @@ def delete_series():
     data = request.json or {}
     series_path = data.get('path', '')
     series_name = data.get('name', os.path.basename(series_path))
+
+    config = load_config()
+    if not is_safe_path(series_path, config):
+        append_log("warning", "security", f"Tentative de suppression de chemin non autorisé: {series_path}")
+        return jsonify({"error": "Chemin non autorisé"}), 403
+
     try:
         if series_path and os.path.isdir(series_path):
             shutil.rmtree(series_path)
@@ -1378,6 +1405,12 @@ def get_duplicates():
 def delete_file():
     data = request.json or {}
     file_path = data.get('path', '')
+
+    config = load_config()
+    if not is_safe_path(file_path, config):
+        append_log("warning", "security", f"Tentative de suppression de chemin non autorisé: {file_path}")
+        return jsonify({"error": "Chemin non autorisé"}), 403
+
     try:
         if file_path and os.path.exists(file_path):
             os.remove(file_path)
@@ -1398,6 +1431,12 @@ def delete_duplicates():
     file_paths = data.get('paths', [])
     if not file_paths:
         return jsonify({"error": "Aucun fichier"}), 400
+
+    config = load_config()
+    for file_path in file_paths:
+        if not is_safe_path(file_path, config):
+            append_log("warning", "security", f"Tentative de suppression de chemin non autorisé: {file_path}")
+            return jsonify({"error": "Chemin non autorisé"}), 403
 
     success, errors = [], []
     for file_path in file_paths:
@@ -1431,6 +1470,10 @@ def delete_movie():
     title = data.get('title', folder_name)
     config = load_config()
     media_root = config.get('mediaRoot', '')
+
+    if source_path and not is_safe_path(source_path, config):
+        append_log("warning", "security", f"Tentative de suppression de chemin non autorisé: {source_path}")
+        return jsonify({"error": "Chemin non autorisé"}), 403
 
     deleted = []
     errors = []
@@ -1796,6 +1839,10 @@ def delete_hardlink_folder():
         return jsonify({"error": "Paramètres manquants"}), 400
 
     target_path = os.path.join(media_root, target_folder, folder_name)
+    if not is_safe_path(target_path, config):
+        append_log("warning", "security", f"Tentative de suppression de chemin non autorisé: {target_path}")
+        return jsonify({"error": "Chemin non autorisé"}), 403
+
     try:
         if os.path.isdir(target_path):
             shutil.rmtree(target_path)
