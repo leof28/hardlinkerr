@@ -1032,8 +1032,8 @@ function SettingsTab({ lang, addToast }) {
   function Field({ label, field, type = 'text', placeholder = '' }) {
     return (
       <div style={{marginBottom:14}}>
-        <label style={{display:'block', fontSize:12, color:'var(--muted)', marginBottom:4}}>{label}</label>
-        <input type={type} value={settings[field] || ''} placeholder={placeholder}
+        <label htmlFor={field} style={{display:'block', fontSize:12, color:'var(--muted)', marginBottom:4}}>{label}</label>
+        <input id={field} type={type} value={settings[field] || ''} placeholder={placeholder}
           onChange={e => setSettings(p => ({ ...p, [field]: e.target.value }))}
           style={{width:'100%'}} />
       </div>
