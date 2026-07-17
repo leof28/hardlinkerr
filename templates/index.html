@@ -61,6 +61,7 @@
     @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
     @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+    *:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
   </style>
 </head>
 <body>
@@ -196,6 +197,9 @@ const T = {
       error: 'Erreur',
       success: 'Succès',
       loading: 'Chargement…',
+      switchLang: 'Changer de langue',
+      unignore: 'Ne plus ignorer',
+      remove: 'Supprimer',
     }
   },
   en: {
@@ -324,6 +328,9 @@ const T = {
       error: 'Error',
       success: 'Success',
       loading: 'Loading…',
+      switchLang: 'Switch language',
+      unignore: 'Unignore',
+      remove: 'Remove',
     }
   }
 };
@@ -605,16 +612,16 @@ function LibraryTab({ movies, genres, studios, platforms, loading, onRefresh, la
     <div>
       {/* Filters */}
       <div style={{display:'flex', gap:10, marginBottom:16, flexWrap:'wrap', alignItems:'center'}}>
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder={t.search} style={{flex:'1 1 200px', minWidth:140}} />
-        <select value={filterGenre} onChange={e => setFilterGenre(e.target.value)} style={{minWidth:130}}>
+        <input aria-label={t.search} value={search} onChange={e => setSearch(e.target.value)} placeholder={t.search} style={{flex:'1 1 200px', minWidth:140}} />
+        <select aria-label={t.allGenres} value={filterGenre} onChange={e => setFilterGenre(e.target.value)} style={{minWidth:130}}>
           <option value="">{t.allGenres}</option>
           {genres.map(g => <option key={g.name||g} value={g.name||g}>{g.name||g}</option>)}
         </select>
-        <select value={filterStudio} onChange={e => setFilterStudio(e.target.value)} style={{minWidth:130}}>
+        <select aria-label={t.allStudios} value={filterStudio} onChange={e => setFilterStudio(e.target.value)} style={{minWidth:130}}>
           <option value="">{t.allStudios}</option>
           {studios.map(s => <option key={s.name||s} value={s.name||s}>{s.name||s}</option>)}
         </select>
-        <select value={filterPlatform} onChange={e => setFilterPlatform(e.target.value)} style={{minWidth:150}}>
+        <select aria-label={t.allPlatforms} value={filterPlatform} onChange={e => setFilterPlatform(e.target.value)} style={{minWidth:150}}>
           <option value="">{t.allPlatforms}</option>
           {platforms.map(p => <option key={p.name||p} value={p.name||p}>{p.name||p}</option>)}
         </select>
@@ -868,7 +875,7 @@ function IssuesTab({ lang, addToast }) {
               <div key={i} style={{display:'flex', alignItems:'center', gap:6, background:'rgba(255,255,255,0.05)', padding:'4px 10px', borderRadius:6, fontSize:12}}>
                 <span className="badge badge-gray" style={{fontSize:10}}>{item.type}</span>
                 <span>{item.name}</span>
-                <button onClick={() => unignoreItem(item.type, item.name)} style={{background:'none', border:'none', color:'#f87171', cursor:'pointer', fontSize:14, lineHeight:1}}>×</button>
+                <button aria-label={T[lang].common.unignore} onClick={() => unignoreItem(item.type, item.name)} style={{background:'none', border:'none', color:'#f87171', cursor:'pointer', fontSize:14, lineHeight:1}}>×</button>
               </div>
             ))}
           </div>
@@ -1133,16 +1140,16 @@ function SettingsTab({ lang, addToast }) {
         </div>
         {items.map((item, idx) => (
           <div key={idx} style={{display:'flex', gap:8, marginBottom:6, alignItems:'center'}}>
-            <input type="checkbox" checked={!!item.enabled} onChange={e => updateItem(idx, 'enabled', e.target.checked)} style={{width: 16, height: 16, cursor:'pointer'}} />
-            <input value={item.name || ''} onChange={e => updateItem(idx, 'name', e.target.value)} placeholder={nameLabel} style={{flex:1}} />
-            <input value={item.folder || ''} onChange={e => updateItem(idx, 'folder', e.target.value)} placeholder={folderLabel} style={{flex:1}} />
+            <input aria-label="Toggle enable" type="checkbox" checked={!!item.enabled} onChange={e => updateItem(idx, 'enabled', e.target.checked)} style={{width: 16, height: 16, cursor:'pointer'}} />
+            <input aria-label={nameLabel} value={item.name || ''} onChange={e => updateItem(idx, 'name', e.target.value)} placeholder={nameLabel} style={{flex:1}} />
+            <input aria-label={folderLabel} value={item.folder || ''} onChange={e => updateItem(idx, 'folder', e.target.value)} placeholder={folderLabel} style={{flex:1}} />
             <button onClick={() => removeItem(idx)} style={{padding:'6px 10px', background:'rgba(239,68,68,0.15)', border:'1px solid rgba(239,68,68,0.3)', color:'#f87171', borderRadius:6, cursor:'pointer', fontSize:12}}>{t.remove}</button>
           </div>
         ))}
         <div style={{display:'flex', gap:8, marginTop:8}}>
           <div style={{width: 16}}></div> {/* Spacer for checkbox */}
-          <input value={newName} onChange={e => setNewName(e.target.value)} placeholder={nameLabel} style={{flex:1}} />
-          <input value={newFolder} onChange={e => setNewFolder(e.target.value)} placeholder={folderLabel} style={{flex:1}} />
+          <input aria-label={nameLabel} value={newName} onChange={e => setNewName(e.target.value)} placeholder={nameLabel} style={{flex:1}} />
+          <input aria-label={folderLabel} value={newFolder} onChange={e => setNewFolder(e.target.value)} placeholder={folderLabel} style={{flex:1}} />
           <button onClick={addItem} className="grad-btn" style={{padding:'6px 14px', fontSize:13}}>{t.add}</button>
         </div>
       </div>
@@ -1259,7 +1266,7 @@ function SettingsTab({ lang, addToast }) {
                   <div key={i} style={{display:'flex', alignItems:'center', gap:10, padding:'8px 12px', background:'rgba(255,255,255,0.03)', borderRadius:8}}>
                     <span className="badge badge-gray" style={{fontSize:11}}>{ex.type}</span>
                     <span style={{fontSize:13, flex:1}}>{ex.name}</span>
-                    <button onClick={async () => {
+                    <button aria-label={T[lang].common.remove} onClick={async () => {
                       try {
                         await fetch(`/api/ignore/${ex.type}/${encodeURIComponent(ex.name)}`, { method: 'DELETE' });
                         setExclusions(prev => prev.filter((_, j) => j !== i));
@@ -1343,7 +1350,7 @@ function App() {
         <h1 className="grad-text" style={{margin:0, fontSize:20, fontWeight:700, letterSpacing:'-0.02em'}}>{t.appTitle}</h1>
         <div style={{display:'flex', alignItems:'center', gap:16}}>
           {loadingMovies && <span style={{fontSize:12, color:'var(--muted)', display:'flex', alignItems:'center', gap:6}}><span className="animate-spin" style={{display:'inline-block', width:12, height:12, border:'2px solid var(--accent)', borderTopColor:'transparent', borderRadius:'50%'}}></span> {t.common.loading}</span>}
-          <button onClick={() => setLang(l => l === 'fr' ? 'en' : 'fr')}
+          <button aria-label={t.common.switchLang} onClick={() => setLang(l => l === 'fr' ? 'en' : 'fr')}
             style={{padding:'5px 12px', fontSize:12, background:'rgba(255,255,255,0.07)', border:'1px solid var(--border)', borderRadius:6, color:'var(--text)', cursor:'pointer'}}>
             {lang === 'fr' ? '🇬🇧 EN' : '🇫🇷 FR'}
           </button>
