@@ -472,20 +472,40 @@ def get_hardlink_status(config):
 
 # --- PLATFORM CACHE ---
 
+# ⚡ Bolt Optimization: In-memory cache to prevent repeated disk I/O and JSON parsing in loops
+_PLATFORMS_MEM_CACHE = None
+_PLATFORMS_MEM_CACHE_MTIME = 0
+
 def load_platforms_cache():
+    global _PLATFORMS_MEM_CACHE, _PLATFORMS_MEM_CACHE_MTIME
+
     if os.path.exists(PLATFORMS_CACHE_PATH):
+        current_mtime = os.path.getmtime(PLATFORMS_CACHE_PATH)
+        if _PLATFORMS_MEM_CACHE is not None and current_mtime == _PLATFORMS_MEM_CACHE_MTIME:
+            return _PLATFORMS_MEM_CACHE
+
         try:
             with open(PLATFORMS_CACHE_PATH, 'r') as f:
-                return json.load(f)
+                _PLATFORMS_MEM_CACHE = json.load(f)
+                _PLATFORMS_MEM_CACHE_MTIME = current_mtime
+                return _PLATFORMS_MEM_CACHE
         except Exception:
-            return {}
-    return {}
+            pass
+
+    _PLATFORMS_MEM_CACHE = {}
+    _PLATFORMS_MEM_CACHE_MTIME = 0
+    return _PLATFORMS_MEM_CACHE
 
 
 def save_platforms_cache(cache):
+    global _PLATFORMS_MEM_CACHE, _PLATFORMS_MEM_CACHE_MTIME
+    _PLATFORMS_MEM_CACHE = cache
     os.makedirs(CONFIG_DIR, exist_ok=True)
     with open(PLATFORMS_CACHE_PATH, 'w') as f:
         json.dump(cache, f, indent=2)
+
+    if os.path.exists(PLATFORMS_CACHE_PATH):
+        _PLATFORMS_MEM_CACHE_MTIME = os.path.getmtime(PLATFORMS_CACHE_PATH)
 
 
 def get_movie_platforms_from_tmdb(tmdb_id, api_key, country='FR'):
