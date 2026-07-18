@@ -472,11 +472,21 @@ def get_hardlink_status(config):
 
 # --- PLATFORM CACHE ---
 
+_platforms_mem_cache = {}
+_platforms_cache_mtime = 0
+
 def load_platforms_cache():
+    global _platforms_mem_cache, _platforms_cache_mtime
+    # ⚡ Bolt Optimization: Use in-memory cache with mtime check to eliminate O(N) disk I/O in loops
     if os.path.exists(PLATFORMS_CACHE_PATH):
         try:
+            mtime = os.path.getmtime(PLATFORMS_CACHE_PATH)
+            if mtime == _platforms_cache_mtime and _platforms_mem_cache:
+                return _platforms_mem_cache
             with open(PLATFORMS_CACHE_PATH, 'r') as f:
-                return json.load(f)
+                _platforms_mem_cache = json.load(f)
+                _platforms_cache_mtime = mtime
+                return _platforms_mem_cache
         except Exception:
             return {}
     return {}

@@ -1,3 +1,6 @@
 ## 2026-07-16 - SQLite N+1 Queries in Hardlink Manager
 **Learning:** The `get_status` and `get_library_stats` endpoints in this Flask app were executing an N+1 query pattern, looping over every movie and making a subsequent query for its hardlinks. This caused a severe bottleneck for large media libraries (e.g. 5,000+ movies = 5,001+ queries).
 **Action:** Replaced the per-movie hardlink queries with a single batch `SELECT * FROM hardlinks`, mapped the results into an in-memory dictionary grouped by `movie_folder`, and used O(1) dictionary lookups instead. This reduced execution time by over 50%. Next time, proactively search for nested `cursor.execute` calls inside loops.
+## 2026-07-18 - File-Based JSON Caching Optimization
+**Learning:** In multi-worker or looped environments, repeatedly reading and parsing JSON cache files from disk (e.g. `load_platforms_cache()` called within an O(N) loop over all movies) causes massive synchronous I/O and CPU bottlenecks.
+**Action:** Implemented a module-level in-memory dictionary cache combined with an `os.path.getmtime(path)` check to validate cache coherence before falling back to disk reads. This eliminated O(N) redundant disk I/O while preserving synchronization across multiple processes.
