@@ -181,7 +181,7 @@ def sync_database(config=None):
 
         for hl in all_hardlinks:
             cursor.execute('''
-                INSERT INTO hardlinks (movie_folder, genre, folder, found, total, exists_bool, type)
+                INSERT OR IGNORE INTO hardlinks (movie_folder, genre, folder, found, total, exists_bool, type)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
             ''', (folder_name, hl.get('genre'), hl.get('folder'), hl.get('found', 0), hl.get('total', 0), 1 if hl.get('exists') else 0, hl.get('type')))
 
@@ -1170,6 +1170,12 @@ def get_jellystat_history(config):
                     history.setdefault(raw_key, []).append(date_str)
         print(f"[JELLYSTAT] {len(history)} titre(s) avec historique")
         return history
+    except requests.exceptions.HTTPError as e:
+        if e.response.status_code == 401:
+            print(f"[JELLYSTAT] Erreur 401: Non autorisé. Veuillez vérifier la clé API Jellystat.")
+        else:
+            print(f"[JELLYSTAT] Erreur HTTP: {e}")
+        return {}
     except Exception as e:
         print(f"[JELLYSTAT] Erreur: {e}")
         return {}
