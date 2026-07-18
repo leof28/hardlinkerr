@@ -1463,8 +1463,8 @@ def delete_file():
         return jsonify({"error": str(e)}), 500
 
 
-@app.route('/api/delete-duplicates', methods=['POST'])
-def delete_duplicates():
+@app.route('/api/delete-files-bulk', methods=['POST'])
+def delete_files_bulk():
     data = request.json or {}
     file_paths = data.get('paths', [])
     if not file_paths:

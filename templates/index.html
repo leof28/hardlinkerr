@@ -131,6 +131,12 @@ const T = {
       loading: 'Analyse en cours…',
       ignore: 'Ignorer',
       fix: 'Corriger',
+      delete: 'Supprimer',
+      deleteAllDuplicates: 'Supprimer tous les doublons',
+      deleteAllOrphans: 'Supprimer tous les orphelins',
+      confirmDeleteFile: 'Voulez-vous vraiment supprimer ce fichier ?',
+      confirmDeleteAllDuplicates: 'Êtes-vous sûr de vouloir supprimer TOUS les doublons ?',
+      confirmDeleteAllOrphans: 'Êtes-vous sûr de vouloir supprimer TOUS les orphelins ?',
     },
     series: {
       title: 'Séries orphelines',
@@ -259,6 +265,12 @@ const T = {
       loading: 'Analyzing…',
       ignore: 'Ignore',
       fix: 'Fix',
+      delete: 'Delete',
+      deleteAllDuplicates: 'Delete all duplicates',
+      deleteAllOrphans: 'Delete all orphans',
+      confirmDeleteFile: 'Are you sure you want to delete this file?',
+      confirmDeleteAllDuplicates: 'Are you sure you want to delete ALL duplicates?',
+      confirmDeleteAllOrphans: 'Are you sure you want to delete ALL orphans?',
     },
     series: {
       title: 'Orphan Series',
@@ -799,6 +811,7 @@ function IssuesTab({ lang, addToast }) {
   const [issues, setIssues] = useState(null);
   const [loading, setLoading] = useState(false);
   const [ignored, setIgnored] = useState([]);
+  const [confirm, setConfirm] = useState(null);
 
   useEffect(() => {
     fetchIgnored();
@@ -848,15 +861,61 @@ function IssuesTab({ lang, addToast }) {
     } catch(e) { addToast({ message: 'Erreur: ' + e.message, type: 'error' }); }
   }
 
+  async function handleDeleteFile(issue) {
+    if (!issue.path) return;
+    try {
+      await api('/api/delete-file', { method: 'POST', body: { path: issue.path } });
+      addToast({ message: 'Fichier supprimé', type: 'success' });
+      fetchIssues();
+    } catch(e) { addToast({ message: 'Erreur: ' + e.message, type: 'error' }); }
+  }
+
+  async function handleDeleteAllDuplicates() {
+    const duplicatePaths = allIssues.filter(i => i.issueType === 'duplicate' && i.path).map(i => i.path);
+    if (!duplicatePaths.length) return;
+    try {
+      await api('/api/delete-files-bulk', { method: 'POST', body: { paths: duplicatePaths } });
+      addToast({ message: 'Doublons supprimés', type: 'success' });
+      fetchIssues();
+    } catch(e) { addToast({ message: 'Erreur: ' + e.message, type: 'error' }); }
+  }
+
+  async function handleDeleteAllOrphans() {
+    const orphanPaths = allIssues.filter(i => i.issueType === 'orphan' && i.path).map(i => i.path);
+    if (!orphanPaths.length) return;
+    try {
+      await api('/api/delete-files-bulk', { method: 'POST', body: { paths: orphanPaths } });
+      addToast({ message: 'Orphelins supprimés', type: 'success' });
+      fetchIssues();
+    } catch(e) { addToast({ message: 'Erreur: ' + e.message, type: 'error' }); }
+  }
+
   const allIssues = Array.isArray(issues) ? issues.map(i => ({ ...i, issueType: i.type || 'unknown' })) : [];
+
+  const duplicateCount = allIssues.filter(i => i.issueType === 'duplicate').length;
+  const orphanCount = allIssues.filter(i => i.issueType === 'orphan').length;
 
   return (
     <div>
-      <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20}}>
+      <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20, flexWrap: 'wrap', gap: 10}}>
         <h2 style={{margin:0, fontSize:18}}>{t.title}</h2>
-        <button onClick={fetchIssues} disabled={loading} style={{padding:'7px 14px', fontSize:13, background:'rgba(255,255,255,0.07)', border:'1px solid var(--border)', borderRadius:8, color:'var(--text)', cursor:'pointer'}}>
-          {loading ? t.loading : t.refresh}
-        </button>
+        <div style={{display: 'flex', gap: 10, flexWrap: 'wrap'}}>
+          {duplicateCount > 0 && (
+            <button onClick={() => setConfirm({ msg: t.confirmDeleteAllDuplicates, action: handleDeleteAllDuplicates })}
+              style={{padding:'7px 14px', fontSize:13, background:'rgba(239,68,68,0.1)', border:'1px solid rgba(239,68,68,0.3)', borderRadius:8, color:'#f87171', cursor:'pointer'}}>
+              {t.deleteAllDuplicates}
+            </button>
+          )}
+          {orphanCount > 0 && (
+            <button onClick={() => setConfirm({ msg: t.confirmDeleteAllOrphans, action: handleDeleteAllOrphans })}
+              style={{padding:'7px 14px', fontSize:13, background:'rgba(234,179,8,0.1)', border:'1px solid rgba(234,179,8,0.3)', borderRadius:8, color:'#facc15', cursor:'pointer'}}>
+              {t.deleteAllOrphans}
+            </button>
+          )}
+          <button onClick={fetchIssues} disabled={loading} style={{padding:'7px 14px', fontSize:13, background:'rgba(255,255,255,0.07)', border:'1px solid var(--border)', borderRadius:8, color:'var(--text)', cursor:'pointer'}}>
+            {loading ? t.loading : t.refresh}
+          </button>
+        </div>
       </div>
 
       {/* Ignored list */}
@@ -890,14 +949,23 @@ function IssuesTab({ lang, addToast }) {
                 <span style={{fontSize:13}}>{issue.title || issue.path || issue.name || JSON.stringify(issue)}</span>
                 {issue.path && <span style={{fontSize:11, color:'var(--muted)'}}>{issue.path}</span>}
               </div>
-              <button onClick={() => ignoreItem(issue.issueType, issue.title||issue.name||issue.path)}
-                style={{padding:'4px 10px', fontSize:12, background:'rgba(255,255,255,0.06)', border:'1px solid var(--border)', borderRadius:6, color:'var(--muted)', cursor:'pointer', whiteSpace:'nowrap'}}>
-                {t.ignore}
-              </button>
+              <div style={{display: 'flex', gap: 8}}>
+                <button onClick={() => ignoreItem(issue.issueType, issue.title||issue.name||issue.path)}
+                  style={{padding:'4px 10px', fontSize:12, background:'rgba(255,255,255,0.06)', border:'1px solid var(--border)', borderRadius:6, color:'var(--muted)', cursor:'pointer', whiteSpace:'nowrap'}}>
+                  {t.ignore}
+                </button>
+                {(issue.issueType === 'duplicate' || issue.issueType === 'orphan') && issue.path && (
+                  <button onClick={() => setConfirm({ msg: t.confirmDeleteFile, action: () => handleDeleteFile(issue) })}
+                    style={{padding:'4px 10px', fontSize:12, background:'rgba(239,68,68,0.15)', border:'1px solid rgba(239,68,68,0.3)', borderRadius:6, color:'#f87171', cursor:'pointer', whiteSpace:'nowrap'}}>
+                    {t.delete}
+                  </button>
+                )}
+              </div>
             </div>
           ))}
         </div>
       )}
+      {confirm && <ConfirmDialog message={confirm.msg} lang={lang} onConfirm={() => { confirm.action(); setConfirm(null); }} onCancel={() => setConfirm(null)} />}
     </div>
   );
 }
