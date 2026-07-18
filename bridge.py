@@ -1537,6 +1537,9 @@ def delete_movie():
             if not os.path.isdir(genre_path) or genre_folder == os.path.basename(config.get('sourceRoot', '')):
                 continue
             movie_genre_path = os.path.join(genre_path, folder_name)
+            if not is_safe_path(movie_genre_path, config):
+                errors.append(f"Hardlink '{genre_folder}/{folder_name}': Chemin non autorisé")
+                continue
             if os.path.isdir(movie_genre_path):
                 try:
                     shutil.rmtree(movie_genre_path)
