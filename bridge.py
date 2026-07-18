@@ -1527,6 +1527,11 @@ def delete_movie():
             if not os.path.isdir(genre_path) or genre_folder == os.path.basename(config.get('sourceRoot', '')):
                 continue
             movie_genre_path = os.path.join(genre_path, folder_name)
+
+            if not is_safe_path(movie_genre_path, config):
+                append_log("warning", "security", f"Tentative de suppression de chemin non autorisé: {movie_genre_path}")
+                continue
+
             if os.path.isdir(movie_genre_path):
                 try:
                     shutil.rmtree(movie_genre_path)
