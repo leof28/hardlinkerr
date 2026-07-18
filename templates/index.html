@@ -61,6 +61,7 @@
     @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
     @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+    *:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   </style>
 </head>
 <body>
@@ -652,10 +653,14 @@ function LibraryTab({ movies, genres, studios, platforms, loading, onRefresh, la
             const status = getCardStatus(movie);
             const isSelected = selected.has(movie.path);
             return (
-              <div key={movie.path} className="movie-card" style={{border: isSelected ? '2px solid #6366f1' : '2px solid transparent'}}>
+              <div key={movie.path} className="movie-card" style={{border: isSelected ? '2px solid #6366f1' : '2px solid transparent'}}
+                tabIndex={0} role="button"
+                onClick={() => setDetailMovie(movie)}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setDetailMovie(movie); } }}
+              >
                 {/* Checkbox overlay */}
                 <div className="checkbox-overlay" onClick={e => { e.stopPropagation(); toggleSelect(movie.path); }}>
-                  <input type="checkbox" checked={isSelected} onChange={() => {}} style={{width:16, height:16, cursor:'pointer', accentColor:'#6366f1'}} />
+                  <input type="checkbox" aria-label={`Sélectionner ${movie.title}`} checked={isSelected} onChange={() => {}} style={{width:16, height:16, cursor:'pointer', accentColor:'#6366f1'}} />
                 </div>
                 {/* Status dot */}
                 <div style={{position:'absolute', top:6, right:6, zIndex:10}}>
@@ -664,11 +669,10 @@ function LibraryTab({ movies, genres, studios, platforms, loading, onRefresh, la
                 <img
                   src={movie.poster || 'https://via.placeholder.com/130x195?text=' + encodeURIComponent(movie.title)}
                   alt={movie.title}
-                  onClick={() => setDetailMovie(movie)}
                   onError={e => { e.target.src = 'https://via.placeholder.com/130x195?text=No+Poster'; }}
                 />
-                <div className="overlay" onClick={() => setDetailMovie(movie)}></div>
-                <div className="card-info" onClick={() => setDetailMovie(movie)}>
+                <div className="overlay"></div>
+                <div className="card-info">
                   <p style={{margin:0, fontSize:10, fontWeight:600, lineHeight:1.3, color:'white'}}>{movie.title}</p>
                   {movie.jellystatEnabled && (
                     <p style={{margin:'4px 0 0', fontSize:9, color: movie.watchCount > 0 ? '#4ade80' : '#94a3b8'}}>
@@ -868,7 +872,7 @@ function IssuesTab({ lang, addToast }) {
               <div key={i} style={{display:'flex', alignItems:'center', gap:6, background:'rgba(255,255,255,0.05)', padding:'4px 10px', borderRadius:6, fontSize:12}}>
                 <span className="badge badge-gray" style={{fontSize:10}}>{item.type}</span>
                 <span>{item.name}</span>
-                <button onClick={() => unignoreItem(item.type, item.name)} style={{background:'none', border:'none', color:'#f87171', cursor:'pointer', fontSize:14, lineHeight:1}}>×</button>
+                <button onClick={() => unignoreItem(item.type, item.name)} aria-label="Réactiver cet élément" title="Réactiver" style={{background:'none', border:'none', color:'#f87171', cursor:'pointer', fontSize:14, lineHeight:1}}>×</button>
               </div>
             ))}
           </div>
