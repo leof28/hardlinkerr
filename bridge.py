@@ -1218,16 +1218,34 @@ def settings():
 def get_all_genres():
     config = load_config()
     try:
-        response = requests.get(
-            f"{config['radarrUrl']}/api/v3/movie",
-            headers={"X-Api-Key": config['apiKey']},
-            timeout=30
-        )
-        response.raise_for_status()
         all_genres = set()
-        for movie in response.json():
-            for genre in movie.get('genres', []):
-                all_genres.add(genre['name'] if isinstance(genre, dict) else genre)
+        # ⚡ Bolt Optimization: Prefer querying local SQLite cache to avoid blocking external API calls
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute('SELECT genres FROM movies WHERE genres IS NOT NULL AND genres != "[]"')
+            for row in cursor.fetchall():
+                try:
+                    genres = json.loads(row['genres'])
+                    for g in genres:
+                        if g:
+                            all_genres.add(g)
+                except Exception:
+                    pass
+            conn.close()
+        except Exception as e:
+            print(f"[GENRES DB] Erreur: {e}")
+
+        if not all_genres:
+            response = requests.get(
+                f"{config['radarrUrl']}/api/v3/movie",
+                headers={"X-Api-Key": config['apiKey']},
+                timeout=30
+            )
+            response.raise_for_status()
+            for movie in response.json():
+                for genre in movie.get('genres', []):
+                    all_genres.add(genre['name'] if isinstance(genre, dict) else genre)
 
         current_mapping = config.get('genreMapping', {})
         return jsonify([
@@ -1246,23 +1264,41 @@ def get_all_genres():
 def get_all_studios():
     config = load_config()
     try:
-        # Primary: Radarr
-        response = requests.get(
-            f"{config['radarrUrl']}/api/v3/movie",
-            headers={"X-Api-Key": config['apiKey']},
-            timeout=30
-        )
-        response.raise_for_status()
         all_studios = set()
-        movies_data = response.json()
         tmdb_ids_missing = []
 
-        for movie in movies_data:
-            studio = movie.get('studio', '').strip()
-            if studio:
-                all_studios.add(studio)
-            elif config.get('tmdbApiKey') and movie.get('tmdbId'):
-                tmdb_ids_missing.append(movie['tmdbId'])
+        # ⚡ Bolt Optimization: Prefer querying local SQLite cache to avoid blocking external API calls
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute('SELECT studio, tmdb_id FROM movies')
+            for row in cursor.fetchall():
+                studio = (row['studio'] or '').strip()
+                if studio:
+                    all_studios.add(studio)
+                elif config.get('tmdbApiKey') and row['tmdb_id']:
+                    tmdb_ids_missing.append(row['tmdb_id'])
+            conn.close()
+        except Exception as e:
+            print(f"[STUDIOS DB] Erreur: {e}")
+
+        # Primary fallback: Radarr if local db is empty
+        if not all_studios:
+            response = requests.get(
+                f"{config['radarrUrl']}/api/v3/movie",
+                headers={"X-Api-Key": config['apiKey']},
+                timeout=30
+            )
+            response.raise_for_status()
+            movies_data = response.json()
+            tmdb_ids_missing = []
+
+            for movie in movies_data:
+                studio = movie.get('studio', '').strip()
+                if studio:
+                    all_studios.add(studio)
+                elif config.get('tmdbApiKey') and movie.get('tmdbId'):
+                    tmdb_ids_missing.append(movie['tmdbId'])
 
         # Fallback: TMDB for movies without studio in Radarr
         if tmdb_ids_missing and config.get('tmdbApiKey'):
@@ -1766,30 +1802,50 @@ def get_all_platforms():
     tmdb_api_key = config.get('tmdbApiKey', '')
     if not tmdb_api_key:
         return jsonify([])
-    try:
-        resp = requests.get(
-            f"{config['radarrUrl']}/api/v3/movie",
-            headers={"X-Api-Key": config['apiKey']},
-            timeout=30
-        )
-        resp.raise_for_status()
-        movies = resp.json()
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
 
-    tmdb_country = config.get('tmdbCountry', 'FR')
     all_platforms = set()
-    count = 0
-    limit = 150
 
-    for movie in movies:
-        if not movie.get('hasFile') or not movie.get('tmdbId'):
-            continue
-        if count >= limit:
-            break
-        count += 1
-        for p in get_movie_platforms_from_tmdb(movie['tmdbId'], tmdb_api_key, tmdb_country):
-            all_platforms.add(p)
+    # ⚡ Bolt Optimization: Prefer querying local SQLite cache to avoid blocking external API calls
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('SELECT platforms FROM movies WHERE platforms IS NOT NULL AND platforms != "[]"')
+        for row in cursor.fetchall():
+            try:
+                platforms = json.loads(row['platforms'])
+                for p in platforms:
+                    if p:
+                        all_platforms.add(p)
+            except Exception:
+                pass
+        conn.close()
+    except Exception as e:
+        print(f"[PLATFORMS DB] Erreur: {e}")
+
+    if not all_platforms:
+        try:
+            resp = requests.get(
+                f"{config['radarrUrl']}/api/v3/movie",
+                headers={"X-Api-Key": config['apiKey']},
+                timeout=30
+            )
+            resp.raise_for_status()
+            movies = resp.json()
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+        tmdb_country = config.get('tmdbCountry', 'FR')
+        count = 0
+        limit = 150
+
+        for movie in movies:
+            if not movie.get('hasFile') or not movie.get('tmdbId'):
+                continue
+            if count >= limit:
+                break
+            count += 1
+            for p in get_movie_platforms_from_tmdb(movie['tmdbId'], tmdb_api_key, tmdb_country):
+                all_platforms.add(p)
 
     current_mapping = config.get('platformMapping', {})
     return jsonify([
