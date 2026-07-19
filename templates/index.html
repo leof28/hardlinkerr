@@ -348,6 +348,17 @@ function api(path, options = {}) {
 // ─── Confirm Dialog ───────────────────────────────────────────────────────────
 function ConfirmDialog({ message, onConfirm, onCancel, lang }) {
   const t = T[lang].common;
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        onCancel();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onCancel]);
+
   return (
     <div className="modal-backdrop" style={{zIndex: 200}}>
       <div className="glass" style={{padding: 24, maxWidth: 380, width: '100%', textAlign: 'center'}}>
@@ -411,6 +422,16 @@ function MovieDetailModal({ movie, onClose, onRefresh, lang, addToast }) {
   const t = T[lang].modal;
   const [confirm, setConfirm] = useState(null);
   const [running, setRunning] = useState(false);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && !confirm) {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose, confirm]);
 
   if (!movie) return null;
 
