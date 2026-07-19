@@ -4,6 +4,7 @@ import sqlite3
 import subprocess
 import json
 import requests
+import hmac
 from datetime import datetime, timedelta
 import time
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -1659,8 +1660,10 @@ def jellyfin_webhook():
     if not config.get('webhookEnabled', False):
         return jsonify({"error": "Webhook désactivé"}), 403
     secret = config.get('webhookSecret', '')
-    if secret and request.headers.get('X-Webhook-Secret', '') != secret:
-        return jsonify({"error": "Secret invalide"}), 403
+    if secret:
+        header_secret = request.headers.get('X-Webhook-Secret', '')
+        if not hmac.compare_digest(header_secret, secret):
+            return jsonify({"error": "Secret invalide"}), 403
     try:
         data = request.json
         notif_type = data.get('NotificationType', '')
@@ -1683,6 +1686,11 @@ def radarr_webhook():
     config = load_config()
     if not config.get('webhookEnabled', False):
         return jsonify({"error": "Webhook désactivé"}), 403
+    secret = config.get('webhookSecret', '')
+    if secret:
+        header_secret = request.headers.get('X-Webhook-Secret', '')
+        if not hmac.compare_digest(header_secret, secret):
+            return jsonify({"error": "Secret invalide"}), 403
     try:
         data = request.json
         event_type = data.get('eventType', '')
