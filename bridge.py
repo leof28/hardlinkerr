@@ -22,6 +22,9 @@ SCRIPT_PATH = "./hardlink_manager.sh"
 TEMPLATE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates')
 PLATFORMS_CACHE_PATH = os.path.join(CONFIG_DIR, "platforms_cache.json")
 
+# ⚡ Bolt Optimization: Cache to prevent O(N) redundant disk I/O
+_config_cache = {"mtime": 0, "data": None}
+
 # --- SCHEDULER ---
 scheduler = BackgroundScheduler()
 scheduler.start()
@@ -245,14 +248,26 @@ def load_config():
     }
     if os.path.exists(CONFIG_PATH):
         try:
+            # ⚡ Bolt Optimization: File-based JSON caching
+            mtime = os.path.getmtime(CONFIG_PATH)
+            if _config_cache["data"] is not None and \
+               _config_cache["mtime"] == mtime:
+                import copy
+                return copy.deepcopy(_config_cache["data"])
+
             with open(CONFIG_PATH, 'r') as f:
                 saved = json.load(f)
                 # Deep merge for nested dicts
                 result = {**defaults, **saved}
-                for key in ('autoSync', 'seriesAutoCheck', 'scanOptimization', 'seriesCheck', 'platformMapping'):
-                    if key in defaults and key in saved and isinstance(saved[key], dict):
+                keys = ('autoSync', 'seriesAutoCheck', 'scanOptimization',
+                        'seriesCheck', 'platformMapping')
+                for key in keys:
+                    if key in defaults and key in saved and \
+                       isinstance(saved[key], dict):
                         result[key] = {**defaults[key], **saved[key]}
-                return result
+                _config_cache.update({"mtime": mtime, "data": result})
+                import copy
+                return copy.deepcopy(result)
         except Exception:
             return defaults
     return defaults
