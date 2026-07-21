@@ -1209,10 +1209,24 @@ def index():
 
 @app.route('/api/settings', methods=['GET', 'POST'])
 def settings():
+    import copy
+    secrets = ['apiKey', 'sonarrApiKey', 'tmdbApiKey', 'webhookSecret', 'jellystatApiKey']
+
     if request.method == 'POST':
-        save_config(request.json)
+        new_config = request.json or {}
+        old_config = load_config()
+        for key in secrets:
+            if new_config.get(key) == '********':
+                new_config[key] = old_config.get(key, '')
+        save_config(new_config)
         return jsonify({"status": "ok"})
-    return jsonify(load_config())
+
+    config = load_config()
+    safe_config = copy.deepcopy(config)
+    for key in secrets:
+        if safe_config.get(key):
+            safe_config[key] = '********'
+    return jsonify(safe_config)
 
 
 @app.route('/api/genres', methods=['GET'])
