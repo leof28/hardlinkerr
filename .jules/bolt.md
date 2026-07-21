@@ -7,3 +7,6 @@
 ## 2026-07-19 - Reduce External API Calls by Preferring Local SQLite Cache
 **Learning:** For endpoints like `/api/genres`, `/api/studios`, and `/api/platforms` that previously fetched metadata entirely via external Radarr API requests, it is extremely inefficient when the local SQLite database (`movies` table) already contains synchronized JSON metadata. Blocking external API calls within these highly queried routes creates unnecessary latency.
 **Action:** Before making external API requests, implement a step to query the local SQLite database (`SELECT genres FROM movies`, etc.) to parse and extract the required unique attributes. Preserve the external API call only as a fallback if the local database returns empty results. This significantly reduces response times and avoids unnecessary network overhead.
+## 2026-07-20 - File-Based JSON Caching Optimization for Configuration
+**Learning:** `load_config` was being called frequently across multiple endpoints (e.g. `bridge.py` has over 25 usages). Reading from disk (`config.json`) synchronously on every function call was causing unnecessary I/O overhead.
+**Action:** Implemented the module-level in-memory cache using `os.path.getmtime(CONFIG_PATH)` in `load_config()`. Used `copy.deepcopy()` to avoid unintended mutability issues since configurations are typically passed around as mutable dictionaries.

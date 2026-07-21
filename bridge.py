@@ -8,6 +8,7 @@ import hmac
 from datetime import datetime, timedelta
 import time
 from apscheduler.schedulers.background import BackgroundScheduler
+import copy
 
 app = Flask(__name__)
 
@@ -199,7 +200,11 @@ def sync_database(config=None):
     print(f"[{datetime.now()}] Synchro DB terminée.")
 
 
+_config_mem_cache = {}
+_config_cache_mtime = 0
+
 def load_config():
+    global _config_mem_cache, _config_cache_mtime
     defaults = {
         "radarrUrl": "",
         "apiKey": "",
@@ -245,6 +250,9 @@ def load_config():
     }
     if os.path.exists(CONFIG_PATH):
         try:
+            mtime = os.path.getmtime(CONFIG_PATH)
+            if mtime == _config_cache_mtime and _config_mem_cache:
+                return copy.deepcopy(_config_mem_cache)
             with open(CONFIG_PATH, 'r') as f:
                 saved = json.load(f)
                 # Deep merge for nested dicts
@@ -252,10 +260,12 @@ def load_config():
                 for key in ('autoSync', 'seriesAutoCheck', 'scanOptimization', 'seriesCheck', 'platformMapping'):
                     if key in defaults and key in saved and isinstance(saved[key], dict):
                         result[key] = {**defaults[key], **saved[key]}
-                return result
+                _config_mem_cache = result
+                _config_cache_mtime = mtime
+                return copy.deepcopy(result)
         except Exception:
-            return defaults
-    return defaults
+            return copy.deepcopy(defaults)
+    return copy.deepcopy(defaults)
 
 
 def save_config(config):
@@ -1209,10 +1219,24 @@ def index():
 
 @app.route('/api/settings', methods=['GET', 'POST'])
 def settings():
+    import copy
+    secrets = ['apiKey', 'sonarrApiKey', 'tmdbApiKey', 'webhookSecret', 'jellystatApiKey']
+
     if request.method == 'POST':
-        save_config(request.json)
+        new_config = request.json or {}
+        old_config = load_config()
+        for key in secrets:
+            if new_config.get(key) == '********':
+                new_config[key] = old_config.get(key, '')
+        save_config(new_config)
         return jsonify({"status": "ok"})
-    return jsonify(load_config())
+
+    config = load_config()
+    safe_config = copy.deepcopy(config)
+    for key in secrets:
+        if safe_config.get(key):
+            safe_config[key] = '********'
+    return jsonify(safe_config)
 
 
 @app.route('/api/genres', methods=['GET'])
