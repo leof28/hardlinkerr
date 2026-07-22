@@ -629,16 +629,16 @@ function LibraryTab({ movies, genres, studios, platforms, loading, onRefresh, la
     <div>
       {/* Filters */}
       <div style={{display:'flex', gap:10, marginBottom:16, flexWrap:'wrap', alignItems:'center'}}>
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder={t.search} style={{flex:'1 1 200px', minWidth:140}} />
-        <select value={filterGenre} onChange={e => setFilterGenre(e.target.value)} style={{minWidth:130}}>
+        <input type="search" aria-label={t.search} value={search} onChange={e => setSearch(e.target.value)} placeholder={t.search} style={{flex:'1 1 200px', minWidth:140}} />
+        <select aria-label={t.allGenres} value={filterGenre} onChange={e => setFilterGenre(e.target.value)} style={{minWidth:130}}>
           <option value="">{t.allGenres}</option>
           {genres.map(g => <option key={g.name||g} value={g.name||g}>{g.name||g}</option>)}
         </select>
-        <select value={filterStudio} onChange={e => setFilterStudio(e.target.value)} style={{minWidth:130}}>
+        <select aria-label={t.allStudios} value={filterStudio} onChange={e => setFilterStudio(e.target.value)} style={{minWidth:130}}>
           <option value="">{t.allStudios}</option>
           {studios.map(s => <option key={s.name||s} value={s.name||s}>{s.name||s}</option>)}
         </select>
-        <select value={filterPlatform} onChange={e => setFilterPlatform(e.target.value)} style={{minWidth:150}}>
+        <select aria-label={t.allPlatforms} value={filterPlatform} onChange={e => setFilterPlatform(e.target.value)} style={{minWidth:150}}>
           <option value="">{t.allPlatforms}</option>
           {platforms.map(p => <option key={p.name||p} value={p.name||p}>{p.name||p}</option>)}
         </select>
