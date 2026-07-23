@@ -27,8 +27,9 @@
     .glass { background: var(--surface); backdrop-filter: blur(12px); border: 1px solid var(--border); border-radius: 12px; }
     .glass-hover:hover { background: var(--surface-hover); }
     .grad-text { background: linear-gradient(135deg, #6366f1, #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    button:disabled { opacity: 0.5 !important; cursor: not-allowed !important; }
     .grad-btn { background: linear-gradient(135deg, #6366f1, #a855f7); border: none; cursor: pointer; color: white; border-radius: 8px; transition: opacity 0.2s; }
-    .grad-btn:hover { opacity: 0.85; }
+    .grad-btn:hover:not(:disabled) { opacity: 0.85; }
     .tab-btn { background: transparent; border: none; cursor: pointer; color: var(--muted); padding: 8px 16px; border-radius: 8px; transition: all 0.2s; font-size: 14px; white-space: nowrap; }
     .tab-btn.active { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
     .tab-btn:hover:not(.active) { color: var(--text); background: rgba(255,255,255,0.03); }
@@ -363,7 +364,7 @@ function ConfirmDialog({ message, onConfirm, onCancel, lang }) {
 
   return (
     <div className="modal-backdrop" style={{zIndex: 200}}>
-      <div className="glass" style={{padding: 24, maxWidth: 380, width: '100%', textAlign: 'center'}}>
+      <div className="glass" role="dialog" aria-modal="true" style={{padding: 24, maxWidth: 380, width: '100%', textAlign: 'center'}}>
         <p style={{marginBottom: 20, fontSize: 15}}>{message}</p>
         <div style={{display:'flex', gap: 10, justifyContent:'center'}}>
           <button className="grad-btn" style={{padding:'8px 20px'}} onClick={onConfirm}>{t.confirm}</button>
@@ -495,7 +496,7 @@ function MovieDetailModal({ movie, onClose, onRefresh, lang, addToast }) {
 
   return (
     <div className="modal-backdrop" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="modal-box" style={{padding:0}}>
+      <div className="modal-box" role="dialog" aria-modal="true" style={{padding:0}}>
         <div style={{display:'flex', gap:0}}>
           {/* Left: Poster */}
           <div style={{width:200, flexShrink:0}}>
@@ -656,7 +657,7 @@ function LibraryTab({ movies, genres, studios, platforms, loading, onRefresh, la
           <span style={{fontSize:13, color:'#818cf8'}}>{selected.size} {t.selected}</span>
         )}
         <div style={{marginLeft:'auto', display:'flex', gap:8}}>
-          <button className="grad-btn" style={{padding:'7px 14px', fontSize:13}} onClick={handleCreateLinks} disabled={!selected.size || running}>
+          <button className="grad-btn" style={{padding:'7px 14px', fontSize:13}} onClick={handleCreateLinks} disabled={!selected.size || running} title={!selected.size ? t.selectAll : ''}>
             {running ? '…' : t.createLinks}
           </button>
           <button onClick={handleScanDisk} disabled={running} style={{padding:'7px 14px', fontSize:13, background:'rgba(255,255,255,0.07)', border:'1px solid var(--border)', borderRadius:8, color:'var(--text)', cursor:'pointer'}}>
