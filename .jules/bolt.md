@@ -10,3 +10,6 @@
 ## 2026-07-20 - File-Based JSON Caching Optimization for Configuration
 **Learning:** `load_config` was being called frequently across multiple endpoints (e.g. `bridge.py` has over 25 usages). Reading from disk (`config.json`) synchronously on every function call was causing unnecessary I/O overhead.
 **Action:** Implemented the module-level in-memory cache using `os.path.getmtime(CONFIG_PATH)` in `load_config()`. Used `copy.deepcopy()` to avoid unintended mutability issues since configurations are typically passed around as mutable dictionaries.
+## 2026-07-23 - Series matching O(N²) loop optimization
+**Learning:** In `detect_series_issues`, when searching for series by name in Sonarr data, iterating over the entire Sonarr data map to do string normalization and comparisons for every series found locally caused an O(N²) bottleneck for libraries with thousands of series.
+**Action:** Created a pre-computed dictionary of normalized folder names (`sonarr_by_folder_norm`) before the scan loop, converting the O(N²) nested loop into an O(N) single loop with an O(1) dictionary lookup. This massively reduced computation time for large collections.
