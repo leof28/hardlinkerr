@@ -10,3 +10,6 @@
 ## 2026-07-20 - File-Based JSON Caching Optimization for Configuration
 **Learning:** `load_config` was being called frequently across multiple endpoints (e.g. `bridge.py` has over 25 usages). Reading from disk (`config.json`) synchronously on every function call was causing unnecessary I/O overhead.
 **Action:** Implemented the module-level in-memory cache using `os.path.getmtime(CONFIG_PATH)` in `load_config()`. Used `copy.deepcopy()` to avoid unintended mutability issues since configurations are typically passed around as mutable dictionaries.
+## 2026-07-24 - Series Detection String Normalization Optimization
+**Learning:** In the `detect_series_issues` endpoint loop, performing repeated O(N) string normalization operations within an O(M) loop for string matching resulted in O(N*M) runtime complexity. This is extremely slow for matching file system entries against larger API dictionaries.
+**Action:** Replaced the O(N*M) inner loop lookup pattern with a precomputed O(1) hash map dictionary lookup that performs normalization once for each source string before matching.

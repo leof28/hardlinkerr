@@ -940,6 +940,12 @@ def detect_series_issues(config):
             except Exception as e:
                 print(f"[SERIES] Erreur API queue: {e}")
 
+        # ⚡ Bolt Optimization: Replace O(N²) nested loop with O(1) hash map lookup
+        sonarr_by_folder_norm = {
+            k.replace('.', ' ').replace('_', ' ').lower().strip(): v
+            for k, v in sonarr_by_folder.items()
+        }
+
         # 3. Scan du dossier Check
         for series_folder in sorted(os.listdir(series_check)):
             check_path = os.path.join(series_check, series_folder)
@@ -955,10 +961,7 @@ def detect_series_issues(config):
             sonarr_info = sonarr_by_folder.get(series_folder)
             if sonarr_info is None:
                 norm = series_folder.replace('.', ' ').replace('_', ' ').lower().strip()
-                for k, v in sonarr_by_folder.items():
-                    if k.replace('.', ' ').replace('_', ' ').lower().strip() == norm:
-                        sonarr_info = v
-                        break
+                sonarr_info = sonarr_by_folder_norm.get(norm)
 
             is_orphan = False
             reason = ''
