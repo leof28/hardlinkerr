@@ -349,11 +349,11 @@ def is_safe_path(path_to_check, config):
     if not path_to_check:
         return False
     allowed_keys = ['mediaRoot', 'sourceRoot', 'seriesSourceRoot', 'seriesCheckRoot']
-    allowed_roots = [os.path.abspath(config.get(k)) for k in allowed_keys if config.get(k)]
+    allowed_roots = [os.path.realpath(config.get(k)) for k in allowed_keys if config.get(k)]
     if not allowed_roots:
         return False
 
-    target = os.path.abspath(path_to_check)
+    target = os.path.realpath(path_to_check)
     for root in allowed_roots:
         try:
             if os.path.commonpath([root, target]) == root:
