@@ -86,6 +86,9 @@ const T = {
       scanDisk: 'Scan complet (disque)',
       selected: 'sélectionné(s)',
       noMovies: 'Aucun film trouvé',
+      noResultsFilters: 'Aucun résultat pour ces filtres',
+      tryChangeFilters: 'Essayez de modifier vos critères de recherche.',
+      addMoviesOrScan: 'Ajoutez des films dans votre dossier source ou lancez un scan.',
       clearFilters: 'Effacer les filtres',
       loading: 'Chargement…',
     },
@@ -215,6 +218,9 @@ const T = {
       scanDisk: 'Full scan (disk)',
       selected: 'selected',
       noMovies: 'No movies found',
+      noResultsFilters: 'No results for these filters',
+      tryChangeFilters: 'Try changing your search criteria.',
+      addMoviesOrScan: 'Add movies to your source folder or start a scan.',
       clearFilters: 'Clear filters',
       loading: 'Loading…',
     },
@@ -669,10 +675,20 @@ function LibraryTab({ movies, genres, studios, platforms, loading, onRefresh, la
       {loading ? (
         <div style={{textAlign:'center', padding:60, color:'var(--muted)'}}>{t.loading}</div>
       ) : !filtered.length ? (
-        <div style={{textAlign:'center', padding:60, color:'var(--muted)'}}>
-          <div style={{marginBottom:16}}>{t.noMovies}</div>
-          {(search || filterGenre || filterStudio || filterPlatform || missingOnly) && (
+        <div style={{textAlign:'center', padding:60, color:'var(--muted)', background:'rgba(255,255,255,0.02)', borderRadius:12, border:'1px dashed var(--border)'}}>
+          <div style={{fontSize:48, marginBottom:16, opacity:0.5}}>🎬</div>
+          <div style={{marginBottom:8, fontSize:16, fontWeight:500, color:'var(--text)'}}>
+            {(search || filterGenre || filterStudio || filterPlatform || missingOnly) ? t.noResultsFilters : t.noMovies}
+          </div>
+          <div style={{marginBottom:24, fontSize:13}}>
+            {(search || filterGenre || filterStudio || filterPlatform || missingOnly) ? t.tryChangeFilters : t.addMoviesOrScan}
+          </div>
+          {(search || filterGenre || filterStudio || filterPlatform || missingOnly) ? (
             <button onClick={() => { setSearch(''); setFilterGenre(''); setFilterStudio(''); setFilterPlatform(''); setMissingOnly(false); }} className="grad-btn" style={{padding:'8px 16px', fontSize:14}}>{t.clearFilters}</button>
+          ) : (
+            <button onClick={handleScanDisk} disabled={running} className="grad-btn" style={{padding:'8px 16px', fontSize:14}}>
+              {t.scanDisk}
+            </button>
           )}
         </div>
       ) : (
