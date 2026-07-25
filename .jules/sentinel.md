@@ -10,3 +10,7 @@
 **Vulnerability:** The `/api/settings` endpoint was returning all configuration data, including highly sensitive API keys (`apiKey`, `sonarrApiKey`, `tmdbApiKey`, `webhookSecret`, `jellystatApiKey`), in plain text without any authentication. This allowed any unauthenticated user with local network access to retrieve these secrets.
 **Learning:** Endpoints that handle configuration data must filter or mask sensitive fields before returning them to the client, especially in applications that lack robust authentication layers.
 **Prevention:** Always mask sensitive fields (e.g., replacing with `********`) in `GET` responses and implement logic in the `POST` handler to restore the original values from the saved configuration if the masked string is received, preventing accidental overwrites while keeping the secrets hidden.
+## 2024-07-25 - Path Traversal Vulnerability via Symlinks
+**Vulnerability:** The `is_safe_path` function relied on `os.path.abspath` to resolve paths before checking if they fell within allowed directories. This failed to resolve symbolic links, allowing an attacker to bypass directory restrictions by using symlinks pointing outside the allowed roots.
+**Learning:** `os.path.abspath` only normalizes paths lexically and does not resolve symlinks. Using it for security checks against directory traversal is insufficient if symlinks can be created or are present.
+**Prevention:** Always use `os.path.realpath` for security-related path validation, as it fully resolves symbolic links on the filesystem before path comparisons are made.
