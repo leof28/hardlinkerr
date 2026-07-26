@@ -947,6 +947,11 @@ def detect_series_issues(config):
         }
 
         # 3. Scan du dossier Check
+        # ⚡ Bolt Optimization: Pre-compute normalized dictionary to avoid O(N^2) string ops
+        sonarr_by_folder_norm = {
+            k.replace('.', ' ').replace('_', ' ').lower().strip(): v
+            for k, v in sonarr_by_folder.items()
+        }
         for series_folder in sorted(os.listdir(series_check)):
             check_path = os.path.join(series_check, series_folder)
             if not os.path.isdir(check_path):
