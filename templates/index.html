@@ -362,9 +362,9 @@ function ConfirmDialog({ message, onConfirm, onCancel, lang }) {
   }, [onCancel]);
 
   return (
-    <div className="modal-backdrop" style={{zIndex: 200}}>
+    <div className="modal-backdrop" role="dialog" aria-modal="true" aria-describedby="confirm-msg" style={{zIndex: 200}}>
       <div className="glass" style={{padding: 24, maxWidth: 380, width: '100%', textAlign: 'center'}}>
-        <p style={{marginBottom: 20, fontSize: 15}}>{message}</p>
+        <p id="confirm-msg" style={{marginBottom: 20, fontSize: 15}}>{message}</p>
         <div style={{display:'flex', gap: 10, justifyContent:'center'}}>
           <button className="grad-btn" style={{padding:'8px 20px'}} onClick={onConfirm}>{t.confirm}</button>
           <button autoFocus style={{padding:'8px 20px', background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:8, color:'var(--text)', cursor:'pointer'}} onClick={onCancel}>{t.cancel}</button>
@@ -494,7 +494,7 @@ function MovieDetailModal({ movie, onClose, onRefresh, lang, addToast }) {
   }
 
   return (
-    <div className="modal-backdrop" onClick={e => e.target === e.currentTarget && onClose()}>
+    <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-title" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="modal-box" style={{padding:0}}>
         <div style={{display:'flex', gap:0}}>
           {/* Left: Poster */}
@@ -506,7 +506,7 @@ function MovieDetailModal({ movie, onClose, onRefresh, lang, addToast }) {
           <div style={{flex:1, padding:24, overflowY:'auto'}}>
             <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:12}}>
               <div>
-                <h2 style={{margin:'0 0 4px', fontSize:20, fontWeight:700}}>{movie.title}</h2>
+                <h2 id="modal-title" style={{margin:'0 0 4px', fontSize:20, fontWeight:700}}>{movie.title}</h2>
                 <span style={{color:'var(--muted)', fontSize:14}}>{movie.folderName?.match(/\((\d{4})\)/)?.[1] || ''}</span>
               </div>
               <button autoFocus onClick={onClose} style={{background:'rgba(255,255,255,0.07)', border:'none', color:'var(--muted)', padding:'4px 10px', borderRadius:6, cursor:'pointer', fontSize:13}}>{t.close}</button>
