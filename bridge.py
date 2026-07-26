@@ -349,11 +349,11 @@ def is_safe_path(path_to_check, config):
     if not path_to_check:
         return False
     allowed_keys = ['mediaRoot', 'sourceRoot', 'seriesSourceRoot', 'seriesCheckRoot']
-    allowed_roots = [os.path.abspath(config.get(k)) for k in allowed_keys if config.get(k)]
+    allowed_roots = [os.path.realpath(config.get(k)) for k in allowed_keys if config.get(k)]
     if not allowed_roots:
         return False
 
-    target = os.path.abspath(path_to_check)
+    target = os.path.realpath(path_to_check)
     for root in allowed_roots:
         try:
             if os.path.commonpath([root, target]) == root:
@@ -939,6 +939,12 @@ def detect_series_issues(config):
                 print(f"[SERIES] {len(active_series_ids)} séries en téléchargement")
             except Exception as e:
                 print(f"[SERIES] Erreur API queue: {e}")
+
+        # Pre-compute normalized Sonarr folders for O(1) lookup
+        sonarr_by_folder_norm = {
+            k.replace('.', ' ').replace('_', ' ').lower().strip(): v
+            for k, v in sonarr_by_folder.items()
+        }
 
         # 3. Scan du dossier Check
         # ⚡ Bolt Optimization: Pre-compute normalized dictionary to avoid O(N^2) string ops

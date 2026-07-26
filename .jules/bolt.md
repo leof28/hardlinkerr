@@ -13,3 +13,6 @@
 ## 2025-02-28 - Avoid O(N²) String Manipulation in Loop Iterations
 **Learning:** In loops containing many iterations (like processing `os.listdir`), repeatedly iterating over dictionary items (`.items()`) to perform lowercasing, stripping, and character replacement causes an O(N²) performance bottleneck.
 **Action:** When normalizing keys for matching against lists of items, pre-compute a dictionary using normalized keys outside of the main loop to enable fast O(1) hash map lookups.
+## 2026-07-26 - Pre-computing Normalized Dictionaries to Avoid O(N²) String Manipulation
+**Learning:** Replaced O(N²) nested loops containing string normalizations with a pre-computed normalized dictionary for O(1) hash map lookups.
+**Action:** Identify and replace repeated string normalizations within loops by pre-computing a normalized mapping dictionary beforehand.
