@@ -74,10 +74,14 @@ count_skipped=0
 count_errors=0
 
 # --- TRAITEMENT DE CHAQUE FILM ---
-echo "$movies_json" | jq -c '.[] | select(.hasFile == true)' | while read -r movie; do
-    title=$(echo "$movie" | jq -r '.title')
-    folder_path=$(echo "$movie" | jq -r '.path')
-    folder_name=$(basename "$folder_path")
+# ⚡ Bolt Optimization: Eliminated O(N) process forks by avoiding subshells (jq, basename) inside while loop. Pre-processed data into TSV stream.
+echo "$movies_json" | jq -r '.[] | select(.hasFile == true) | [
+    .title,
+    .path,
+    ([.genres[]? | if type == "object" then .name else . end] | join(",")),
+    (.studio // "")
+] | @tsv' | while IFS=$'\t' read -r title folder_path genres_csv movie_studio_raw; do
+    folder_name="${folder_path##*/}"
     
     # Construire le chemin source
     src_path="$SOURCE_ROOT/$folder_name"
@@ -104,26 +108,26 @@ echo "$movies_json" | jq -c '.[] | select(.hasFile == true)' | while read -r mov
     # Récupérer tous les fichiers à lier
     all_files=("$src_path"/*.{mkv,mp4,avi,ts,mov,jpg,png,nfo,srt,sub,txt})
     
-    # Récupérer les genres du film depuis Radarr
-    movie_genres=$(echo "$movie" | jq -r '.genres[] | if type == "object" then .name else . end')
-
     # Récupérer le studio du film depuis Radarr
-    movie_studio=$(echo "$movie" | jq -r '.studio // ""' | tr -d '\r')
+    movie_studio="${movie_studio_raw//$'\r'/}"
 
     # IMPORTANT: Construire la liste des dossiers de destination UNIQUEMENT pour les genres de CE film
     declare -A target_folders
-    for genre in $movie_genres; do
-        # Filtrer par genre spécifique si demandé
-        if [[ -n "$SPECIFIC_GENRES" && "$genre" != "$SPECIFIC_GENRES" ]]; then
-            continue
-        fi
+    if [[ -n "$genres_csv" ]]; then
+        IFS=',' read -ra movie_genres_arr <<< "$genres_csv"
+        for genre in "${movie_genres_arr[@]}"; do
+            # Filtrer par genre spécifique si demandé
+            if [[ -n "$SPECIFIC_GENRES" && "$genre" != "$SPECIFIC_GENRES" ]]; then
+                continue
+            fi
 
-        # Vérifier que ce genre est mappé ET activé dans la config
-        local_folder="${GENRE_TO_LOCAL[$genre]}"
-        if [ -n "$local_folder" ]; then
-            target_folders["$local_folder"]="genre:$genre"
-        fi
-    done
+            # Vérifier que ce genre est mappé ET activé dans la config
+            local_folder="${GENRE_TO_LOCAL[$genre]}"
+            if [ -n "$local_folder" ]; then
+                target_folders["$local_folder"]="genre:$genre"
+            fi
+        done
+    fi
 
     # Ajouter le studio du film si mappé ET activé
     if [ -n "$movie_studio" ]; then

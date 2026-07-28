@@ -16,3 +16,7 @@
 ## 2026-07-26 - Pre-computing Normalized Dictionaries to Avoid O(N²) String Manipulation
 **Learning:** Replaced O(N²) nested loops containing string normalizations with a pre-computed normalized dictionary for O(1) hash map lookups.
 **Action:** Identify and replace repeated string normalizations within loops by pre-computing a normalized mapping dictionary beforehand.
+
+## 2024-05-24 - [Avoid O(N) process forks in Bash Loops]
+**Learning:** In bash scripts (like `hardlink_manager.sh`), using subshells (e.g., `$(jq ...)`, `$(basename ...)`) inside a `while` loop that iterates over many items causes an O(N) performance bottleneck due to excessive process forks.
+**Action:** Pre-process the data into a TSV stream using a single `jq` pass, and parse it using `while IFS=$'\t' read -r ...` along with native bash parameter expansion to eliminate the need for subshells inside the loop entirely.
