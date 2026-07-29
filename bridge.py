@@ -108,6 +108,10 @@ def sync_database(config=None):
 
     current_folders = set()
 
+    # ⚡ Bolt Optimization: Pre-compile regex outside the loop to avoid redundant O(N) evaluation
+    import re
+    year_pattern = re.compile(r'\s*\(\d{4}\)$')
+
     for movie in all_movies:
         if not movie.get('hasFile'):
             continue
@@ -127,11 +131,10 @@ def sync_database(config=None):
         studio = movie.get('studio', '').strip()
         poster = next((img.get('remoteUrl') for img in movie.get('images', []) if img.get('coverType') == 'poster'), None)
 
-        import re
         title_key = movie['title'].lower()
-        clean_title_key = re.sub(r'\s*\(\d{4}\)$', '', movie['title']).strip().lower()
+        clean_title_key = year_pattern.sub('', movie['title']).strip().lower()
         original_title_key = movie.get('originalTitle', '').lower()
-        clean_original_title_key = re.sub(r'\s*\(\d{4}\)$', '', movie.get('originalTitle', '')).strip().lower()
+        clean_original_title_key = year_pattern.sub('', movie.get('originalTitle', '')).strip().lower()
 
         watch_dates_raw = jellystat_history.get(title_key, [])
         if not watch_dates_raw and clean_title_key:
@@ -1169,6 +1172,11 @@ def get_jellystat_history(config):
         # La réponse peut être une liste ou un dict avec une clé data/results
         items = raw if isinstance(raw, list) else raw.get('data', raw.get('results', []))
         history = {}
+
+        # ⚡ Bolt Optimization: Pre-compile regex outside the loop to avoid redundant O(N) evaluation
+        import re
+        year_pattern = re.compile(r'\s*\(\d{4}\)$')
+
         for item in items:
             # Nom du film — plusieurs variantes de champ selon la version Jellystat
             name = (
@@ -1191,8 +1199,7 @@ def get_jellystat_history(config):
                 item.get('MediaType') or ''
             ).lower()
             if name and ('episode' not in item_type and 'series' not in item_type):
-                import re
-                clean_name = re.sub(r'\s*\(\d{4}\)$', '', name).strip().lower()
+                clean_name = year_pattern.sub('', name).strip().lower()
                 history.setdefault(clean_name, []).append(date_str)
                 raw_key = name.lower()
                 if raw_key != clean_name:
