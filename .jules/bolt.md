@@ -16,3 +16,6 @@
 ## 2026-07-26 - Pre-computing Normalized Dictionaries to Avoid O(N²) String Manipulation
 **Learning:** Replaced O(N²) nested loops containing string normalizations with a pre-computed normalized dictionary for O(1) hash map lookups.
 **Action:** Identify and replace repeated string normalizations within loops by pre-computing a normalized mapping dictionary beforehand.
+## 2026-07-26 - Pre-computing and Compiling Regex Outside of Loops
+**Learning:** In the `sync_database` and `get_jellystat_history` functions within `bridge.py`, `import re` and regex evaluation `re.sub(r'\s*\(\d{4}\)$', ...)` were repeatedly executed inside O(N) loops. This caused redundant `sys.modules` dictionary lookups and prevented efficient re-use of pre-compiled regex pattern objects.
+**Action:** When performing regex substitutions or match operations in iterations, always hoist the module import and the `re.compile()` operation outside the loop to eliminate redundant internal caching overhead.
