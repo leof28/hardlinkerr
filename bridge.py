@@ -1592,6 +1592,54 @@ def delete_duplicates():
                     "details": {"success": success, "errors": errors}})
 
 
+@app.route('/api/delete-issues', methods=['POST'])
+def delete_issues():
+    import shutil
+    data = request.json or {}
+    issues = data.get('issues', [])
+    config = load_config()
+    media_root = config.get('mediaRoot', '')
+
+    if not media_root or not os.path.isdir(media_root):
+        return jsonify({"error": "mediaRoot non configuré"}), 500
+
+    deleted = 0
+    errors = []
+
+    for issue in issues:
+        issue_type = issue.get('type')
+        issue_path = issue.get('path')
+        if not issue_path or not is_safe_path(issue_path, config):
+            errors.append(f"Chemin invalide: {issue_path}")
+            continue
+
+        try:
+            if issue_type == 'duplicate':
+                # Remove just the file
+                if os.path.isfile(issue_path):
+                    os.remove(issue_path)
+                    deleted += 1
+            elif issue_type in ['orphan', 'wrong_genre']:
+                # Remove the directory containing the file
+                target_dir = os.path.dirname(issue_path)
+                # Ensure we don't delete mediaRoot itself
+                if os.path.realpath(target_dir) == os.path.realpath(media_root):
+                    errors.append(f"Erreur de sécurité sur {issue_path}")
+                    continue
+                if os.path.isdir(target_dir):
+                    shutil.rmtree(target_dir)
+                    deleted += 1
+        except Exception as e:
+            errors.append(f"Erreur sur {issue_path}: {str(e)}")
+
+    if errors:
+        append_log("warning", "delete", f"Suppression avec des erreurs ({deleted} OK, {len(errors)} erreurs)")
+        return jsonify({"status": "partial", "deleted": deleted, "errors": errors}), 207
+
+    append_log("success", "delete", f"{deleted} problème(s) supprimé(s)")
+    return jsonify({"status": "ok", "deleted": deleted})
+
+
 @app.route('/api/delete-movie', methods=['POST'])
 def delete_movie():
     """Supprime un film : dossier source (A trier) + tous les hardlinks dans les dossiers genre."""

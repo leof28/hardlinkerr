@@ -137,6 +137,14 @@ const T = {
       loading: 'Analyse en cours…',
       ignore: 'Ignorer',
       fix: 'Corriger',
+      delete: '🗑 Supprimer',
+      deleteAll: '🗑 Tout supprimer',
+      deleteAllDuplicates: '🗑 Supprimer tous les doublons',
+      deleteAllOrphans: '🗑 Supprimer tous les orphelins',
+      deleteAllWrongGenre: '🗑 Supprimer tous les mauvais genres',
+      confirmDeleteIssue: 'Supprimer ce problème (action irréversible) ?',
+      confirmDeleteMultiple: 'Supprimer ces problèmes (action irréversible) ?',
+      deleteSuccess: 'Suppression réussie',
     },
     series: {
       title: 'Séries orphelines',
@@ -269,6 +277,14 @@ const T = {
       loading: 'Analyzing…',
       ignore: 'Ignore',
       fix: 'Fix',
+      delete: '🗑 Delete',
+      deleteAll: '🗑 Delete all',
+      deleteAllDuplicates: '🗑 Delete all duplicates',
+      deleteAllOrphans: '🗑 Delete all orphans',
+      deleteAllWrongGenre: '🗑 Delete all wrong genre',
+      confirmDeleteIssue: 'Delete this issue (irreversible action)?',
+      confirmDeleteMultiple: 'Delete these issues (irreversible action)?',
+      deleteSuccess: 'Deletion successful',
     },
     series: {
       title: 'Orphan Series',
@@ -899,16 +915,66 @@ function IssuesTab({ lang, addToast }) {
     } catch(e) { addToast({ message: 'Erreur: ' + e.message, type: 'error' }); }
   }
 
+  async function handleDeleteIssues(issuesList) {
+    if (!issuesList || !issuesList.length) return;
+    const isMultiple = issuesList.length > 1;
+    if (!window.confirm(isMultiple ? t.confirmDeleteMultiple : t.confirmDeleteIssue)) return;
+
+    setLoading(true);
+    try {
+      const body = { issues: issuesList };
+      const res = await api('/api/delete-issues', { method: 'POST', body });
+      if (res && res.deleted > 0) {
+        addToast({ message: `${t.deleteSuccess} (${res.deleted})`, type: 'success' });
+      }
+      fetchIssues();
+    } catch (e) {
+      addToast({ message: 'Erreur: ' + e.message, type: 'error' });
+      setLoading(false);
+    }
+  }
+
   const allIssues = Array.isArray(issues) ? issues.map(i => ({ ...i, issueType: i.type || 'unknown' })) : [];
+  const duplicatesIssues = allIssues.filter(i => i.issueType === 'duplicate');
+  const orphansIssues = allIssues.filter(i => i.issueType === 'orphan');
+  const wrongGenreIssues = allIssues.filter(i => i.issueType === 'wrong_genre');
 
   return (
     <div>
       <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20}}>
         <h2 style={{margin:0, fontSize:18}}>{t.title}</h2>
-        <button onClick={fetchIssues} disabled={loading} style={{padding:'7px 14px', fontSize:13, background:'rgba(255,255,255,0.07)', border:'1px solid var(--border)', borderRadius:8, color:'var(--text)', cursor:'pointer'}}>
-          {loading ? t.loading : t.refresh}
-        </button>
+        <div style={{display:'flex', gap:10}}>
+          {allIssues.length > 0 && (
+            <button onClick={() => handleDeleteIssues(allIssues)} disabled={loading} style={{padding:'7px 14px', fontSize:13, background:'#ef4444', border:'none', borderRadius:8, color:'white', cursor:'pointer', fontWeight:600}}>
+              {t.deleteAll}
+            </button>
+          )}
+          <button onClick={fetchIssues} disabled={loading} style={{padding:'7px 14px', fontSize:13, background:'rgba(255,255,255,0.07)', border:'1px solid var(--border)', borderRadius:8, color:'var(--text)', cursor:'pointer'}}>
+            {loading ? t.loading : t.refresh}
+          </button>
+        </div>
       </div>
+
+      {/* Category Actions */}
+      {!loading && allIssues.length > 0 && (
+        <div style={{display:'flex', flexWrap:'wrap', gap:10, marginBottom:20}}>
+          {duplicatesIssues.length > 0 && (
+            <button onClick={() => handleDeleteIssues(duplicatesIssues)} style={{padding:'5px 12px', fontSize:12, background:'rgba(239,68,68,0.2)', border:'1px solid #ef4444', borderRadius:6, color:'white', cursor:'pointer'}}>
+              {t.deleteAllDuplicates} ({duplicatesIssues.length})
+            </button>
+          )}
+          {orphansIssues.length > 0 && (
+            <button onClick={() => handleDeleteIssues(orphansIssues)} style={{padding:'5px 12px', fontSize:12, background:'rgba(234,179,8,0.2)', border:'1px solid #eab308', borderRadius:6, color:'white', cursor:'pointer'}}>
+              {t.deleteAllOrphans} ({orphansIssues.length})
+            </button>
+          )}
+          {wrongGenreIssues.length > 0 && (
+            <button onClick={() => handleDeleteIssues(wrongGenreIssues)} style={{padding:'5px 12px', fontSize:12, background:'rgba(59,130,246,0.2)', border:'1px solid #3b82f6', borderRadius:6, color:'white', cursor:'pointer'}}>
+              {t.deleteAllWrongGenre} ({wrongGenreIssues.length})
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Ignored list */}
       {ignored.length > 0 && (
@@ -934,17 +1000,26 @@ function IssuesTab({ lang, addToast }) {
         <div style={{display:'flex', flexDirection:'column', gap:8}}>
           {allIssues.map((issue, i) => (
             <div key={i} className="glass" style={{padding:14, display:'flex', alignItems:'center', justifyContent:'space-between', gap:12}}>
-              <div style={{display:'flex', alignItems:'center', gap:10}}>
-                <span className={`badge ${issue.issueType==='duplicate'?'badge-red':issue.issueType==='orphan'?'badge-yellow':'badge-blue'}`} style={{fontSize:10}}>
-                  {issue.issueType==='duplicate'?t.duplicates:issue.issueType==='orphan'?t.orphans:t.wrongGenre}
-                </span>
-                <span style={{fontSize:13}}>{issue.title || issue.path || issue.name || JSON.stringify(issue)}</span>
-                {issue.path && <span style={{fontSize:11, color:'var(--muted)'}}>{issue.path}</span>}
+              <div style={{display:'flex', flexDirection:'column', gap:4}}>
+                <div style={{display:'flex', alignItems:'center', gap:10}}>
+                  <span className={`badge ${issue.issueType==='duplicate'?'badge-red':issue.issueType==='orphan'?'badge-yellow':'badge-blue'}`} style={{fontSize:10}}>
+                    {issue.issueType==='duplicate'?t.duplicates:issue.issueType==='orphan'?t.orphans:t.wrongGenre}
+                  </span>
+                  <span style={{fontSize:13, fontWeight:600}}>{issue.title || issue.path || issue.name || JSON.stringify(issue)}</span>
+                  {issue.reason && <span style={{fontSize:12, color:'var(--muted)', fontStyle:'italic'}}>{issue.reason}</span>}
+                </div>
+                {issue.path && <span style={{fontSize:11, color:'var(--muted)', marginTop:2}}>{issue.path}</span>}
               </div>
-              <button onClick={() => ignoreItem(issue.issueType, issue.title||issue.name||issue.path)}
-                style={{padding:'4px 10px', fontSize:12, background:'rgba(255,255,255,0.06)', border:'1px solid var(--border)', borderRadius:6, color:'var(--muted)', cursor:'pointer', whiteSpace:'nowrap'}}>
-                {t.ignore}
-              </button>
+              <div style={{display:'flex', gap:8}}>
+                <button onClick={() => ignoreItem(issue.issueType, issue.title||issue.name||issue.path)}
+                  style={{padding:'4px 10px', fontSize:12, background:'rgba(255,255,255,0.06)', border:'1px solid var(--border)', borderRadius:6, color:'var(--muted)', cursor:'pointer', whiteSpace:'nowrap'}}>
+                  {t.ignore}
+                </button>
+                <button onClick={() => handleDeleteIssues([{ type: issue.issueType, path: issue.path }])}
+                  style={{padding:'4px 10px', fontSize:12, background:'rgba(239,68,68,0.1)', border:'1px solid #ef4444', borderRadius:6, color:'#ef4444', cursor:'pointer', whiteSpace:'nowrap'}}>
+                  {t.delete}
+                </button>
+              </div>
             </div>
           ))}
         </div>
