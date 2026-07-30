@@ -9,3 +9,7 @@
 ## $(date +%Y-%m-%d) - [Disabled Button Visibility]
 **Learning:** In standalone React setups using inline CSS (e.g. style={{...}}), global disabled states for buttons must use !important to guarantee they override inline styles that define default interactivity (like cursors and backgrounds), preventing visual confusion.
 **Action:** When adding base stylistic state rules (like :disabled or :hover) in a heavily inline-styled environment, enforce them via !important to ensure UX consistency.
+
+## 2026-07-30 - Toast Notification Accessibility
+**Learning:** For dynamic, transient notifications like Toast messages, adding `aria-live="polite"` and `aria-atomic="true"` to the container guarantees screen readers announce them properly without immediately breaking user focus. Combining this with dynamic roles (e.g. `role="alert"` for errors and `role="status"` for info/success) ensures critical information reaches non-visual users reliably.
+**Action:** When implementing toast or snackbar components, always provide an `aria-live` region wrapping the notification map, and apply semantic `role` attributes based on the severity.

@@ -384,9 +384,11 @@ function ConfirmDialog({ message, onConfirm, onCancel, lang }) {
 // ─── Toast ────────────────────────────────────────────────────────────────────
 function Toast({ toasts }) {
   return (
-    <div style={{position:'fixed', bottom: 24, right: 24, zIndex: 300, display:'flex', flexDirection:'column', gap: 8}}>
+    <div style={{position:'fixed', bottom: 24, right: 24, zIndex: 300, display:'flex', flexDirection:'column', gap: 8}}
+         aria-live="polite" aria-atomic="true">
       {toasts.map(t => (
-        <div key={t.id} className="glass" style={{padding:'10px 16px', fontSize:13, borderLeft:`3px solid ${t.type==='error'?'#ef4444':t.type==='success'?'#22c55e':'#6366f1'}`, minWidth:220, maxWidth:340}}>
+        <div key={t.id} className="glass" role={t.type === 'error' ? 'alert' : 'status'}
+             style={{padding:'10px 16px', fontSize:13, borderLeft:`3px solid ${t.type==='error'?'#ef4444':t.type==='success'?'#22c55e':'#6366f1'}`, minWidth:220, maxWidth:340}}>
           {t.message}
         </div>
       ))}
