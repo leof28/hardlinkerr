@@ -19,3 +19,6 @@
 ## 2026-07-26 - Pre-computing and Compiling Regex Outside of Loops
 **Learning:** In the `sync_database` and `get_jellystat_history` functions within `bridge.py`, `import re` and regex evaluation `re.sub(r'\s*\(\d{4}\)$', ...)` were repeatedly executed inside O(N) loops. This caused redundant `sys.modules` dictionary lookups and prevented efficient re-use of pre-compiled regex pattern objects.
 **Action:** When performing regex substitutions or match operations in iterations, always hoist the module import and the `re.compile()` operation outside the loop to eliminate redundant internal caching overhead.
+## 2026-07-27 - Bash O(N) Process Forks Elimination
+**Learning:** Inside `while` loops processing many items, spawning multiple subshells and external processes (like `jq`, `basename`, `tr`) per iteration creates an O(N) process fork bottleneck, massively slowing down bash script execution.
+**Action:** Pre-process the JSON data into a tab-separated value (TSV) stream with a single `jq` execution, and read the fields directly using `while IFS=$'\t' read -r ...`. Replace external commands with native bash parameter expansion (e.g., `${var##*/}` instead of `basename`).

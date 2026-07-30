@@ -74,10 +74,10 @@ count_skipped=0
 count_errors=0
 
 # --- TRAITEMENT DE CHAQUE FILM ---
-echo "$movies_json" | jq -c '.[] | select(.hasFile == true)' | while read -r movie; do
-    title=$(echo "$movie" | jq -r '.title')
-    folder_path=$(echo "$movie" | jq -r '.path')
-    folder_name=$(basename "$folder_path")
+echo "$movies_json" | jq -r '.[] | select(.hasFile == true) | [.title, .path, (.genres | map(if type == "object" then .name else . end) | join(",")), (.studio // "")] | @tsv' | while IFS=$'\t' read -r title folder_path movie_genres_raw movie_studio_raw; do
+    folder_name="${folder_path##*/}"
+    movie_studio="${movie_studio_raw//$'\r'/}"
+    IFS=',' read -ra movie_genres <<< "$movie_genres_raw"
     
     # Construire le chemin source
     src_path="$SOURCE_ROOT/$folder_name"
@@ -103,16 +103,10 @@ echo "$movies_json" | jq -c '.[] | select(.hasFile == true)' | while read -r mov
     
     # Récupérer tous les fichiers à lier
     all_files=("$src_path"/*.{mkv,mp4,avi,ts,mov,jpg,png,nfo,srt,sub,txt})
-    
-    # Récupérer les genres du film depuis Radarr
-    movie_genres=$(echo "$movie" | jq -r '.genres[] | if type == "object" then .name else . end')
-
-    # Récupérer le studio du film depuis Radarr
-    movie_studio=$(echo "$movie" | jq -r '.studio // ""' | tr -d '\r')
 
     # IMPORTANT: Construire la liste des dossiers de destination UNIQUEMENT pour les genres de CE film
     declare -A target_folders
-    for genre in $movie_genres; do
+    for genre in "${movie_genres[@]}"; do
         # Filtrer par genre spécifique si demandé
         if [[ -n "$SPECIFIC_GENRES" && "$genre" != "$SPECIFIC_GENRES" ]]; then
             continue
