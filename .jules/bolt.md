@@ -22,3 +22,6 @@
 ## 2026-07-27 - Bash O(N) Process Forks Elimination
 **Learning:** Inside `while` loops processing many items, spawning multiple subshells and external processes (like `jq`, `basename`, `tr`) per iteration creates an O(N) process fork bottleneck, massively slowing down bash script execution.
 **Action:** Pre-process the JSON data into a tab-separated value (TSV) stream with a single `jq` execution, and read the fields directly using `while IFS=$'\t' read -r ...`. Replace external commands with native bash parameter expansion (e.g., `${var##*/}` instead of `basename`).
+## 2024-11-20 - [Frontend Rendering Optimization]
+**Learning:** Extracting large list items (like MovieCards in LibraryTab) into standalone components wrapped in `React.memo` (and ensuring props like functions are stable via `useCallback`) is critical in large React grids. Without it, toggling state on a single item causes an O(N) re-render of every DOM node in the list, creating noticeable UI lag for thousands of items.
+**Action:** Always wrap list item components in `React.memo` when rendering large lists, and hoist loop-invariant operations (like `.toLowerCase()` on search terms) outside the `.map()` or `.filter()` loops to avoid redundant O(N) evaluations.

@@ -583,6 +583,43 @@ function MovieDetailModal({ movie, onClose, onRefresh, lang, addToast }) {
   );
 }
 
+
+// ─── ⚡ Bolt Optimization: MovieCard Component ─────────────────────────────────
+// Extracted out of LibraryTab into a React.memo component to prevent O(N) DOM re-renders
+// when toggling selection for a single movie.
+const MovieCard = React.memo(({ movie, isSelected, status, toggleSelect, setDetailMovie, lang }) => {
+  return (
+    <div className="movie-card" style={{border: isSelected ? '2px solid #6366f1' : '2px solid transparent'}}
+      tabIndex={0} role="button"
+      onClick={() => setDetailMovie(movie)}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setDetailMovie(movie); } }}
+    >
+      {/* Checkbox overlay */}
+      <div className="checkbox-overlay" onClick={e => { e.stopPropagation(); toggleSelect(movie.path); }}>
+        <input type="checkbox" aria-label={`Sélectionner ${movie.title}`} checked={isSelected} onChange={() => {}} style={{width:16, height:16, cursor:'pointer', accentColor:'#6366f1'}} />
+      </div>
+      {/* Status dot */}
+      <div style={{position:'absolute', top:6, right:6, zIndex:10}}>
+        <span className="status-dot" style={{background: status==='ok'?'#22c55e':status==='partial'?'#eab308':status==='missing'?'#ef4444':'#64748b'}}></span>
+      </div>
+      <img
+        src={movie.poster || 'https://via.placeholder.com/130x195?text=' + encodeURIComponent(movie.title)}
+        alt={movie.title}
+        onError={e => { e.target.src = 'https://via.placeholder.com/130x195?text=No+Poster'; }}
+      />
+      <div className="overlay"></div>
+      <div className="card-info">
+        <p style={{margin:0, fontSize:10, fontWeight:600, lineHeight:1.3, color:'white'}}>{movie.title}</p>
+        {movie.jellystatEnabled && (
+          <p style={{margin:'4px 0 0', fontSize:9, color: movie.watchCount > 0 ? '#4ade80' : '#94a3b8'}}>
+            {movie.watchCount > 0 ? T[lang].modal.seen : T[lang].modal.notSeen}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+});
+
 // ─── Library Tab ──────────────────────────────────────────────────────────────
 function LibraryTab({ movies, genres, studios, platforms, loading, onRefresh, lang, addToast }) {
   const t = T[lang].library;
@@ -596,8 +633,9 @@ function LibraryTab({ movies, genres, studios, platforms, loading, onRefresh, la
   const [running, setRunning] = useState(false);
 
   const filtered = useMemo(() => {
+    const searchLower = search ? search.toLowerCase() : '';
     return movies.filter(m => {
-      if (search && !m.title.toLowerCase().includes(search.toLowerCase())) return false;
+      if (searchLower && !m.title.toLowerCase().includes(searchLower)) return false;
       if (filterGenre && !(m.genres||[]).includes(filterGenre)) return false;
       if (filterStudio && m.studio !== filterStudio) return false;
       if (filterPlatform && !(m.platforms||[]).includes(filterPlatform)) return false;
@@ -609,13 +647,13 @@ function LibraryTab({ movies, genres, studios, platforms, loading, onRefresh, la
     });
   }, [movies, search, filterGenre, filterStudio, filterPlatform, missingOnly]);
 
-  function toggleSelect(path) {
+  const toggleSelect = useCallback((path) => {
     setSelected(prev => {
       const n = new Set(prev);
       n.has(path) ? n.delete(path) : n.add(path);
       return n;
     });
-  }
+  }, []);
 
   function selectAll() { setSelected(new Set(filtered.map(m => m.path))); }
   function deselectAll() { setSelected(new Set()); }
@@ -716,34 +754,15 @@ function LibraryTab({ movies, genres, studios, platforms, loading, onRefresh, la
             const status = getCardStatus(movie);
             const isSelected = selected.has(movie.path);
             return (
-              <div key={movie.path} className="movie-card" style={{border: isSelected ? '2px solid #6366f1' : '2px solid transparent'}}
-                tabIndex={0} role="button"
-                onClick={() => setDetailMovie(movie)}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setDetailMovie(movie); } }}
-              >
-                {/* Checkbox overlay */}
-                <div className="checkbox-overlay" onClick={e => { e.stopPropagation(); toggleSelect(movie.path); }}>
-                  <input type="checkbox" aria-label={`Sélectionner ${movie.title}`} checked={isSelected} onChange={() => {}} style={{width:16, height:16, cursor:'pointer', accentColor:'#6366f1'}} />
-                </div>
-                {/* Status dot */}
-                <div style={{position:'absolute', top:6, right:6, zIndex:10}}>
-                  <span className="status-dot" style={{background: status==='ok'?'#22c55e':status==='partial'?'#eab308':status==='missing'?'#ef4444':'#64748b'}}></span>
-                </div>
-                <img
-                  src={movie.poster || 'https://via.placeholder.com/130x195?text=' + encodeURIComponent(movie.title)}
-                  alt={movie.title}
-                  onError={e => { e.target.src = 'https://via.placeholder.com/130x195?text=No+Poster'; }}
-                />
-                <div className="overlay"></div>
-                <div className="card-info">
-                  <p style={{margin:0, fontSize:10, fontWeight:600, lineHeight:1.3, color:'white'}}>{movie.title}</p>
-                  {movie.jellystatEnabled && (
-                    <p style={{margin:'4px 0 0', fontSize:9, color: movie.watchCount > 0 ? '#4ade80' : '#94a3b8'}}>
-                      {movie.watchCount > 0 ? T[lang].modal.seen : T[lang].modal.notSeen}
-                    </p>
-                  )}
-                </div>
-              </div>
+              <MovieCard
+                key={movie.path}
+                movie={movie}
+                isSelected={isSelected}
+                status={status}
+                toggleSelect={toggleSelect}
+                setDetailMovie={setDetailMovie}
+                lang={lang}
+              />
             );
           })}
         </div>
