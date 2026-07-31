@@ -1622,9 +1622,23 @@ def delete_issues():
             elif issue_type in ['orphan', 'wrong_genre']:
                 # Remove the directory containing the file
                 target_dir = os.path.dirname(issue_path)
-                # Ensure we don't delete mediaRoot itself
-                if os.path.realpath(target_dir) == os.path.realpath(media_root):
-                    errors.append(f"Erreur de sécurité sur {issue_path}")
+
+                # Ensure we don't delete any of the configured roots directly
+                is_root_dir = False
+                target_real = os.path.realpath(target_dir)
+                for k in ['mediaRoot', 'sourceRoot', 'seriesSourceRoot', 'seriesCheckRoot']:
+                    root_val = config.get(k)
+                    if root_val and os.path.realpath(root_val) == target_real:
+                        is_root_dir = True
+                        break
+
+                if is_root_dir:
+                    errors.append(f"Erreur de sécurité sur {issue_path}: Impossible de supprimer un dossier racine {target_dir}")
+                    continue
+
+                # Ensure target_dir is safe before deletion
+                if not is_safe_path(target_dir, config):
+                    errors.append(f"Erreur de sécurité sur {issue_path}: Impossible de supprimer {target_dir}")
                     continue
                 if os.path.isdir(target_dir):
                     shutil.rmtree(target_dir)
