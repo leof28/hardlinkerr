@@ -13,3 +13,7 @@
 ## 2026-07-30 - Toast Notification Accessibility
 **Learning:** For dynamic, transient notifications like Toast messages, adding `aria-live="polite"` and `aria-atomic="true"` to the container guarantees screen readers announce them properly without immediately breaking user focus. Combining this with dynamic roles (e.g. `role="alert"` for errors and `role="status"` for info/success) ensures critical information reaches non-visual users reliably.
 **Action:** When implementing toast or snackbar components, always provide an `aria-live` region wrapping the notification map, and apply semantic `role` attributes based on the severity.
+
+## 2026-07-31 - [Visual Loading States]
+**Learning:** Relying solely on text changes (like '...') or color changes to indicate loading state on buttons is a missed UX opportunity. Users often miss text changes on buttons they just clicked.
+**Action:** Use an SVG spinner component in addition to text changes when a button is in a loading/running state. Wrap the button content with `display: inline-flex` and `alignItems: center` to vertically align the spinner alongside the text.

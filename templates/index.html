@@ -397,6 +397,16 @@ function ConfirmDialog({ message, onConfirm, onCancel, lang }) {
   );
 }
 
+// ─── Shared Components ────────────────────────────────────────────────────────
+function Spinner() {
+  return (
+    <svg className="animate-spin" viewBox="0 0 24 24" style={{width: 16, height: 16, fill: 'none', stroke: 'currentColor'}}>
+      <circle cx="12" cy="12" r="10" strokeWidth="3" stroke="rgba(255,255,255,0.2)"></circle>
+      <path strokeWidth="3" stroke="currentColor" strokeLinecap="round" d="M12 2a10 10 0 0110 10"></path>
+    </svg>
+  );
+}
+
 // ─── Toast ────────────────────────────────────────────────────────────────────
 function Toast({ toasts }) {
   return (
@@ -567,8 +577,8 @@ function MovieDetailModal({ movie, onClose, onRefresh, lang, addToast }) {
 
             {/* Action Buttons */}
             <div style={{display:'flex', gap:10, marginTop:16, borderTop:'1px solid var(--border)', paddingTop:16}}>
-              <button className="grad-btn" style={{padding:'8px 16px', fontSize:13}} onClick={handleCreateLinks} disabled={running}>
-                {running ? '…' : t.createLinks}
+              <button className="grad-btn" style={{padding:'8px 16px', fontSize:13, display:'inline-flex', alignItems:'center', gap:6}} onClick={handleCreateLinks} disabled={running}>
+                {running && <Spinner />} {t.createLinks}
               </button>
               <button
                 onClick={() => setConfirm({ msg: t.confirmDelete, action: handleDeleteMovie })}
@@ -719,11 +729,11 @@ function LibraryTab({ movies, genres, studios, platforms, loading, onRefresh, la
           <span style={{fontSize:13, color:'#818cf8'}}>{selected.size} {t.selected}</span>
         )}
         <div style={{marginLeft:'auto', display:'flex', gap:8}}>
-          <button className="grad-btn" style={{padding:'7px 14px', fontSize:13}} onClick={handleCreateLinks} disabled={!selected.size || running}>
-            {running ? '…' : t.createLinks}
+          <button className="grad-btn" style={{padding:'7px 14px', fontSize:13, display:'inline-flex', alignItems:'center', gap:6}} onClick={handleCreateLinks} disabled={!selected.size || running}>
+            {running && <Spinner />} {t.createLinks}
           </button>
-          <button onClick={handleScanDisk} disabled={running} style={{padding:'7px 14px', fontSize:13, background:'rgba(255,255,255,0.07)', border:'1px solid var(--border)', borderRadius:8, color:'var(--text)', cursor:'pointer'}}>
-            {t.scanDisk}
+          <button onClick={handleScanDisk} disabled={running} style={{padding:'7px 14px', fontSize:13, background:'rgba(255,255,255,0.07)', border:'1px solid var(--border)', borderRadius:8, color:'var(--text)', cursor:'pointer', display:'inline-flex', alignItems:'center', gap:6}}>
+            {running && <Spinner />} {t.scanDisk}
           </button>
         </div>
       </div>
@@ -743,8 +753,8 @@ function LibraryTab({ movies, genres, studios, platforms, loading, onRefresh, la
           {(search || filterGenre || filterStudio || filterPlatform || missingOnly) ? (
             <button onClick={() => { setSearch(''); setFilterGenre(''); setFilterStudio(''); setFilterPlatform(''); setMissingOnly(false); }} className="grad-btn" style={{padding:'8px 16px', fontSize:14}}>{t.clearFilters}</button>
           ) : (
-            <button onClick={handleScanDisk} disabled={running} className="grad-btn" style={{padding:'8px 16px', fontSize:14}}>
-              {t.scanDisk}
+            <button onClick={handleScanDisk} disabled={running} className="grad-btn" style={{padding:'8px 16px', fontSize:14, display:'inline-flex', alignItems:'center', gap:6}}>
+              {running && <Spinner />} {t.scanDisk}
             </button>
           )}
         </div>
@@ -842,8 +852,8 @@ function StatsTab({ lang, addToast }) {
     <div>
       <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20}}>
         <h2 style={{margin:0, fontSize:18}}>{t.title}</h2>
-        <button className="grad-btn" style={{padding:'8px 18px', fontSize:13}} onClick={fetchStats} disabled={loading}>
-          {loading ? t.loading : t.fetch}
+        <button className="grad-btn" style={{padding:'8px 18px', fontSize:13, display:'inline-flex', alignItems:'center', gap:6}} onClick={fetchStats} disabled={loading}>
+          {loading && <Spinner />} {loading ? t.loading : t.fetch}
         </button>
       </div>
 
@@ -1420,8 +1430,8 @@ function SettingsTab({ lang, addToast }) {
         )}
 
         <div style={{marginTop:20, paddingTop:16, borderTop:'1px solid var(--border)', display:'flex', gap:10}}>
-          <button className="grad-btn" style={{padding:'9px 22px', fontSize:14}} onClick={saveSettings} disabled={saving}>
-            {saving ? t.saving : saved ? t.saved : t.save}
+          <button className="grad-btn" style={{padding:'9px 22px', fontSize:14, display:'inline-flex', alignItems:'center', gap:6}} onClick={saveSettings} disabled={saving}>
+            {saving && <Spinner />} {saving ? t.saving : saved ? t.saved : t.save}
           </button>
         </div>
       </div>
