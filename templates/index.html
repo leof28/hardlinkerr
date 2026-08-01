@@ -853,7 +853,7 @@ function StatsTab({ lang, addToast }) {
       <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20}}>
         <h2 style={{margin:0, fontSize:18}}>{t.title}</h2>
         <button className="grad-btn" style={{padding:'8px 18px', fontSize:13, display:'inline-flex', alignItems:'center', gap:6}} onClick={fetchStats} disabled={loading}>
-          {loading && <Spinner />} {loading ? t.loading : t.fetch}
+          {loading && <Spinner />} {t.fetch}
         </button>
       </div>
 
@@ -978,8 +978,8 @@ function IssuesTab({ lang, addToast }) {
               {t.deleteAll}
             </button>
           )}
-          <button onClick={fetchIssues} disabled={loading} style={{padding:'7px 14px', fontSize:13, background:'rgba(255,255,255,0.07)', border:'1px solid var(--border)', borderRadius:8, color:'var(--text)', cursor:'pointer'}}>
-            {loading ? t.loading : t.refresh}
+          <button onClick={fetchIssues} disabled={loading} style={{padding:'7px 14px', fontSize:13, background:'rgba(255,255,255,0.07)', border:'1px solid var(--border)', borderRadius:8, color:'var(--text)', cursor:'pointer', display:'inline-flex', alignItems:'center', gap:6}}>
+            {loading && <Spinner />} {t.refresh}
           </button>
         </div>
       </div>
@@ -1078,8 +1078,8 @@ function SeriesTab({ lang, addToast }) {
     <div>
       <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20}}>
         <h2 style={{margin:0, fontSize:18}}>{t.title}</h2>
-        <button onClick={fetchSeries} disabled={loading} style={{padding:'7px 14px', fontSize:13, background:'rgba(255,255,255,0.07)', border:'1px solid var(--border)', borderRadius:8, color:'var(--text)', cursor:'pointer'}}>
-          {loading ? T[lang].common.loading : t.refresh}
+        <button onClick={fetchSeries} disabled={loading} style={{padding:'7px 14px', fontSize:13, background:'rgba(255,255,255,0.07)', border:'1px solid var(--border)', borderRadius:8, color:'var(--text)', cursor:'pointer', display:'inline-flex', alignItems:'center', gap:6}}>
+          {loading && <Spinner />} {t.refresh}
         </button>
       </div>
       {loading ? (
@@ -1138,7 +1138,9 @@ function LogsTab({ lang, addToast }) {
       <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16}}>
         <h2 style={{margin:0, fontSize:18}}>{t.title}</h2>
         <div style={{display:'flex', gap:8}}>
-          <button onClick={fetchLogs} disabled={loading} style={{padding:'6px 12px', fontSize:12, background:'rgba(255,255,255,0.07)', border:'1px solid var(--border)', borderRadius:6, color:'var(--text)', cursor:'pointer'}}>{t.refresh}</button>
+          <button onClick={fetchLogs} disabled={loading} style={{padding:'6px 12px', fontSize:12, background:'rgba(255,255,255,0.07)', border:'1px solid var(--border)', borderRadius:6, color:'var(--text)', cursor:'pointer', display:'inline-flex', alignItems:'center', gap:6}}>
+            {loading && <Spinner />} {t.refresh}
+          </button>
           <button onClick={clearLogs} style={{padding:'6px 12px', fontSize:12, background:'rgba(239,68,68,0.1)', border:'1px solid rgba(239,68,68,0.3)', borderRadius:6, color:'#f87171', cursor:'pointer'}}>{t.clear}</button>
         </div>
       </div>
