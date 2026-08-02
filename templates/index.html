@@ -44,6 +44,7 @@
     .badge-yellow { background: rgba(234,179,8,0.2); color: #facc15; border: 1px solid rgba(234,179,8,0.3); }
     .badge-gray { background: rgba(100,116,139,0.2); color: #94a3b8; border: 1px solid rgba(100,116,139,0.3); }
     .badge-teal { background: rgba(20,184,166,0.2); color: #2dd4bf; border: 1px solid rgba(20,184,166,0.3); }
+    *:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     .movie-card { position: relative; cursor: pointer; border-radius: 10px; overflow: hidden; transition: transform 0.2s, box-shadow 0.2s; }
     .movie-card:hover { transform: translateY(-3px); box-shadow: 0 8px 32px rgba(99,102,241,0.25); }
     .movie-card img { width: 100%; aspect-ratio: 2/3; object-fit: cover; display: block; }
@@ -62,7 +63,6 @@
     @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
     @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
-    *:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   </style>
 </head>
 <body>
@@ -606,7 +606,7 @@ const MovieCard = React.memo(({ movie, isSelected, status, toggleSelect, setDeta
     >
       {/* Checkbox overlay */}
       <div className="checkbox-overlay" onClick={e => { e.stopPropagation(); toggleSelect(movie.path); }}>
-        <input type="checkbox" aria-label={`Sélectionner ${movie.title}`} checked={isSelected} onChange={() => {}} style={{width:16, height:16, cursor:'pointer', accentColor:'#6366f1'}} />
+        <input type="checkbox" aria-label={`Sélectionner ${movie.title}`} checked={isSelected} onChange={(e) => toggleSelect(movie.path)} onClick={e => e.stopPropagation()} style={{width:16, height:16, cursor:'pointer', accentColor:'#6366f1'}} />
       </div>
       {/* Status dot */}
       <div style={{position:'absolute', top:6, right:6, zIndex:10}}>
