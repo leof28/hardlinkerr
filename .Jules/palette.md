@@ -20,3 +20,6 @@
 ## 2024-05-18 - [Add loading spinners to refresh buttons]
 **Learning:** When async buttons replace their entire text with a generic loading string, it causes layout shifts and removes context from what the button is currently doing. Using an inline SVG spinner alongside the original text with a small gap preserves the layout and improves UX.
 **Action:** Use inline SVG spinners and 'display: inline-flex' alongside the original text for loading states to maintain context and prevent layout shifts.
+## 2024-05-18 - [Checkbox Overlay Accessibility]
+**Learning:** Relying on `onClick` on a non-focusable wrapper `div` around a checkbox breaks native keyboard interaction (Spacebar toggle). Keyboard users cannot select items if the input itself lacks an `onChange` handler.
+**Action:** Always attach state-updating `onChange` handlers directly to `<input type="checkbox">` elements, even if an overlay captures mouse clicks.
