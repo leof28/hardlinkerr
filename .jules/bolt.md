@@ -25,3 +25,7 @@
 ## 2024-11-20 - [Frontend Rendering Optimization]
 **Learning:** Extracting large list items (like MovieCards in LibraryTab) into standalone components wrapped in `React.memo` (and ensuring props like functions are stable via `useCallback`) is critical in large React grids. Without it, toggling state on a single item causes an O(N) re-render of every DOM node in the list, creating noticeable UI lag for thousands of items.
 **Action:** Always wrap list item components in `React.memo` when rendering large lists, and hoist loop-invariant operations (like `.toLowerCase()` on search terms) outside the `.map()` or `.filter()` loops to avoid redundant O(N) evaluations.
+
+## 2026-08-03 - [SQLite Bulk Upsert Optimization]
+**Learning:** In a multi-step SQLite synchronization process, individual `cursor.execute()` calls inside an O(N) loop cause significant overhead due to repeated query parsing and context switching.
+**Action:** Always batch write operations (INSERT/UPDATE/DELETE) using `cursor.executemany()` by accumulating parameters into lists and executing them once after the loop, preserving operation ordering when necessary.
