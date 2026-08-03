@@ -1547,7 +1547,16 @@ def delete_file():
         if file_path and os.path.exists(file_path):
             os.remove(file_path)
             parent = os.path.dirname(file_path)
-            if os.path.isdir(parent) and not os.listdir(parent):
+
+            is_root_dir = False
+            parent_real = os.path.realpath(parent)
+            for k in ['mediaRoot', 'sourceRoot', 'seriesSourceRoot', 'seriesCheckRoot']:
+                root_val = config.get(k)
+                if root_val and os.path.realpath(root_val) == parent_real:
+                    is_root_dir = True
+                    break
+
+            if os.path.isdir(parent) and not os.listdir(parent) and not is_root_dir:
                 os.rmdir(parent)
             append_log("success", "delete", f"Fichier supprimé : {os.path.basename(file_path)}", {"path": file_path})
             return jsonify({"status": "ok"})
@@ -1577,7 +1586,16 @@ def delete_duplicates():
                 os.remove(file_path)
                 success.append(file_path)
                 parent = os.path.dirname(file_path)
-                if os.path.isdir(parent) and not os.listdir(parent):
+
+                is_root_dir = False
+                parent_real = os.path.realpath(parent)
+                for k in ['mediaRoot', 'sourceRoot', 'seriesSourceRoot', 'seriesCheckRoot']:
+                    root_val = config.get(k)
+                    if root_val and os.path.realpath(root_val) == parent_real:
+                        is_root_dir = True
+                        break
+
+                if os.path.isdir(parent) and not os.listdir(parent) and not is_root_dir:
                     os.rmdir(parent)
             else:
                 errors.append(f"Non trouvé: {file_path}")
