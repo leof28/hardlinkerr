@@ -83,6 +83,7 @@ const T = {
       missingOnly: 'Manquants seulement',
       selectAll: 'Tout sélectionner',
       deselectAll: 'Tout désélectionner',
+      selectMovie: 'Sélectionner',
       createLinks: 'Créer hardlinks (sélection)',
       scanDisk: 'Scan complet (disque)',
       selected: 'sélectionné(s)',
@@ -223,6 +224,7 @@ const T = {
       missingOnly: 'Missing only',
       selectAll: 'Select all',
       deselectAll: 'Deselect all',
+      selectMovie: 'Select',
       createLinks: 'Create hardlinks',
       scanDisk: 'Full scan (disk)',
       selected: 'selected',
@@ -605,8 +607,8 @@ const MovieCard = React.memo(({ movie, isSelected, status, toggleSelect, setDeta
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setDetailMovie(movie); } }}
     >
       {/* Checkbox overlay */}
-      <div className="checkbox-overlay" onClick={e => { e.stopPropagation(); toggleSelect(movie.path); }}>
-        <input type="checkbox" aria-label={`Sélectionner ${movie.title}`} checked={isSelected} onChange={() => {}} style={{width:16, height:16, cursor:'pointer', accentColor:'#6366f1'}} />
+      <div className="checkbox-overlay" onClick={e => e.stopPropagation()}>
+        <input type="checkbox" aria-label={`${T[lang].library.selectMovie} ${movie.title}`} checked={isSelected} onChange={() => toggleSelect(movie.path)} style={{width:16, height:16, cursor:'pointer', accentColor:'#6366f1'}} />
       </div>
       {/* Status dot */}
       <div style={{position:'absolute', top:6, right:6, zIndex:10}}>
