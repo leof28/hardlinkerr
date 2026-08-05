@@ -1548,7 +1548,8 @@ def delete_file():
             os.remove(file_path)
             parent = os.path.dirname(file_path)
             if os.path.isdir(parent) and not os.listdir(parent):
-                os.rmdir(parent)
+                if is_safe_path(parent, config):
+                    os.rmdir(parent)
             append_log("success", "delete", f"Fichier supprimé : {os.path.basename(file_path)}", {"path": file_path})
             return jsonify({"status": "ok"})
         return jsonify({"error": "Fichier non trouvé"}), 404
@@ -1578,7 +1579,8 @@ def delete_duplicates():
                 success.append(file_path)
                 parent = os.path.dirname(file_path)
                 if os.path.isdir(parent) and not os.listdir(parent):
-                    os.rmdir(parent)
+                    if is_safe_path(parent, config):
+                        os.rmdir(parent)
             else:
                 errors.append(f"Non trouvé: {file_path}")
         except Exception as e:
