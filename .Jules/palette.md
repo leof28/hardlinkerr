@@ -20,3 +20,6 @@
 ## 2024-05-18 - [Add loading spinners to refresh buttons]
 **Learning:** When async buttons replace their entire text with a generic loading string, it causes layout shifts and removes context from what the button is currently doing. Using an inline SVG spinner alongside the original text with a small gap preserves the layout and improves UX.
 **Action:** Use inline SVG spinners and 'display: inline-flex' alongside the original text for loading states to maintain context and prevent layout shifts.
+## 2026-08-06 - [Native Checkbox Keyboard Accessibility]
+**Learning:** When building custom interactive components with embedded inputs (like the MovieCard), attaching event handlers (e.g., `onClick`) solely to a wrapper `div` breaks native keyboard accessibility for the input element (e.g., toggling a checkbox via the Spacebar).
+**Action:** Always attach state-mutating event handlers directly to the native input element (`onChange` for checkboxes) instead of relying solely on wrapper `div` clicks. Keep `e.stopPropagation()` on the wrapper to prevent unintended bubbling to parent interactive components.
