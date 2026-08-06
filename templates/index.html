@@ -90,6 +90,7 @@ const T = {
       noResultsFilters: 'Aucun résultat pour ces filtres',
       tryChangeFilters: 'Essayez de modifier vos critères de recherche.',
       addMoviesOrScan: 'Ajoutez des films dans votre dossier source ou lancez un scan.',
+      selectMovie: 'Sélectionner',
       clearFilters: 'Effacer les filtres',
       loading: 'Chargement…',
     },
@@ -230,6 +231,7 @@ const T = {
       noResultsFilters: 'No results for these filters',
       tryChangeFilters: 'Try changing your search criteria.',
       addMoviesOrScan: 'Add movies to your source folder or start a scan.',
+      selectMovie: 'Select',
       clearFilters: 'Clear filters',
       loading: 'Loading…',
     },
@@ -605,8 +607,8 @@ const MovieCard = React.memo(({ movie, isSelected, status, toggleSelect, setDeta
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setDetailMovie(movie); } }}
     >
       {/* Checkbox overlay */}
-      <div className="checkbox-overlay" onClick={e => { e.stopPropagation(); toggleSelect(movie.path); }}>
-        <input type="checkbox" aria-label={`Sélectionner ${movie.title}`} checked={isSelected} onChange={() => {}} style={{width:16, height:16, cursor:'pointer', accentColor:'#6366f1'}} />
+      <div className="checkbox-overlay" onClick={e => e.stopPropagation()}>
+        <input type="checkbox" aria-label={`${T[lang].library.selectMovie} ${movie.title}`} checked={isSelected} onChange={() => toggleSelect(movie.path)} style={{width:16, height:16, cursor:'pointer', accentColor:'#6366f1'}} />
       </div>
       {/* Status dot */}
       <div style={{position:'absolute', top:6, right:6, zIndex:10}}>
