@@ -112,6 +112,10 @@ def sync_database(config=None):
     import re
     year_pattern = re.compile(r'\s*\(\d{4}\)$')
 
+    movies_data_batch = []
+    hardlinks_delete_batch = []
+    hardlinks_insert_batch = []
+
     for movie in all_movies:
         if not movie.get('hasFile'):
             continue
@@ -156,47 +160,56 @@ def sync_database(config=None):
         file_size = movie.get('movieFile', {}).get('size', 0)
         watch_count = len(watch_dates_raw)
 
-        # Upsert movie
-        cursor.execute('''
-            INSERT INTO movies (folder_name, title, path, poster, genres, studio, platforms, added_time, added_to_radarr, file_size, tmdb_id, watch_count, watch_dates)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT(folder_name) DO UPDATE SET
-                title=excluded.title,
-                path=excluded.path,
-                poster=excluded.poster,
-                genres=excluded.genres,
-                studio=excluded.studio,
-                platforms=excluded.platforms,
-                added_time=excluded.added_time,
-                added_to_radarr=excluded.added_to_radarr,
-                file_size=excluded.file_size,
-                tmdb_id=excluded.tmdb_id,
-                watch_count=excluded.watch_count,
-                watch_dates=excluded.watch_dates
-        ''', (
+        # Batch upsert movie
+        movies_data_batch.append((
             folder_name, movie['title'], source_path, poster, json.dumps(genres), studio, json.dumps(movie_platforms),
             added_time, added_to_radarr, file_size, tmdb_id, watch_count, json.dumps(watch_dates_sorted[:10])
         ))
 
-        # Upsert hardlinks
+        # Batch upsert hardlinks
         all_hardlinks = hardlink_status.get(folder_name, []) + platform_status.get(folder_name, [])
 
-        # Delete old hardlinks for this movie
-        cursor.execute('DELETE FROM hardlinks WHERE movie_folder = ?', (folder_name,))
+        # Batch delete old hardlinks for this movie
+        hardlinks_delete_batch.append((folder_name,))
 
         for hl in all_hardlinks:
-            cursor.execute('''
-                INSERT OR IGNORE INTO hardlinks (movie_folder, genre, folder, found, total, exists_bool, type)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            ''', (folder_name, hl.get('genre'), hl.get('folder'), hl.get('found', 0), hl.get('total', 0), 1 if hl.get('exists') else 0, hl.get('type')))
+            hardlinks_insert_batch.append((
+                folder_name, hl.get('genre'), hl.get('folder'), hl.get('found', 0), hl.get('total', 0), 1 if hl.get('exists') else 0, hl.get('type')
+            ))
+
+    cursor.executemany('''
+        INSERT INTO movies (folder_name, title, path, poster, genres, studio, platforms, added_time, added_to_radarr, file_size, tmdb_id, watch_count, watch_dates)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(folder_name) DO UPDATE SET
+            title=excluded.title,
+            path=excluded.path,
+            poster=excluded.poster,
+            genres=excluded.genres,
+            studio=excluded.studio,
+            platforms=excluded.platforms,
+            added_time=excluded.added_time,
+            added_to_radarr=excluded.added_to_radarr,
+            file_size=excluded.file_size,
+            tmdb_id=excluded.tmdb_id,
+            watch_count=excluded.watch_count,
+            watch_dates=excluded.watch_dates
+    ''', movies_data_batch)
+
+    cursor.executemany('DELETE FROM hardlinks WHERE movie_folder = ?', hardlinks_delete_batch)
+
+    cursor.executemany('''
+        INSERT OR IGNORE INTO hardlinks (movie_folder, genre, folder, found, total, exists_bool, type)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    ''', hardlinks_insert_batch)
 
     # Cleanup deleted movies
     cursor.execute('SELECT folder_name FROM movies')
     db_folders = {row['folder_name'] for row in cursor.fetchall()}
     to_delete = db_folders - current_folders
-    for fd in to_delete:
-        cursor.execute('DELETE FROM movies WHERE folder_name = ?', (fd,))
-        cursor.execute('DELETE FROM hardlinks WHERE movie_folder = ?', (fd,))
+    if to_delete:
+        to_delete_params = [(fd,) for fd in to_delete]
+        cursor.executemany('DELETE FROM movies WHERE folder_name = ?', to_delete_params)
+        cursor.executemany('DELETE FROM hardlinks WHERE movie_folder = ?', to_delete_params)
 
     conn.commit()
     conn.close()
