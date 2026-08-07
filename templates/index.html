@@ -605,9 +605,9 @@ const MovieCard = React.memo(({ movie, isSelected, status, toggleSelect, setDeta
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setDetailMovie(movie); } }}
     >
       {/* Checkbox overlay */}
-      <div className="checkbox-overlay" onClick={e => { e.stopPropagation(); toggleSelect(movie.path); }}>
-        <input type="checkbox" aria-label={`Sélectionner ${movie.title}`} checked={isSelected} onChange={() => {}} style={{width:16, height:16, cursor:'pointer', accentColor:'#6366f1'}} />
-      </div>
+      <label className="checkbox-overlay" onClick={e => e.stopPropagation()}>
+        <input type="checkbox" aria-label={`Sélectionner ${movie.title}`} checked={isSelected} onChange={() => toggleSelect(movie.path)} style={{width:16, height:16, cursor:'pointer', accentColor:'#6366f1'}} />
+      </label>
       {/* Status dot */}
       <div style={{position:'absolute', top:6, right:6, zIndex:10}}>
         <span className="status-dot" style={{background: status==='ok'?'#22c55e':status==='partial'?'#eab308':status==='missing'?'#ef4444':'#64748b'}}></span>
@@ -1290,16 +1290,16 @@ function SettingsTab({ lang, addToast }) {
         </div>
         {items.map((item, idx) => (
           <div key={idx} style={{display:'flex', gap:8, marginBottom:6, alignItems:'center'}}>
-            <input type="checkbox" checked={!!item.enabled} onChange={e => updateItem(idx, 'enabled', e.target.checked)} style={{width: 16, height: 16, cursor:'pointer'}} />
-            <input value={item.name || ''} onChange={e => updateItem(idx, 'name', e.target.value)} placeholder={nameLabel} style={{flex:1}} />
-            <input value={item.folder || ''} onChange={e => updateItem(idx, 'folder', e.target.value)} placeholder={folderLabel} style={{flex:1}} />
-            <button onClick={() => removeItem(idx)} style={{padding:'6px 10px', background:'rgba(239,68,68,0.15)', border:'1px solid rgba(239,68,68,0.3)', color:'#f87171', borderRadius:6, cursor:'pointer', fontSize:12}}>{t.remove}</button>
+            <input type="checkbox" aria-label={`Activer ${item.name || 'nouvel élément'}`} checked={!!item.enabled} onChange={e => updateItem(idx, 'enabled', e.target.checked)} style={{width: 16, height: 16, cursor:'pointer'}} />
+            <input value={item.name || ''} aria-label={nameLabel} onChange={e => updateItem(idx, 'name', e.target.value)} placeholder={nameLabel} style={{flex:1}} />
+            <input value={item.folder || ''} aria-label={folderLabel} onChange={e => updateItem(idx, 'folder', e.target.value)} placeholder={folderLabel} style={{flex:1}} />
+            <button aria-label={`Supprimer ${item.name || 'élément'}`} onClick={() => removeItem(idx)} style={{padding:'6px 10px', background:'rgba(239,68,68,0.15)', border:'1px solid rgba(239,68,68,0.3)', color:'#f87171', borderRadius:6, cursor:'pointer', fontSize:12}}>{t.remove}</button>
           </div>
         ))}
         <div style={{display:'flex', gap:8, marginTop:8}}>
           <div style={{width: 16}}></div> {/* Spacer for checkbox */}
-          <input value={newName} onChange={e => setNewName(e.target.value)} placeholder={nameLabel} style={{flex:1}} />
-          <input value={newFolder} onChange={e => setNewFolder(e.target.value)} placeholder={folderLabel} style={{flex:1}} />
+          <input value={newName} aria-label={`Nouveau ${nameLabel}`} onChange={e => setNewName(e.target.value)} placeholder={nameLabel} style={{flex:1}} />
+          <input value={newFolder} aria-label={`Nouveau ${folderLabel}`} onChange={e => setNewFolder(e.target.value)} placeholder={folderLabel} style={{flex:1}} />
           <button onClick={addItem} className="grad-btn" style={{padding:'6px 14px', fontSize:13}}>{t.add}</button>
         </div>
       </div>
