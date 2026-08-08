@@ -20,3 +20,6 @@
 ## 2024-05-18 - [Add loading spinners to refresh buttons]
 **Learning:** When async buttons replace their entire text with a generic loading string, it causes layout shifts and removes context from what the button is currently doing. Using an inline SVG spinner alongside the original text with a small gap preserves the layout and improves UX.
 **Action:** Use inline SVG spinners and 'display: inline-flex' alongside the original text for loading states to maintain context and prevent layout shifts.
+## 2026-08-08 - Checkbox in interactive components
+**Learning:** When embedding checkboxes within interactive components (like cards), using a <label> wrapper instead of a <div> with custom onClick handlers natively provides a larger clickable hit area while preserving default keyboard accessibility (spacebar toggling) for the nested <input type="checkbox">, preventing dead zones.
+**Action:** Always use <label> wrappers for embedded checkboxes and move selection logic to the onChange event.
