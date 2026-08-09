@@ -1547,7 +1547,9 @@ def delete_file():
         if file_path and os.path.exists(file_path):
             os.remove(file_path)
             parent = os.path.dirname(file_path)
-            if os.path.isdir(parent) and not os.listdir(parent):
+            # Ensure the derived parent directory path is safe for deletion to prevent
+            # directory traversal attacks (e.g. passing <root>/dummy.txt) removing app roots.
+            if os.path.isdir(parent) and not os.listdir(parent) and is_safe_path(parent, config):
                 os.rmdir(parent)
             append_log("success", "delete", f"Fichier supprimé : {os.path.basename(file_path)}", {"path": file_path})
             return jsonify({"status": "ok"})
@@ -1577,7 +1579,9 @@ def delete_duplicates():
                 os.remove(file_path)
                 success.append(file_path)
                 parent = os.path.dirname(file_path)
-                if os.path.isdir(parent) and not os.listdir(parent):
+                # Ensure the derived parent directory path is safe for deletion to prevent
+                # directory traversal attacks (e.g. passing <root>/dummy.txt) removing app roots.
+                if os.path.isdir(parent) and not os.listdir(parent) and is_safe_path(parent, config):
                     os.rmdir(parent)
             else:
                 errors.append(f"Non trouvé: {file_path}")
