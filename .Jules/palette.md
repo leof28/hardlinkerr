@@ -20,3 +20,7 @@
 ## 2024-05-18 - [Add loading spinners to refresh buttons]
 **Learning:** When async buttons replace their entire text with a generic loading string, it causes layout shifts and removes context from what the button is currently doing. Using an inline SVG spinner alongside the original text with a small gap preserves the layout and improves UX.
 **Action:** Use inline SVG spinners and 'display: inline-flex' alongside the original text for loading states to maintain context and prevent layout shifts.
+
+## 2026-08-10 - [DOM Injection for UI Verification in Empty States]
+**Learning:** When visually verifying frontend component changes using Playwright (like a checkbox overlay on a movie card) in an application state where no data exists (e.g., an empty library), mocking network requests might not be enough if the application fails to render the mocked data due to other dependencies. A reliable fallback is using `page.evaluate()` to directly inject the necessary mock HTML elements into the DOM, allowing for accurate visual verification of the modified UI components.
+**Action:** Use `page.evaluate()` to inject mock HTML components when testing UI elements that are difficult to trigger via standard user flows or mocked network responses due to complex application state requirements.

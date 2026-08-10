@@ -605,9 +605,9 @@ const MovieCard = React.memo(({ movie, isSelected, status, toggleSelect, setDeta
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setDetailMovie(movie); } }}
     >
       {/* Checkbox overlay */}
-      <div className="checkbox-overlay" onClick={e => { e.stopPropagation(); toggleSelect(movie.path); }}>
-        <input type="checkbox" aria-label={`Sélectionner ${movie.title}`} checked={isSelected} onChange={() => {}} style={{width:16, height:16, cursor:'pointer', accentColor:'#6366f1'}} />
-      </div>
+      <label className="checkbox-overlay" onClick={e => e.stopPropagation()} style={{ cursor: 'pointer' }}>
+        <input type="checkbox" aria-label={`Sélectionner ${movie.title}`} checked={isSelected} onChange={() => toggleSelect(movie.path)} style={{width:16, height:16, cursor:'pointer', accentColor:'#6366f1'}} />
+      </label>
       {/* Status dot */}
       <div style={{position:'absolute', top:6, right:6, zIndex:10}}>
         <span className="status-dot" style={{background: status==='ok'?'#22c55e':status==='partial'?'#eab308':status==='missing'?'#ef4444':'#64748b'}}></span>
