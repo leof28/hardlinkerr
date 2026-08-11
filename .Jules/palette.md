@@ -20,3 +20,7 @@
 ## 2024-05-18 - [Add loading spinners to refresh buttons]
 **Learning:** When async buttons replace their entire text with a generic loading string, it causes layout shifts and removes context from what the button is currently doing. Using an inline SVG spinner alongside the original text with a small gap preserves the layout and improves UX.
 **Action:** Use inline SVG spinners and 'display: inline-flex' alongside the original text for loading states to maintain context and prevent layout shifts.
+
+## 2026-08-11 - [Semantic Checkbox Wrappers]
+**Learning:** When building custom interactive components (like large clickable cards/overlays) with embedded checkboxes in React, use a `<label>` element as the wrapper instead of a `<div>` with custom `onClick` handlers. This natively provides a large clickable hit area while preserving default keyboard accessibility (spacebar toggling) for the nested `<input type="checkbox">` without creating dead zones.
+**Action:** Use `<label>` wrappers for embedded checkboxes and attach the state toggle to the input's `onChange` event rather than the wrapper's `onClick`.
