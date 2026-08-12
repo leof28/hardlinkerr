@@ -25,3 +25,6 @@
 ## 2024-11-20 - [Frontend Rendering Optimization]
 **Learning:** Extracting large list items (like MovieCards in LibraryTab) into standalone components wrapped in `React.memo` (and ensuring props like functions are stable via `useCallback`) is critical in large React grids. Without it, toggling state on a single item causes an O(N) re-render of every DOM node in the list, creating noticeable UI lag for thousands of items.
 **Action:** Always wrap list item components in `React.memo` when rendering large lists, and hoist loop-invariant operations (like `.toLowerCase()` on search terms) outside the `.map()` or `.filter()` loops to avoid redundant O(N) evaluations.
+## 2026-08-12 - SQLite executemany Performance Boost
+**Learning:** In the `sync_database` function of `bridge.py`, repeated `cursor.execute` calls inside an O(N) loop iterating over movies significantly degrade performance due to excessive SQLite query parsing and disk fsync overhead.
+**Action:** Replaced iterative queries with list accumulation during the loop and executed batched `cursor.executemany` calls for inserting movies, deleting existing hardlinks, and inserting updated hardlinks at the end. This batch operation substantially improves database write performance.
