@@ -22,3 +22,8 @@
 **Vulnerability:** The `delete_issues` endpoint validated a user-supplied path using `is_safe_path`, but then extracted the parent directory using `os.path.dirname(issue_path)` and deleted it entirely with `shutil.rmtree` without re-validating the extracted directory path. This allowed an attacker to delete configured root directories (e.g. `sourceRoot` or `mediaRoot`) by passing a path composed of a safe root directory plus a dummy filename, bypassing the `is_safe_path` check that normally prevents root directory deletion.
 **Learning:** Validating a leaf path does not guarantee the safety of operations performed on its parent paths. When extracting parent directories for sensitive operations (like deletion), the derived path must be independently validated against boundary constraints.
 **Prevention:** Always re-validate derived paths (e.g., those obtained via `os.path.dirname`) using robust path boundary checks before executing file system operations. Specifically, ensure that dynamically resolved parent paths do not inadvertently match critical configuration roots.
+
+## 2026-08-14 - Prevent unintended removal of application roots via empty parent directory traversal
+**Vulnerability:** Empty parent directory removal (os.rmdir) could inadvertently delete application root folders if an attacker passes <root>/dummy.txt.
+**Learning:** Validating only the leaf file path (is_safe_path(file)) is insufficient for operations that derive and act upon parent directories (os.path.dirname).
+**Prevention:** Explicitly validate derived parent paths using is_safe_path(parent) before deletion.
