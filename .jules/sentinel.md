@@ -27,3 +27,7 @@
 **Vulnerability:** Empty parent directory removal (os.rmdir) could inadvertently delete application root folders if an attacker passes <root>/dummy.txt.
 **Learning:** Validating only the leaf file path (is_safe_path(file)) is insufficient for operations that derive and act upon parent directories (os.path.dirname).
 **Prevention:** Explicitly validate derived parent paths using is_safe_path(parent) before deletion.
+## 2026-08-25 - Path Traversal via Folder Name Exploitation
+**Vulnerability:** Endpoints like `/api/delete-movie` and `/api/delete-hardlink` accepted unvalidated `folderName` parameters. Although the derived absolute path was checked using `is_safe_path` (which verifies the path is inside allowed roots like `mediaRoot`), an attacker could provide `folderName=../Action` to resolve to `/mediaRoot/Action`. Since this resolved path is technically *inside* or *equal to* the allowed root, `is_safe_path` permitted it, leading to arbitrary deletion of sibling directories (like entire genre folders) within the root.
+**Learning:** Validating that a constructed path is inside a restricted root directory is not enough when the endpoint is expected to operate only on specific sub-components (like a movie folder). Lateral path traversal within the allowed boundary can still lead to destructive actions.
+**Prevention:** When an API expects a raw file or folder name as input, explicitly sanitize the input by rejecting directory separators (`/`, `\`) and parent directory references (`..`) before using it to construct any paths.
