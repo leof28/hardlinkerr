@@ -36,10 +36,19 @@ def get_db_connection():
 
     # Initialize tables if not exists
     cursor = conn.cursor()
+
+    # Check if is_4k column exists, if not, drop tables to recreate schema cleanly
+    cursor.execute("PRAGMA table_info(movies)")
+    columns = [col['name'] for col in cursor.fetchall()]
+    if 'is_4k' not in columns and len(columns) > 0:
+        cursor.execute('DROP TABLE movies')
+        cursor.execute('DROP TABLE hardlinks')
+
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS movies (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        folder_name TEXT UNIQUE NOT NULL,
+        folder_name TEXT NOT NULL,
+        is_4k INTEGER DEFAULT 0,
         title TEXT,
         path TEXT,
         poster TEXT,
@@ -51,20 +60,22 @@ def get_db_connection():
         file_size INTEGER,
         tmdb_id INTEGER,
         watch_count INTEGER,
-        watch_dates TEXT
+        watch_dates TEXT,
+        UNIQUE(folder_name, is_4k)
     )
     ''')
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS hardlinks (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         movie_folder TEXT NOT NULL,
+        is_4k INTEGER DEFAULT 0,
         genre TEXT,
         folder TEXT,
         found INTEGER,
         total INTEGER,
         exists_bool INTEGER,
         type TEXT,
-        UNIQUE(movie_folder, folder, type)
+        UNIQUE(movie_folder, is_4k, folder, type)
     )
     ''')
     conn.commit()
@@ -80,21 +91,6 @@ def sync_database(config=None):
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    try:
-        response = requests.get(
-            f"{config['radarrUrl']}/api/v3/movie",
-            headers={"X-Api-Key": config['apiKey']},
-            timeout=30
-        )
-        response.raise_for_status()
-        all_movies = response.json()
-    except Exception as e:
-        print(f"[SYNC] Erreur Radarr: {e}")
-        conn.close()
-        return
-
-    hardlink_status = get_hardlink_status(config)
-    source_root = config.get('sourceRoot', '')
     jellystat_history = get_jellystat_history(config)
 
     tmdb_api_key = config.get('tmdbApiKey', '')
@@ -102,83 +98,117 @@ def sync_database(config=None):
     platform_mapping = config.get('platformMapping', {})
     has_platform_mapping = any(s.get('enabled') for s in platform_mapping.values())
 
-    platform_status = {}
-    if has_platform_mapping and tmdb_api_key:
-        platform_status = get_platform_hardlink_status(config, all_movies)
-
-    current_folders = set()
-
-    # ⚡ Bolt Optimization: Pre-compile regex outside the loop to avoid redundant O(N) evaluation
     import re
     year_pattern = re.compile(r'\s*\(\d{4}\)$')
 
-    # ⚡ Bolt Optimization: Batch SQLite writes to avoid query parsing and disk fsync overhead inside O(N) loop
+    current_folders = set()
     movies_to_upsert = []
     hardlinks_folders_to_delete = []
     hardlinks_to_insert = []
 
-    for movie in all_movies:
-        if not movie.get('hasFile'):
+    instances = [
+        {
+            "is_4k": 0,
+            "url": config.get('radarrUrl', ''),
+            "key": config.get('apiKey', ''),
+            "source_root": config.get('sourceRoot', '')
+        }
+    ]
+
+    if config.get('enable4kSync') and config.get('radarr4kUrl') and config.get('radarr4kApiKey'):
+        instances.append({
+            "is_4k": 1,
+            "url": config.get('radarr4kUrl', ''),
+            "key": config.get('radarr4kApiKey', ''),
+            "source_root": config.get('sourceRoot4k', '')
+        })
+
+    for inst in instances:
+        if not inst["url"] or not inst["key"]:
             continue
-        folder_name = os.path.basename(movie['path'])
-        source_path = os.path.join(source_root, folder_name)
-        if not os.path.isdir(source_path):
-            continue
+
         try:
-            if not any(f.lower().endswith('.mkv') for f in os.listdir(source_path)):
-                continue
-        except OSError:
+            response = requests.get(
+                f"{inst['url']}/api/v3/movie",
+                headers={"X-Api-Key": inst["key"]},
+                timeout=30
+            )
+            response.raise_for_status()
+            all_movies = response.json()
+        except Exception as e:
+            print(f"[SYNC] Erreur Radarr {'4K' if inst['is_4k'] else ''}: {e}")
             continue
 
-        current_folders.add(folder_name)
+        hardlink_status = get_hardlink_status(config, inst["is_4k"])
+        source_root = inst["source_root"]
 
-        genres = [g['name'] if isinstance(g, dict) else g for g in movie.get('genres', [])]
-        studio = movie.get('studio', '').strip()
-        poster = next((img.get('remoteUrl') for img in movie.get('images', []) if img.get('coverType') == 'poster'), None)
+        platform_status = {}
+        if has_platform_mapping and tmdb_api_key:
+            platform_status = get_platform_hardlink_status(config, all_movies, inst["is_4k"])
 
-        title_key = movie['title'].lower()
-        clean_title_key = year_pattern.sub('', movie['title']).strip().lower()
-        original_title_key = movie.get('originalTitle', '').lower()
-        clean_original_title_key = year_pattern.sub('', movie.get('originalTitle', '')).strip().lower()
+        for movie in all_movies:
+            if not movie.get('hasFile'):
+                continue
+            folder_name = os.path.basename(movie['path'])
+            source_path = os.path.join(source_root, folder_name)
+            if not os.path.isdir(source_path):
+                continue
+            try:
+                if not any(f.lower().endswith('.mkv') for f in os.listdir(source_path)):
+                    continue
+            except OSError:
+                continue
 
-        watch_dates_raw = jellystat_history.get(title_key, [])
-        if not watch_dates_raw and clean_title_key:
-            watch_dates_raw = jellystat_history.get(clean_title_key, [])
-        if not watch_dates_raw and original_title_key:
-            watch_dates_raw = jellystat_history.get(original_title_key, [])
-        if not watch_dates_raw and clean_original_title_key:
-            watch_dates_raw = jellystat_history.get(clean_original_title_key, [])
+            cache_key = f"{folder_name}|{inst['is_4k']}"
+            current_folders.add(cache_key)
 
-        watch_dates_sorted = sorted([d for d in watch_dates_raw if d], reverse=True)
+            genres = [g['name'] if isinstance(g, dict) else g for g in movie.get('genres', [])]
+            studio = movie.get('studio', '').strip()
+            poster = next((img.get('remoteUrl') for img in movie.get('images', []) if img.get('coverType') == 'poster'), None)
 
-        tmdb_id = movie.get('tmdbId')
-        movie_platforms = []
-        if tmdb_api_key and tmdb_id:
-            movie_platforms = get_movie_platforms_from_tmdb(tmdb_id, tmdb_api_key, tmdb_country)
+            title_key = movie['title'].lower()
+            clean_title_key = year_pattern.sub('', movie['title']).strip().lower()
+            original_title_key = movie.get('originalTitle', '').lower()
+            clean_original_title_key = year_pattern.sub('', movie.get('originalTitle', '')).strip().lower()
 
-        added_time = os.path.getmtime(source_path)
-        added_to_radarr = movie.get('added', '')
-        file_size = movie.get('movieFile', {}).get('size', 0)
-        watch_count = len(watch_dates_raw)
+            watch_dates_raw = jellystat_history.get(title_key, [])
+            if not watch_dates_raw and clean_title_key:
+                watch_dates_raw = jellystat_history.get(clean_title_key, [])
+            if not watch_dates_raw and original_title_key:
+                watch_dates_raw = jellystat_history.get(original_title_key, [])
+            if not watch_dates_raw and clean_original_title_key:
+                watch_dates_raw = jellystat_history.get(clean_original_title_key, [])
 
-        movies_to_upsert.append((
-            folder_name, movie['title'], source_path, poster, json.dumps(genres), studio, json.dumps(movie_platforms),
-            added_time, added_to_radarr, file_size, tmdb_id, watch_count, json.dumps(watch_dates_sorted[:10])
-        ))
+            watch_dates_sorted = sorted([d for d in watch_dates_raw if d], reverse=True)
 
-        # Upsert hardlinks
-        all_hardlinks = hardlink_status.get(folder_name, []) + platform_status.get(folder_name, [])
+            tmdb_id = movie.get('tmdbId')
+            movie_platforms = []
+            if tmdb_api_key and tmdb_id:
+                movie_platforms = get_movie_platforms_from_tmdb(tmdb_id, tmdb_api_key, tmdb_country)
 
-        hardlinks_folders_to_delete.append((folder_name,))
+            added_time = os.path.getmtime(source_path)
+            added_to_radarr = movie.get('added', '')
+            file_size = movie.get('movieFile', {}).get('size', 0)
+            watch_count = len(watch_dates_raw)
 
-        for hl in all_hardlinks:
-            hardlinks_to_insert.append((folder_name, hl.get('genre'), hl.get('folder'), hl.get('found', 0), hl.get('total', 0), 1 if hl.get('exists') else 0, hl.get('type')))
+            movies_to_upsert.append((
+                folder_name, inst['is_4k'], movie['title'], source_path, poster, json.dumps(genres), studio, json.dumps(movie_platforms),
+                added_time, added_to_radarr, file_size, tmdb_id, watch_count, json.dumps(watch_dates_sorted[:10])
+            ))
+
+            # Upsert hardlinks
+            all_hardlinks = hardlink_status.get(folder_name, []) + platform_status.get(folder_name, [])
+
+            hardlinks_folders_to_delete.append((folder_name, inst['is_4k']))
+
+            for hl in all_hardlinks:
+                hardlinks_to_insert.append((folder_name, inst['is_4k'], hl.get('genre'), hl.get('folder'), hl.get('found', 0), hl.get('total', 0), 1 if hl.get('exists') else 0, hl.get('type')))
 
     if movies_to_upsert:
         cursor.executemany('''
-            INSERT INTO movies (folder_name, title, path, poster, genres, studio, platforms, added_time, added_to_radarr, file_size, tmdb_id, watch_count, watch_dates)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT(folder_name) DO UPDATE SET
+            INSERT INTO movies (folder_name, is_4k, title, path, poster, genres, studio, platforms, added_time, added_to_radarr, file_size, tmdb_id, watch_count, watch_dates)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(folder_name, is_4k) DO UPDATE SET
                 title=excluded.title,
                 path=excluded.path,
                 poster=excluded.poster,
@@ -194,21 +224,22 @@ def sync_database(config=None):
         ''', movies_to_upsert)
 
     if hardlinks_folders_to_delete:
-        cursor.executemany('DELETE FROM hardlinks WHERE movie_folder = ?', hardlinks_folders_to_delete)
+        cursor.executemany('DELETE FROM hardlinks WHERE movie_folder = ? AND is_4k = ?', hardlinks_folders_to_delete)
 
     if hardlinks_to_insert:
         cursor.executemany('''
-            INSERT OR IGNORE INTO hardlinks (movie_folder, genre, folder, found, total, exists_bool, type)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT OR IGNORE INTO hardlinks (movie_folder, is_4k, genre, folder, found, total, exists_bool, type)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ''', hardlinks_to_insert)
 
     # Cleanup deleted movies
-    cursor.execute('SELECT folder_name FROM movies')
-    db_folders = {row['folder_name'] for row in cursor.fetchall()}
+    cursor.execute('SELECT folder_name, is_4k FROM movies')
+    db_folders = {f"{row['folder_name']}|{row['is_4k']}" for row in cursor.fetchall()}
     to_delete = db_folders - current_folders
-    for fd in to_delete:
-        cursor.execute('DELETE FROM movies WHERE folder_name = ?', (fd,))
-        cursor.execute('DELETE FROM hardlinks WHERE movie_folder = ?', (fd,))
+    for fd_key in to_delete:
+        fd, is_4k = fd_key.rsplit('|', 1)
+        cursor.execute('DELETE FROM movies WHERE folder_name = ? AND is_4k = ?', (fd, int(is_4k)))
+        cursor.execute('DELETE FROM hardlinks WHERE movie_folder = ? AND is_4k = ?', (fd, int(is_4k)))
 
     conn.commit()
     conn.close()
@@ -223,6 +254,13 @@ def load_config():
     defaults = {
         "radarrUrl": "",
         "apiKey": "",
+        "radarr4kUrl": "",
+        "radarr4kApiKey": "",
+        "enable4kSync": False,
+        "enable4kHardlinks": False,
+        "enable4kDuplicates": False,
+        "sourceRoot4k": "",
+        "mediaRoot4k": "",
         "sonarrUrl": "",
         "sonarrApiKey": "",
         "sourceRoot": "/media/movies/A trier",
@@ -363,7 +401,7 @@ def is_safe_path(path_to_check, config):
     """Vérifie si un chemin est sûr et se trouve dans les répertoires autorisés."""
     if not path_to_check:
         return False
-    allowed_keys = ['mediaRoot', 'sourceRoot', 'seriesSourceRoot', 'seriesCheckRoot']
+    allowed_keys = ['mediaRoot', 'sourceRoot', 'mediaRoot4k', 'sourceRoot4k', 'seriesSourceRoot', 'seriesCheckRoot']
     allowed_roots = [os.path.realpath(config.get(k)) for k in allowed_keys if config.get(k)]
     if not allowed_roots:
         return False
@@ -382,7 +420,7 @@ def is_safe_path(path_to_check, config):
 
 # --- HARDLINK HELPERS ---
 
-def get_env(config, movie="", genres="", studios=""):
+def get_env(config, movie="", genres="", studios="", is_4k=0):
     mapping_str = ""
     if config.get('enableGenres', True):
         mapping_str = "|".join([
@@ -398,11 +436,17 @@ def get_env(config, movie="", genres="", studios=""):
             if settings.get('enabled', False)
         ])
     env = os.environ.copy()
+
+    url = config.get('radarr4kUrl', '') if is_4k else config.get('radarrUrl', '')
+    api_key = config.get('radarr4kApiKey', '') if is_4k else config.get('apiKey', '')
+    source_root = config.get('sourceRoot4k', '') if is_4k else config.get('sourceRoot', '')
+    media_root = config.get('mediaRoot4k', '') if is_4k else config.get('mediaRoot', '')
+
     env.update({
-        "RADARR_URL": config.get('radarrUrl', ''),
-        "API_KEY": config.get('apiKey', ''),
-        "SOURCE_ROOT": config.get('sourceRoot', ''),
-        "MEDIA_ROOT": config.get('mediaRoot', ''),
+        "RADARR_URL": url,
+        "API_KEY": api_key,
+        "SOURCE_ROOT": source_root,
+        "MEDIA_ROOT": media_root,
         "GENRE_MAPPING_STR": mapping_str,
         "STUDIO_MAPPING_STR": studio_mapping_str,
         "OWNER_USER": str(config.get('ownerUser', '')),
@@ -433,8 +477,8 @@ def _parse_hardlink_summary(output):
     return summary
 
 
-def execute_hardlinks(config, movie_path='', genres='', studios=''):
-    env = get_env(config, movie_path, genres, studios)
+def execute_hardlinks(config, movie_path='', genres='', studios='', is_4k=0):
+    env = get_env(config, movie_path, genres, studios, is_4k=is_4k)
     label = os.path.basename(movie_path) if movie_path else ("genre=" + genres if genres else ("studio=" + studios if studios else "tous"))
     try:
         process = subprocess.run(
@@ -464,8 +508,8 @@ def execute_hardlinks(config, movie_path='', genres='', studios=''):
         return {"status": "error", "error": str(e)}
 
 
-def get_hardlink_status(config):
-    env = get_env(config)
+def get_hardlink_status(config, is_4k=0):
+    env = get_env(config, is_4k=is_4k)
     try:
         process = subprocess.run(
             [SCRIPT_PATH, "-s"],
@@ -557,7 +601,7 @@ def get_movie_platforms_from_tmdb(tmdb_id, api_key, country='FR'):
     return []
 
 
-def get_platform_hardlink_status(config, movies_data=None):
+def get_platform_hardlink_status(config, movies_data=None, is_4k=0):
     """Returns platform hardlink status per movie folder (dict: folder_name → list of hardlink info)."""
     if not config.get('enablePlatforms', True):
         return {}
@@ -570,17 +614,21 @@ def get_platform_hardlink_status(config, movies_data=None):
 
     tmdb_api_key = config.get('tmdbApiKey', '')
     tmdb_country = config.get('tmdbCountry', 'FR')
-    media_root = config.get('mediaRoot', '')
-    source_root = config.get('sourceRoot', '')
+    media_root = config.get('mediaRoot4k', '') if is_4k else config.get('mediaRoot', '')
+    source_root = config.get('sourceRoot4k', '') if is_4k else config.get('sourceRoot', '')
+    url = config.get('radarr4kUrl', '') if is_4k else config.get('radarrUrl', '')
+    api_key = config.get('radarr4kApiKey', '') if is_4k else config.get('apiKey', '')
 
     if not media_root or not source_root or not tmdb_api_key:
         return {}
 
     if movies_data is None:
+        if not url or not api_key:
+            return {}
         try:
             resp = requests.get(
-                f"{config['radarrUrl']}/api/v3/movie",
-                headers={"X-Api-Key": config['apiKey']},
+                f"{url}/api/v3/movie",
+                headers={"X-Api-Key": api_key},
                 timeout=30
             )
             resp.raise_for_status()
@@ -644,7 +692,7 @@ def get_platform_hardlink_status(config, movies_data=None):
     return status
 
 
-def create_platform_hardlinks(config, movie_path=''):
+def create_platform_hardlinks(config, movie_path='', is_4k=0):
     """Creates platform hardlinks using Python's os.link(). Called after genre/studio hardlinks."""
     if not config.get('enablePlatforms', True):
         return {"status": "ok", "linked": 0, "skipped": 0, "errors": 0}
@@ -657,16 +705,18 @@ def create_platform_hardlinks(config, movie_path=''):
 
     tmdb_api_key = config.get('tmdbApiKey', '')
     tmdb_country = config.get('tmdbCountry', 'FR')
-    media_root = config.get('mediaRoot', '')
-    source_root = config.get('sourceRoot', '')
+    media_root = config.get('mediaRoot4k', '') if is_4k else config.get('mediaRoot', '')
+    source_root = config.get('sourceRoot4k', '') if is_4k else config.get('sourceRoot', '')
+    url = config.get('radarr4kUrl', '') if is_4k else config.get('radarrUrl', '')
+    api_key = config.get('radarr4kApiKey', '') if is_4k else config.get('apiKey', '')
 
-    if not tmdb_api_key or not media_root or not source_root:
+    if not tmdb_api_key or not media_root or not source_root or not url or not api_key:
         return {"status": "ok", "linked": 0, "skipped": 0, "errors": 0}
 
     try:
         resp = requests.get(
-            f"{config['radarrUrl']}/api/v3/movie",
-            headers={"X-Api-Key": config['apiKey']},
+            f"{url}/api/v3/movie",
+            headers={"X-Api-Key": api_key},
             timeout=30
         )
         resp.raise_for_status()
@@ -776,23 +826,29 @@ def should_do_full_scan(config):
 
 
 def get_recent_movies(config):
-    source_root = config.get('sourceRoot', '')
     recent_hours = config.get('scanOptimization', {}).get('recentHours', 3)
     cutoff_time = datetime.now() - timedelta(hours=recent_hours)
     recent_movies = []
-    try:
-        if not os.path.isdir(source_root):
-            return []
-        for folder_name in os.listdir(source_root):
-            folder_path = os.path.join(source_root, folder_name)
-            if not os.path.isdir(folder_path):
+
+    roots_to_check = [(config.get('sourceRoot', ''), 0)]
+    if config.get('enable4kHardlinks') and config.get('sourceRoot4k'):
+        roots_to_check.append((config.get('sourceRoot4k', ''), 1))
+
+    for source_root, is_4k in roots_to_check:
+        try:
+            if not source_root or not os.path.isdir(source_root):
                 continue
-            mtime = datetime.fromtimestamp(os.path.getmtime(folder_path))
-            if mtime > cutoff_time:
-                if any(f.lower().endswith('.mkv') for f in os.listdir(folder_path)):
-                    recent_movies.append({'folder_name': folder_name, 'path': folder_path})
-    except Exception as e:
-        print(f"Erreur get_recent_movies: {e}")
+            for folder_name in os.listdir(source_root):
+                folder_path = os.path.join(source_root, folder_name)
+                if not os.path.isdir(folder_path):
+                    continue
+                mtime = datetime.fromtimestamp(os.path.getmtime(folder_path))
+                if mtime > cutoff_time:
+                    if any(f.lower().endswith('.mkv') for f in os.listdir(folder_path)):
+                        recent_movies.append({'folder_name': folder_name, 'path': folder_path, 'is_4k': is_4k})
+        except Exception as e:
+            print(f"Erreur get_recent_movies: {e}")
+
     return recent_movies
 
 
@@ -808,6 +864,8 @@ def cron_job_handler():
         print(f"[{datetime.now()}] Scan complet")
         append_log("info", "cron", "Scan complet en cours...")
         execute_hardlinks(config)
+        if config.get('enable4kHardlinks') and config.get('radarr4kUrl') and config.get('radarr4kApiKey'):
+            execute_hardlinks(config, is_4k=1)
         config['autoSync']['lastFullScan'] = datetime.now().isoformat()
     else:
         recent_movies = get_recent_movies(config)
@@ -815,7 +873,9 @@ def cron_job_handler():
             print(f"[{datetime.now()}] {len(recent_movies)} films récents")
             append_log("info", "cron", f"Scan optimisé — {len(recent_movies)} film(s) récent(s)")
             for movie in recent_movies:
-                execute_hardlinks(config, movie['path'])
+                # the path could be from the 4K source. We should check if it's in sourceRoot4k to pass the right is_4k flag
+                # For cron, get_recent_movies checks only `sourceRoot`. So we should update get_recent_movies as well.
+                execute_hardlinks(config, movie['path'], is_4k=movie.get('is_4k', 0))
         else:
             print(f"[{datetime.now()}] Aucun film récent")
             append_log("info", "cron", "Scan optimisé — aucun film récent, rien à faire")
@@ -1060,108 +1120,134 @@ def detect_duplicates(config):
     ignored = load_ignored()
     ignored_movies = set(ignored.get("movies", []))
 
-    try:
-        response = requests.get(
-            f"{config['radarrUrl']}/api/v3/movie",
-            headers={"X-Api-Key": config['apiKey']},
-            timeout=30
-        )
-        response.raise_for_status()
-        movies = response.json()
-
-        movie_info = {}
-        for movie in movies:
-            if movie.get('hasFile'):
-                folder_name = os.path.basename(movie['path'])
-                file_path = movie.get('movieFile', {}).get('relativePath', '')
-                official_name = os.path.basename(file_path) if file_path else ''
-                genres = [g['name'] if isinstance(g, dict) else g for g in movie.get('genres', [])]
-                movie_info[folder_name] = {
-                    'official': official_name,
-                    'genres': genres,
-                    'title': movie['title']
-                }
-
-        genre_to_folder = {
-            genre: settings['folder']
-            for genre, settings in config.get('genreMapping', {}).items()
-            if settings.get('enabled', False)
+    instances = [
+        {
+            "is_4k": False,
+            "url": config.get('radarrUrl', ''),
+            "key": config.get('apiKey', ''),
+            "media_root": config.get('mediaRoot', ''),
+            "source_root": config.get('sourceRoot', '')
         }
+    ]
 
-        media_root = config.get('mediaRoot', '')
-        source_root = config.get('sourceRoot', '')
+    if config.get('enable4kDuplicates') and config.get('radarr4kUrl') and config.get('radarr4kApiKey'):
+        instances.append({
+            "is_4k": True,
+            "url": config.get('radarr4kUrl', ''),
+            "key": config.get('radarr4kApiKey', ''),
+            "media_root": config.get('mediaRoot4k', ''),
+            "source_root": config.get('sourceRoot4k', '')
+        })
 
-        for genre_folder in os.listdir(media_root):
-            genre_path = os.path.join(media_root, genre_folder)
-            if not os.path.isdir(genre_path) or genre_folder == 'A trier':
+    for inst in instances:
+        if not inst['url'] or not inst['key'] or not inst['media_root'] or not inst['source_root']:
+            continue
+
+        try:
+            response = requests.get(
+                f"{inst['url']}/api/v3/movie",
+                headers={"X-Api-Key": inst['key']},
+                timeout=30
+            )
+            response.raise_for_status()
+            movies = response.json()
+
+            movie_info = {}
+            for movie in movies:
+                if movie.get('hasFile'):
+                    folder_name = os.path.basename(movie['path'])
+                    file_path = movie.get('movieFile', {}).get('relativePath', '')
+                    official_name = os.path.basename(file_path) if file_path else ''
+                    genres = [g['name'] if isinstance(g, dict) else g for g in movie.get('genres', [])]
+                    movie_info[folder_name] = {
+                        'official': official_name,
+                        'genres': genres,
+                        'title': movie['title']
+                    }
+
+            genre_to_folder = {
+                genre: settings['folder']
+                for genre, settings in config.get('genreMapping', {}).items()
+                if settings.get('enabled', False)
+            }
+
+            media_root = inst['media_root']
+            source_root = inst['source_root']
+
+            if not os.path.isdir(media_root):
                 continue
 
-            for movie_folder in os.listdir(genre_path):
-                movie_path = os.path.join(genre_path, movie_folder)
-                if not os.path.isdir(movie_path):
+            for genre_folder in os.listdir(media_root):
+                genre_path = os.path.join(media_root, genre_folder)
+                if not os.path.isdir(genre_path) or genre_folder == os.path.basename(source_root):
                     continue
 
-                # Vérifier si ignoré
-                if movie_folder in ignored_movies:
-                    continue
+                for movie_folder in os.listdir(genre_path):
+                    movie_path = os.path.join(genre_path, movie_folder)
+                    if not os.path.isdir(movie_path):
+                        continue
 
-                source_path = os.path.join(source_root, movie_folder)
-                source_exists = os.path.isdir(source_path)
-                info = movie_info.get(movie_folder, {})
-                official = info.get('official', '')
-                movie_genres = info.get('genres', [])
-                movie_title = info.get('title', movie_folder)
+                    # Vérifier si ignoré
+                    if movie_folder in ignored_movies:
+                        continue
 
-                if not source_exists:
-                    for mkv in [f for f in os.listdir(movie_path) if f.lower().endswith('.mkv')]:
-                        full_path = os.path.join(movie_path, mkv)
-                        duplicates.append({
-                            'movie': movie_folder, 'title': movie_title,
-                            'genre': genre_folder, 'file': mkv, 'path': full_path,
-                            'isOfficial': True, 'inSource': False, 'wrongGenre': False,
-                            'type': 'orphan',
-                            'reason': 'Dossier source supprimé de "A trier"',
-                            'size': os.path.getsize(full_path) if os.path.exists(full_path) else 0
-                        })
-                    continue
+                    source_path = os.path.join(source_root, movie_folder)
+                    source_exists = os.path.isdir(source_path)
+                    info = movie_info.get(movie_folder, {})
+                    official = info.get('official', '')
+                    movie_genres = info.get('genres', [])
+                    movie_title = info.get('title', movie_folder)
 
-                allowed_folders = {genre_to_folder[g] for g in movie_genres if g in genre_to_folder}
-                is_wrong_genre = bool(allowed_folders) and genre_folder not in allowed_folders
-                mkv_files = [f for f in os.listdir(movie_path) if f.lower().endswith('.mkv')]
-
-                if len(mkv_files) > 1:
-                    for mkv in mkv_files:
-                        if mkv != official:
+                    if not source_exists:
+                        for mkv in [f for f in os.listdir(movie_path) if f.lower().endswith('.mkv')]:
                             full_path = os.path.join(movie_path, mkv)
                             duplicates.append({
                                 'movie': movie_folder, 'title': movie_title,
                                 'genre': genre_folder, 'file': mkv, 'path': full_path,
-                                'isOfficial': False,
-                                'inSource': os.path.exists(os.path.join(source_path, mkv)),
-                                'wrongGenre': is_wrong_genre,
-                                'type': 'duplicate',
-                                'reason': 'Ancienne version (pas le fichier officiel Radarr)',
+                                'isOfficial': True, 'inSource': False, 'wrongGenre': False,
+                                'type': 'orphan',
+                                'reason': f'Dossier source supprimé {"[4K]" if inst["is_4k"] else ""}',
                                 'size': os.path.getsize(full_path) if os.path.exists(full_path) else 0
                             })
-                elif len(mkv_files) == 1 and is_wrong_genre:
-                    mkv = mkv_files[0]
-                    full_path = os.path.join(movie_path, mkv)
-                    duplicates.append({
-                        'movie': movie_folder, 'title': movie_title,
-                        'genre': genre_folder, 'file': mkv, 'path': full_path,
-                        'isOfficial': mkv == official, 'inSource': True, 'wrongGenre': True,
-                        'type': 'wrong_genre',
-                        'reason': f'Mauvais genre ! Devrait être dans : {", ".join(sorted(allowed_folders))}',
-                        'correctFolders': list(allowed_folders),
-                        'size': os.path.getsize(full_path) if os.path.exists(full_path) else 0
-                    })
+                        continue
 
-        return duplicates
-    except Exception as e:
-        print(f"Erreur detect_duplicates: {e}")
-        import traceback
-        traceback.print_exc()
-        return []
+                    allowed_folders = {genre_to_folder[g] for g in movie_genres if g in genre_to_folder}
+                    is_wrong_genre = bool(allowed_folders) and genre_folder not in allowed_folders
+                    mkv_files = [f for f in os.listdir(movie_path) if f.lower().endswith('.mkv')]
+
+                    if len(mkv_files) > 1:
+                        for mkv in mkv_files:
+                            if mkv != official:
+                                full_path = os.path.join(movie_path, mkv)
+                                duplicates.append({
+                                    'movie': movie_folder, 'title': movie_title,
+                                    'genre': genre_folder, 'file': mkv, 'path': full_path,
+                                    'isOfficial': False,
+                                    'inSource': os.path.exists(os.path.join(source_path, mkv)),
+                                    'wrongGenre': is_wrong_genre,
+                                    'type': 'duplicate',
+                                    'reason': f'Ancienne version (pas le fichier officiel Radarr) {"[4K]" if inst["is_4k"] else ""}',
+                                    'size': os.path.getsize(full_path) if os.path.exists(full_path) else 0
+                                })
+                    elif len(mkv_files) == 1 and is_wrong_genre:
+                        mkv = mkv_files[0]
+                        full_path = os.path.join(movie_path, mkv)
+                        duplicates.append({
+                            'movie': movie_folder, 'title': movie_title,
+                            'genre': genre_folder, 'file': mkv, 'path': full_path,
+                            'isOfficial': mkv == official, 'inSource': True, 'wrongGenre': True,
+                            'type': 'wrong_genre',
+                            'reason': f'Mauvais genre ! Devrait être dans : {", ".join(sorted(allowed_folders))} {"[4K]" if inst["is_4k"] else ""}',
+                            'correctFolders': list(allowed_folders),
+                            'size': os.path.getsize(full_path) if os.path.exists(full_path) else 0
+                        })
+
+        except Exception as e:
+            print(f"Erreur detect_duplicates {'[4K]' if inst['is_4k'] else ''}: {e}")
+            import traceback
+            traceback.print_exc()
+
+    return duplicates
 
 
 # --- JELLYSTAT ---
@@ -1255,7 +1341,7 @@ def index():
 @app.route('/api/settings', methods=['GET', 'POST'])
 def settings():
     import copy
-    secrets = ['apiKey', 'sonarrApiKey', 'tmdbApiKey', 'webhookSecret', 'jellystatApiKey']
+    secrets = ['apiKey', 'radarr4kApiKey', 'sonarrApiKey', 'tmdbApiKey', 'webhookSecret', 'jellystatApiKey']
 
     if request.method == 'POST':
         new_config = request.json or {}
@@ -1456,7 +1542,8 @@ def get_status():
             "tmdbId": m['tmdb_id'],
             "watchCount": m['watch_count'],
             "watchDates": json.loads(m['watch_dates']) if m['watch_dates'] else [],
-            "jellystatEnabled": jellystat_enabled
+            "jellystatEnabled": jellystat_enabled,
+            "is_4k": m['is_4k']
         })
 
     conn.close()
@@ -1730,16 +1817,19 @@ def run_action():
     config = load_config()
     movie_paths = data.get('movie_paths', [])
 
+    # Optional flags if coming from UI for specific instances
+    is_4k = data.get('is_4k', 0)
+
     if not movie_paths:
         mp = data.get('movie_path', '')
-        result = execute_hardlinks(config, mp, data.get('genres', ''))
-        create_platform_hardlinks(config, mp)
+        result = execute_hardlinks(config, mp, data.get('genres', ''), is_4k=is_4k)
+        create_platform_hardlinks(config, mp, is_4k=is_4k)
         return jsonify(result)
 
     results = []
     for mp in movie_paths:
-        r = execute_hardlinks(config, mp)
-        create_platform_hardlinks(config, mp)
+        r = execute_hardlinks(config, mp, is_4k=is_4k)
+        create_platform_hardlinks(config, mp, is_4k=is_4k)
         results.append({"movie": os.path.basename(mp), **r})
     return jsonify({"status": "ok", "results": results})
 
@@ -1748,8 +1838,14 @@ def run_action():
 def run_all():
     start_sync_thread()  # Sync DB in background
     config = load_config()
+
     result = execute_hardlinks(config)
     create_platform_hardlinks(config)
+
+    if config.get('enable4kHardlinks') and config.get('radarr4kUrl') and config.get('radarr4kApiKey'):
+        execute_hardlinks(config, is_4k=1)
+        create_platform_hardlinks(config, is_4k=1)
+
     return jsonify(result)
 
 
@@ -1761,7 +1857,13 @@ def run_by_genre():
     if not genres:
         return jsonify({"error": "Aucun genre"}), 400
     config = load_config()
+
     results = [{"genre": g, **execute_hardlinks(config, '', g)} for g in genres]
+
+    if config.get('enable4kHardlinks') and config.get('radarr4kUrl') and config.get('radarr4kApiKey'):
+        for g in genres:
+            results.append({"genre": g + " (4K)", **execute_hardlinks(config, '', g, is_4k=1)})
+
     return jsonify({"status": "ok", "results": results})
 
 
@@ -1773,7 +1875,13 @@ def run_by_studio():
     if not studios:
         return jsonify({"error": "Aucun studio"}), 400
     config = load_config()
+
     results = [{"studio": s, **execute_hardlinks(config, '', '', s)} for s in studios]
+
+    if config.get('enable4kHardlinks') and config.get('radarr4kUrl') and config.get('radarr4kApiKey'):
+        for s in studios:
+            results.append({"studio": s + " (4K)", **execute_hardlinks(config, '', '', s, is_4k=1)})
+
     return jsonify({"status": "ok", "results": results})
 
 
@@ -1817,14 +1925,27 @@ def radarr_webhook():
     try:
         data = request.json
         event_type = data.get('eventType', '')
+
+        # Optionally determine if it's 4k by instance name in webhook or query param (not strictly standard in Radarr webhook payload)
+        # We'll just run for the one that has the folder name if it exists, or both if not sure.
+
         if event_type in ['Download', 'Rename', 'MovieFileDelete']:
             movie = data.get('movie', {})
             append_log("info", "webhook",
                        f"Webhook Radarr reçu : {movie.get('title', '?')} ({event_type})")
             time.sleep(5)
             folder_name = os.path.basename(movie.get('folderPath', ''))
-            movie_path = os.path.join(config['sourceRoot'], folder_name)
-            result = execute_hardlinks(config, movie_path)
+
+            # Determine is_4k by checking which source folder contains this folder
+            is_4k = 0
+            movie_path = os.path.join(config.get('sourceRoot', ''), folder_name)
+            if config.get('enable4kHardlinks') and config.get('sourceRoot4k'):
+                alt_path = os.path.join(config.get('sourceRoot4k', ''), folder_name)
+                if os.path.isdir(alt_path) and not os.path.isdir(movie_path):
+                    movie_path = alt_path
+                    is_4k = 1
+
+            result = execute_hardlinks(config, movie_path, is_4k=is_4k)
             return jsonify({"status": "ok", "message": f"Hardlinks créés pour {movie.get('title','')}", "result": result})
         return jsonify({"status": "ignored"})
     except Exception as e:
