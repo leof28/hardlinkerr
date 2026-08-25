@@ -20,3 +20,6 @@
 ## 2024-05-18 - [Add loading spinners to refresh buttons]
 **Learning:** When async buttons replace their entire text with a generic loading string, it causes layout shifts and removes context from what the button is currently doing. Using an inline SVG spinner alongside the original text with a small gap preserves the layout and improves UX.
 **Action:** Use inline SVG spinners and 'display: inline-flex' alongside the original text for loading states to maintain context and prevent layout shifts.
+## $(date +%Y-%m-%d) - [Tab Accessibility]
+**Learning:** Custom tab implementations lacking standard ARIA attributes (`role="tablist"`, `role="tab"`, `aria-selected`, `aria-controls`) completely break the structural meaning for screen reader users, treating them simply as isolated groups of buttons without clear association to the currently visible content panel.
+**Action:** When building custom tab interfaces, always apply `role="tablist"` to the container, `role="tab"` and `aria-selected` to the tab buttons, and wrap the visible content area in a `role="tabpanel"` linked via `aria-labelledby` to the active tab ID.
