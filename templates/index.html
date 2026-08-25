@@ -170,6 +170,11 @@ const T = {
       runAllHardlinks: 'Recréer TOUS les hardlinks',
       radarrUrl: 'URL Radarr',
       radarrKey: 'Clé API Radarr',
+      radarr4kUrl: 'URL Radarr 4K',
+      radarr4kKey: 'Clé API Radarr 4K',
+      enable4kSync: 'Activer la synchro 4K',
+      enable4kHardlinks: 'Activer les hardlinks 4K',
+      enable4kDuplicates: 'Activer la détection de doublons 4K',
       tmdbKey: 'Clé API TMDB',
       tmdbCountry: 'Pays TMDB (ex: FR)',
       jellyfinUrl: 'URL Jellyfin',
@@ -181,6 +186,8 @@ const T = {
       cronTrigger: 'Lancer manuellement',
       cronStatus: 'Statut cron',
       sourcePath: 'Chemin source (films)',
+      sourcePath4k: 'Chemin source 4K',
+      mediaRoot4k: 'Chemin destination 4K (Media Root)',
       genresPath: 'Chemin genres',
       studiosPath: 'Chemin studios',
       platformsPath: 'Chemin plateformes',
@@ -310,6 +317,11 @@ const T = {
       runAllHardlinks: 'Recreate ALL hardlinks',
       radarrUrl: 'Radarr URL',
       radarrKey: 'Radarr API Key',
+      radarr4kUrl: 'Radarr 4K URL',
+      radarr4kKey: 'Radarr 4K API Key',
+      enable4kSync: 'Enable 4K sync',
+      enable4kHardlinks: 'Enable 4K hardlinks',
+      enable4kDuplicates: 'Enable 4K duplicate detection',
       tmdbKey: 'TMDB API Key',
       tmdbCountry: 'TMDB Country (e.g. FR)',
       jellyfinUrl: 'Jellyfin URL',
@@ -321,6 +333,8 @@ const T = {
       cronTrigger: 'Run manually',
       cronStatus: 'Cron status',
       sourcePath: 'Source path (movies)',
+      sourcePath4k: 'Source path 4K',
+      mediaRoot4k: 'Destination path 4K (Media Root)',
       genresPath: 'Genres path',
       studiosPath: 'Studios path',
       platformsPath: 'Platforms path',
@@ -479,7 +493,8 @@ function MovieDetailModal({ movie, onClose, onRefresh, lang, addToast }) {
   async function handleCreateLinks() {
     setRunning(true);
     try {
-      await api('/api/run', { method: 'POST', body: { movie_paths: [movie.path] } });
+      // Because we added an is_4k prop to movie from the API / status, we should check it
+      await api('/api/run', { method: 'POST', body: { movie_paths: [movie.path], is_4k: movie.is_4k ? 1 : 0 } });
       addToast({ message: 'Hardlinks créés !', type: 'success' });
       onRefresh();
       onClose();
@@ -657,6 +672,12 @@ function LibraryTab({ movies, genres, studios, platforms, loading, onRefresh, la
     });
   }, [movies, search, filterGenre, filterStudio, filterPlatform, missingOnly]);
 
+  // Since selected items can be 4K or not, we should store objects or pass the is_4k dynamically.
+  // Actually, since paths might be identical between instances, we should use a composite key for selected.
+  // But wait, path includes sourceRoot4k vs sourceRoot, so paths are usually unique.
+  // However, API needs is_4k flag for the bash script to know which Radarr to fetch from.
+  // The simplest is to just send the API run for each is_4k group.
+
   const toggleSelect = useCallback((path) => {
     setSelected(prev => {
       const n = new Set(prev);
@@ -672,7 +693,22 @@ function LibraryTab({ movies, genres, studios, platforms, loading, onRefresh, la
     if (!selected.size) return;
     setRunning(true);
     try {
-      await api('/api/run', { method: 'POST', body: { movie_paths: Array.from(selected) } });
+      // Split selected paths into normal and 4K
+      const normalPaths = [];
+      const paths4k = [];
+      for (const m of movies) {
+        if (selected.has(m.path)) {
+           if (m.is_4k) paths4k.push(m.path);
+           else normalPaths.push(m.path);
+        }
+      }
+      if (normalPaths.length) {
+        await api('/api/run', { method: 'POST', body: { movie_paths: normalPaths, is_4k: 0 } });
+      }
+      if (paths4k.length) {
+        await api('/api/run', { method: 'POST', body: { movie_paths: paths4k, is_4k: 1 } });
+      }
+
       addToast({ message: `Hardlinks créés pour ${selected.size} film(s)`, type: 'success' });
       setSelected(new Set());
       onRefresh();
@@ -1332,6 +1368,8 @@ function SettingsTab({ lang, addToast }) {
           <div>
             <Field label={t.radarrUrl} field="radarrUrl" placeholder="http://localhost:7878" />
             <Field label={t.radarrKey} field="radarrApiKey" />
+            <Field label={t.radarr4kUrl} field="radarr4kUrl" placeholder="http://localhost:7879" />
+            <Field label={t.radarr4kKey} field="radarr4kApiKey" />
             <Field label={t.tmdbKey} field="tmdbApiKey" />
             <Field label={t.tmdbCountry} field="tmdbCountry" placeholder="FR" />
             <Field label={t.jellyfinUrl} field="jellyfinUrl" placeholder="http://localhost:8096" />
@@ -1344,6 +1382,8 @@ function SettingsTab({ lang, addToast }) {
         {activeSettingsTab === 'paths' && (
           <div>
             <Field label={t.sourcePath} field="sourcePath" placeholder="/media/movies/A trier" />
+            <Field label={t.sourcePath4k} field="sourceRoot4k" placeholder="/media/movies4k/A trier" />
+            <Field label={t.mediaRoot4k} field="mediaRoot4k" placeholder="/media/movies4k" />
             <Field label={t.genresPath} field="genresPath" placeholder="/media/movies/Genres" />
             <Field label={t.studiosPath} field="studiosPath" placeholder="/media/movies/Studios" />
             <Field label={t.platformsPath} field="platformsPath" placeholder="/media/movies/Plateformes" />
@@ -1362,6 +1402,21 @@ function SettingsTab({ lang, addToast }) {
               <label style={{display:'flex', alignItems:'center', gap:8, fontSize:14, cursor:'pointer'}}>
                 <input type="checkbox" checked={!!settings.cronEnabled} onChange={e => setSettings(p => ({ ...p, cronEnabled: e.target.checked }))} style={{width:16, height:16}} />
                 {t.cronEnabled}
+              </label>
+            </div>
+
+            <div style={{marginBottom:14, display:'flex', gap:20, flexWrap:'wrap', padding:10, background:'rgba(255,255,255,0.03)', borderRadius:8}}>
+              <label style={{display:'flex', alignItems:'center', gap:8, fontSize:13, cursor:'pointer'}}>
+                <input type="checkbox" checked={!!settings.enable4kSync} onChange={e => setSettings(p => ({ ...p, enable4kSync: e.target.checked }))} style={{width:16, height:16}} />
+                {t.enable4kSync}
+              </label>
+              <label style={{display:'flex', alignItems:'center', gap:8, fontSize:13, cursor:'pointer'}}>
+                <input type="checkbox" checked={!!settings.enable4kHardlinks} onChange={e => setSettings(p => ({ ...p, enable4kHardlinks: e.target.checked }))} style={{width:16, height:16}} />
+                {t.enable4kHardlinks}
+              </label>
+              <label style={{display:'flex', alignItems:'center', gap:8, fontSize:13, cursor:'pointer'}}>
+                <input type="checkbox" checked={!!settings.enable4kDuplicates} onChange={e => setSettings(p => ({ ...p, enable4kDuplicates: e.target.checked }))} style={{width:16, height:16}} />
+                {t.enable4kDuplicates}
               </label>
             </div>
             <Field label={t.cronSchedule} field="cronSchedule" placeholder="0 3 * * *" />
