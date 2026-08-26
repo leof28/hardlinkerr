@@ -27,3 +27,7 @@
 **Vulnerability:** Empty parent directory removal (os.rmdir) could inadvertently delete application root folders if an attacker passes <root>/dummy.txt.
 **Learning:** Validating only the leaf file path (is_safe_path(file)) is insufficient for operations that derive and act upon parent directories (os.path.dirname).
 **Prevention:** Explicitly validate derived parent paths using is_safe_path(parent) before deletion.
+## 2026-08-26 - Prevent Lateral Path Traversal in Root-Isolated Endpoints
+**Vulnerability:** The API allowed lateral path traversal via `../` shortcuts within valid root boundaries (`folderName` parameter in endpoints like `/api/delete-movie` and `/api/delete-hardlink`), bypassing path prefix validation logic designed strictly to prevent escaping root directories.
+**Learning:** `os.path.commonpath` constraints only defend against escaping the parent boundary but provide no protection against lateral movement between distinct legitimate directories within that root, allowing for example an unauthorized deletion of a neighboring folder.
+**Prevention:** Apply a strict regex or substring exclusion of directory separators (`/`, `\`) and parent shortcuts (`..`) directly to user-supplied folder names prior to path construction.
