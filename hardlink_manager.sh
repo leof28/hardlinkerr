@@ -158,7 +158,9 @@ echo "$movies_json" | jq -r '.[] | select(.hasFile == true) | [.title, .path, (.
             for src_file in "${all_files[@]}"; do
                 [ ! -f "$src_file" ] && continue
 
-                dest_file="$target_dir/$(basename "$src_file")"
+                # ⚡ Bolt Optimization: Replace $(basename) subshell with native bash parameter expansion
+                # to eliminate O(N) process forks inside inner loops
+                dest_file="$target_dir/${src_file##*/}"
 
                 # Vérifier si le fichier de destination existe
                 if [ ! -e "$dest_file" ]; then
@@ -185,7 +187,9 @@ echo "$movies_json" | jq -r '.[] | select(.hasFile == true) | [.title, .path, (.
             for src_file in "${all_files[@]}"; do
                 [ ! -f "$src_file" ] && continue
 
-                dest_file="$target_dir/$(basename "$src_file")"
+                # ⚡ Bolt Optimization: Replace $(basename) subshell with native bash parameter expansion
+                # to eliminate O(N) process forks inside inner loops
+                dest_file="$target_dir/${src_file##*/}"
                 src_inode=$(inode_of "$src_file")
                 dest_inode=$(inode_of "$dest_file")
 
@@ -207,7 +211,9 @@ echo "$movies_json" | jq -r '.[] | select(.hasFile == true) | [.title, .path, (.
                 for src_file in "${all_files[@]}"; do
                     [ ! -f "$src_file" ] && continue
 
-                    dest_file="$target_dir/$(basename "$src_file")"
+                    # ⚡ Bolt Optimization: Replace $(basename) subshell with native bash parameter expansion
+                    # to eliminate O(N) process forks inside inner loops
+                    dest_file="$target_dir/${src_file##*/}"
                     src_inode=$(inode_of "$src_file")
                     dest_inode=$(inode_of "$dest_file")
 
