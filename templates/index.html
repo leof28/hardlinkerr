@@ -1319,15 +1319,15 @@ function SettingsTab({ lang, addToast }) {
 
   return (
     <div>
-      <div style={{display:'flex', gap:6, marginBottom:20, flexWrap:'wrap'}}>
+      <div role="tablist" style={{display:'flex', gap:6, marginBottom:20, flexWrap:'wrap'}}>
         {settingsTabs.map(tab => (
-          <button key={tab.key} className={`tab-btn ${activeSettingsTab===tab.key?'active':''}`} onClick={() => setActiveSettingsTab(tab.key)} style={{fontSize:12}}>
+          <button key={tab.key} role="tab" aria-selected={activeSettingsTab === tab.key} aria-controls={`settings-tabpanel-${tab.key}`} id={`settings-tab-${tab.key}`} className={`tab-btn ${activeSettingsTab===tab.key?'active':''}`} onClick={() => setActiveSettingsTab(tab.key)} style={{fontSize:12}}>
             {tab.label}
           </button>
         ))}
       </div>
 
-      <div className="glass" style={{padding:24}}>
+      <div className="glass" role="tabpanel" id={`settings-tabpanel-${activeSettingsTab}`} aria-labelledby={`settings-tab-${activeSettingsTab}`} style={{padding:24}}>
         {activeSettingsTab === 'connections' && (
           <div>
             <Field label={t.radarrUrl} field="radarrUrl" placeholder="http://localhost:7878" />
@@ -1512,23 +1512,25 @@ function App() {
         <StatusBar movies={movies} genres={genres} studios={studios} platforms={platforms} lang={lang} />
 
         {/* Tabs */}
-        <div style={{display:'flex', gap:4, marginBottom:20, flexWrap:'wrap', borderBottom:'1px solid var(--border)', paddingBottom:10}}>
+        <div role="tablist" style={{display:'flex', gap:4, marginBottom:20, flexWrap:'wrap', borderBottom:'1px solid var(--border)', paddingBottom:10}}>
           {tabs.map(tab => (
-            <button key={tab.key} className={`tab-btn ${activeTab===tab.key?'active':''}`} onClick={() => setActiveTab(tab.key)}>
+            <button key={tab.key} role="tab" aria-selected={activeTab === tab.key} aria-controls={`tabpanel-${tab.key}`} id={`tab-${tab.key}`} className={`tab-btn ${activeTab===tab.key?'active':''}`} onClick={() => setActiveTab(tab.key)}>
               {tab.label}
             </button>
           ))}
         </div>
 
         {/* Tab Content */}
-        {activeTab === 'library' && (
-          <LibraryTab movies={movies} genres={genres} studios={studios} platforms={platforms} loading={loadingMovies} onRefresh={fetchMovies} lang={lang} addToast={addToast} />
-        )}
-        {activeTab === 'issues' && <IssuesTab lang={lang} addToast={addToast} />}
-        {activeTab === 'series' && <SeriesTab lang={lang} addToast={addToast} />}
-        {activeTab === 'stats' && <StatsTab lang={lang} addToast={addToast} />}
-        {activeTab === 'logs' && <LogsTab lang={lang} addToast={addToast} />}
-        {activeTab === 'settings' && <SettingsTab lang={lang} addToast={addToast} />}
+        <div role="tabpanel" id={`tabpanel-${activeTab}`} aria-labelledby={`tab-${activeTab}`}>
+          {activeTab === 'library' && (
+            <LibraryTab movies={movies} genres={genres} studios={studios} platforms={platforms} loading={loadingMovies} onRefresh={fetchMovies} lang={lang} addToast={addToast} />
+          )}
+          {activeTab === 'issues' && <IssuesTab lang={lang} addToast={addToast} />}
+          {activeTab === 'series' && <SeriesTab lang={lang} addToast={addToast} />}
+          {activeTab === 'stats' && <StatsTab lang={lang} addToast={addToast} />}
+          {activeTab === 'logs' && <LogsTab lang={lang} addToast={addToast} />}
+          {activeTab === 'settings' && <SettingsTab lang={lang} addToast={addToast} />}
+        </div>
       </div>
 
       <Toast toasts={toasts} />
