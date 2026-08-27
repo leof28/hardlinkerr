@@ -645,7 +645,8 @@ function LibraryTab({ movies, genres, studios, platforms, loading, onRefresh, la
   const filtered = useMemo(() => {
     const searchLower = search ? search.toLowerCase() : '';
     return movies.filter(m => {
-      if (searchLower && !m.title.toLowerCase().includes(searchLower)) return false;
+      // ⚡ Bolt Optimization: Pre-compute titleLower to avoid O(N) string manipulation during filtering
+      if (searchLower && !(m.titleLower || m.title.toLowerCase()).includes(searchLower)) return false;
       if (filterGenre && !(m.genres||[]).includes(filterGenre)) return false;
       if (filterStudio && m.studio !== filterStudio) return false;
       if (filterPlatform && !(m.platforms||[]).includes(filterPlatform)) return false;
@@ -1465,7 +1466,9 @@ function App() {
     setLoadingMovies(true);
     try {
       const data = await api(`/api/status${force ? '?force=true' : ''}`);
-      setMovies(Array.isArray(data) ? data : (data.movies || []));
+      const rawMovies = Array.isArray(data) ? data : (data.movies || []);
+      // ⚡ Bolt Optimization: Pre-compute titleLower to avoid O(N) string manipulation during filtering
+      setMovies(rawMovies.map(m => ({...m, titleLower: m.title ? m.title.toLowerCase() : ''})));
     } catch(e) { addToast({ message: 'Erreur chargement films: ' + e.message, type: 'error' }); }
     setLoadingMovies(false);
   }

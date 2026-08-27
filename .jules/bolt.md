@@ -28,3 +28,7 @@
 ## 2026-08-15 - SQLite N+1 Execution Inside Loops Optimization
 **Learning:** The `sync_database` function contained a classic performance bottleneck where individual `cursor.execute()` calls for `INSERT` and `DELETE` operations were being invoked inside an O(N) loop iterating over all movies. This caused significant execution overhead due to repeated query parsing and excessive disk fsync operations.
 **Action:** Replaced the individual loop executions by accumulating the parameterized tuples into lists and executing them outside the loop using `cursor.executemany()`. This batching approach dramatically reduces SQLite disk I/O and speeds up database synchronization for large libraries.
+
+## 2026-08-27 - Pre-computing properties to Avoid O(N) String Manipulation
+**Learning:** In large list filtering components, calling `.toLowerCase()` on every item's title inside an O(N) loop during a `useMemo` filtering step causes redundant evaluation and UI freezing for large datasets.
+**Action:** Pre-compute the lowercase value when fetching and setting the original dataset (e.g. `titleLower: title.toLowerCase()`) and use the cached property directly in the filter.
