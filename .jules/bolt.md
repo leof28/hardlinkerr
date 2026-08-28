@@ -28,3 +28,7 @@
 ## 2026-08-15 - SQLite N+1 Execution Inside Loops Optimization
 **Learning:** The `sync_database` function contained a classic performance bottleneck where individual `cursor.execute()` calls for `INSERT` and `DELETE` operations were being invoked inside an O(N) loop iterating over all movies. This caused significant execution overhead due to repeated query parsing and excessive disk fsync operations.
 **Action:** Replaced the individual loop executions by accumulating the parameterized tuples into lists and executing them outside the loop using `cursor.executemany()`. This batching approach dramatically reduces SQLite disk I/O and speeds up database synchronization for large libraries.
+
+## $(date +%Y-%m-%d) - Optimize Subshells in Inner Loops
+**Learning:** In bash scripts like `hardlink_manager.sh`, using command substitution like `$(basename "$file")` inside a tight `for` loop forks a new process for every single file processed, resulting in massive overhead and O(N) process spawning.
+**Action:** Always replace `basename` and `dirname` within loops with native bash parameter expansion (e.g., `${var##*/}` for basename and `${var%/*}` for dirname) to eliminate process forks and drastically improve script execution speed.
