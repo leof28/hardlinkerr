@@ -359,6 +359,14 @@ def save_ignored(ignored):
         json.dump(ignored, f, indent=2)
 
 
+def is_valid_folder_name(name):
+    """Vérifie que le nom de dossier ne contient pas de caractères de navigation de chemin."""
+    if not name:
+        return False
+    if '/' in name or '\\' in name or '..' in name:
+        return False
+    return True
+
 def is_safe_path(path_to_check, config):
     """Vérifie si un chemin est sûr et se trouve dans les répertoires autorisés."""
     if not path_to_check:
@@ -1679,6 +1687,10 @@ def delete_movie():
     config = load_config()
     media_root = config.get('mediaRoot', '')
 
+    if folder_name and not is_valid_folder_name(folder_name):
+        append_log("warning", "security", f"Tentative de traversée de chemin dans folderName: {folder_name}")
+        return jsonify({"error": "Nom de dossier invalide"}), 400
+
     if source_path and not is_safe_path(source_path, config):
         append_log("warning", "security", f"Tentative de suppression de chemin non autorisé: {source_path}")
         return jsonify({"error": "Chemin non autorisé"}), 403
@@ -2084,6 +2096,10 @@ def delete_hardlink_folder():
 
     if not folder_name or not target_folder or not media_root:
         return jsonify({"error": "Paramètres manquants"}), 400
+
+    if not is_valid_folder_name(folder_name) or not is_valid_folder_name(target_folder):
+        append_log("warning", "security", f"Tentative de traversée de chemin: {folder_name} ou {target_folder}")
+        return jsonify({"error": "Nom de dossier invalide"}), 400
 
     target_path = os.path.join(media_root, target_folder, folder_name)
     if not is_safe_path(target_path, config):
