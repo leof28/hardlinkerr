@@ -1679,6 +1679,10 @@ def delete_movie():
     config = load_config()
     media_root = config.get('mediaRoot', '')
 
+    if folder_name and any(c in folder_name for c in ['/', '\\', '..']):
+        append_log("warning", "security", f"Tentative de suppression avec nom de dossier invalide: {folder_name}")
+        return jsonify({"error": "Nom de dossier invalide"}), 400
+
     if source_path and not is_safe_path(source_path, config):
         append_log("warning", "security", f"Tentative de suppression de chemin non autorisé: {source_path}")
         return jsonify({"error": "Chemin non autorisé"}), 403
@@ -2084,6 +2088,10 @@ def delete_hardlink_folder():
 
     if not folder_name or not target_folder or not media_root:
         return jsonify({"error": "Paramètres manquants"}), 400
+
+    if any(c in folder_name for c in ['/', '\\', '..']) or any(c in target_folder for c in ['/', '\\', '..']):
+        append_log("warning", "security", f"Tentative de suppression avec nom de dossier invalide: {folder_name} dans {target_folder}")
+        return jsonify({"error": "Nom de dossier invalide"}), 400
 
     target_path = os.path.join(media_root, target_folder, folder_name)
     if not is_safe_path(target_path, config):
