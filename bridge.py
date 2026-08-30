@@ -359,6 +359,13 @@ def save_ignored(ignored):
         json.dump(ignored, f, indent=2)
 
 
+def is_valid_filename(name):
+    """Prevent lateral traversal by rejecting path separators and parent shortcuts."""
+    if not name:
+        return True
+    return '/' not in name and '\\' not in name and '..' not in name
+
+
 def is_safe_path(path_to_check, config):
     """Vérifie si un chemin est sûr et se trouve dans les répertoires autorisés."""
     if not path_to_check:
@@ -1683,6 +1690,10 @@ def delete_movie():
         append_log("warning", "security", f"Tentative de suppression de chemin non autorisé: {source_path}")
         return jsonify({"error": "Chemin non autorisé"}), 403
 
+    if not is_valid_filename(folder_name):
+        append_log("warning", "security", f"Tentative de traversal latéral détectée: {folder_name}")
+        return jsonify({"error": "Nom de dossier invalide"}), 400
+
     deleted = []
     errors = []
 
@@ -2084,6 +2095,10 @@ def delete_hardlink_folder():
 
     if not folder_name or not target_folder or not media_root:
         return jsonify({"error": "Paramètres manquants"}), 400
+
+    if not is_valid_filename(folder_name) or not is_valid_filename(target_folder):
+        append_log("warning", "security", f"Tentative de traversal latéral détectée: {folder_name} / {target_folder}")
+        return jsonify({"error": "Nom de dossier invalide"}), 400
 
     target_path = os.path.join(media_root, target_folder, folder_name)
     if not is_safe_path(target_path, config):
