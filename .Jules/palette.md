@@ -20,3 +20,7 @@
 ## 2024-05-18 - [Add loading spinners to refresh buttons]
 **Learning:** When async buttons replace their entire text with a generic loading string, it causes layout shifts and removes context from what the button is currently doing. Using an inline SVG spinner alongside the original text with a small gap preserves the layout and improves UX.
 **Action:** Use inline SVG spinners and 'display: inline-flex' alongside the original text for loading states to maintain context and prevent layout shifts.
+
+## 2026-08-30 - [Accessible Tabbed Navigation]
+**Learning:** When building custom tabbed navigation components in React, using `div` or `button` elements without ARIA roles prevents screen readers from understanding the structure. Explicitly adding `role="tablist"` to the container, `role="tab"`, `aria-selected`, and `aria-controls` to the tabs, and `role="tabpanel"` to the content area ensures proper semantic interpretation.
+**Action:** Always implement the WAI-ARIA tablist pattern (`tablist`, `tab`, `tabpanel`, `aria-selected`, `aria-controls`) when replacing native browser navigation with custom interactive tabs in a single-page application.
