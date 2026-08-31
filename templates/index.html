@@ -1501,6 +1501,7 @@ function App() {
         <div style={{display:'flex', alignItems:'center', gap:16}}>
           {loadingMovies && <span style={{fontSize:12, color:'var(--muted)', display:'flex', alignItems:'center', gap:6}}><span className="animate-spin" style={{display:'inline-block', width:12, height:12, border:'2px solid var(--accent)', borderTopColor:'transparent', borderRadius:'50%'}}></span> {t.common.loading}</span>}
           <button onClick={() => setLang(l => l === 'fr' ? 'en' : 'fr')}
+            aria-label={lang === 'fr' ? 'Switch to English' : 'Passer en français'}
             style={{padding:'5px 12px', fontSize:12, background:'rgba(255,255,255,0.07)', border:'1px solid var(--border)', borderRadius:6, color:'var(--text)', cursor:'pointer'}}>
             {lang === 'fr' ? '🇬🇧 EN' : '🇫🇷 FR'}
           </button>
