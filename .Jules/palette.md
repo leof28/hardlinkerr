@@ -20,3 +20,6 @@
 ## 2024-05-18 - [Add loading spinners to refresh buttons]
 **Learning:** When async buttons replace their entire text with a generic loading string, it causes layout shifts and removes context from what the button is currently doing. Using an inline SVG spinner alongside the original text with a small gap preserves the layout and improves UX.
 **Action:** Use inline SVG spinners and 'display: inline-flex' alongside the original text for loading states to maintain context and prevent layout shifts.
+## 2026-08-31 - [Language Toggle Button a11y]
+**Learning:** Icon/emoji-only buttons (like language toggles displaying only 🇫🇷/🇬🇧 EN) are functionally invisible to screen readers without an explicit `aria-label` attribute, creating critical navigational barriers.
+**Action:** Always provide explicit, translated `aria-label` properties on icon or emoji-only UI controls to ensure non-visual users understand the interaction context and action.
