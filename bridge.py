@@ -1683,6 +1683,10 @@ def delete_movie():
         append_log("warning", "security", f"Tentative de suppression de chemin non autorisé: {source_path}")
         return jsonify({"error": "Chemin non autorisé"}), 403
 
+    if folder_name and ('/' in folder_name or '\\' in folder_name or '..' in folder_name):
+        append_log("warning", "security", f"Tentative de traversée latérale dans folderName: {folder_name}")
+        return jsonify({"error": "Nom de dossier invalide"}), 400
+
     deleted = []
     errors = []
 
@@ -2084,6 +2088,14 @@ def delete_hardlink_folder():
 
     if not folder_name or not target_folder or not media_root:
         return jsonify({"error": "Paramètres manquants"}), 400
+
+    if '/' in folder_name or '\\' in folder_name or '..' in folder_name:
+        append_log("warning", "security", f"Tentative de traversée latérale dans folderName: {folder_name}")
+        return jsonify({"error": "Nom de dossier invalide"}), 400
+
+    if '/' in target_folder or '\\' in target_folder or '..' in target_folder:
+        append_log("warning", "security", f"Tentative de traversée latérale dans targetFolder: {target_folder}")
+        return jsonify({"error": "Dossier cible invalide"}), 400
 
     target_path = os.path.join(media_root, target_folder, folder_name)
     if not is_safe_path(target_path, config):
