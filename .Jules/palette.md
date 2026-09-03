@@ -20,3 +20,7 @@
 ## 2024-05-18 - [Add loading spinners to refresh buttons]
 **Learning:** When async buttons replace their entire text with a generic loading string, it causes layout shifts and removes context from what the button is currently doing. Using an inline SVG spinner alongside the original text with a small gap preserves the layout and improves UX.
 **Action:** Use inline SVG spinners and 'display: inline-flex' alongside the original text for loading states to maintain context and prevent layout shifts.
+
+## 2026-09-03 - Accessible Custom Tabs
+**Learning:** Custom tabbed navigations built with divs and buttons are completely inaccessible to screen readers without explicitly defined roles, rendering them difficult to interact with for visually impaired users.
+**Action:** Always apply `role="tablist"`, `role="tab"`, and `role="tabpanel"` along with their corresponding `aria-` linking attributes to make custom tab implementations accessible.
