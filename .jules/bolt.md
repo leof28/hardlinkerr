@@ -28,3 +28,6 @@
 ## 2026-08-15 - SQLite N+1 Execution Inside Loops Optimization
 **Learning:** The `sync_database` function contained a classic performance bottleneck where individual `cursor.execute()` calls for `INSERT` and `DELETE` operations were being invoked inside an O(N) loop iterating over all movies. This caused significant execution overhead due to repeated query parsing and excessive disk fsync operations.
 **Action:** Replaced the individual loop executions by accumulating the parameterized tuples into lists and executing them outside the loop using `cursor.executemany()`. This batching approach dramatically reduces SQLite disk I/O and speeds up database synchronization for large libraries.
+## 2026-08-16 - SQLite Batch Deletion in Loops
+**Learning:** During database synchronization (`sync_database`), individual `cursor.execute('DELETE ...')` calls were being used in a loop to remove deleted movies. Like the previous INSERT/UPDATE optimization, this causes repeated query parsing and disk fsync overhead per deleted item.
+**Action:** When a set of deleted items is identified by subtracting sets (`db_folders - current_folders`), convert the result into a list of tuples and execute a single `cursor.executemany()` operation for the batch deletion to minimize disk I/O and overhead.

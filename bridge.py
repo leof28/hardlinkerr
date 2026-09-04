@@ -206,9 +206,11 @@ def sync_database(config=None):
     cursor.execute('SELECT folder_name FROM movies')
     db_folders = {row['folder_name'] for row in cursor.fetchall()}
     to_delete = db_folders - current_folders
-    for fd in to_delete:
-        cursor.execute('DELETE FROM movies WHERE folder_name = ?', (fd,))
-        cursor.execute('DELETE FROM hardlinks WHERE movie_folder = ?', (fd,))
+    if to_delete:
+        # ⚡ Bolt Optimization: Batch SQLite DELETE operations to avoid O(N) query parsing and disk fsync overhead
+        delete_params = [(fd,) for fd in to_delete]
+        cursor.executemany('DELETE FROM movies WHERE folder_name = ?', delete_params)
+        cursor.executemany('DELETE FROM hardlinks WHERE movie_folder = ?', delete_params)
 
     conn.commit()
     conn.close()
