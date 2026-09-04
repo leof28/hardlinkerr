@@ -1679,6 +1679,10 @@ def delete_movie():
     config = load_config()
     media_root = config.get('mediaRoot', '')
 
+    # 🛡️ Sentinel: Prevent lateral traversal within allowed roots
+    if folder_name and ('..' in folder_name or '/' in folder_name or '\\' in folder_name):
+        return jsonify({"error": "Nom de dossier invalide"}), 400
+
     if source_path and not is_safe_path(source_path, config):
         append_log("warning", "security", f"Tentative de suppression de chemin non autorisé: {source_path}")
         return jsonify({"error": "Chemin non autorisé"}), 403
@@ -2081,6 +2085,12 @@ def delete_hardlink_folder():
     target_folder = data.get('targetFolder', '')
     config = load_config()
     media_root = config.get('mediaRoot', '')
+
+    # 🛡️ Sentinel: Prevent lateral traversal within allowed roots
+    if folder_name and ('..' in folder_name or '/' in folder_name or '\\' in folder_name):
+        return jsonify({"error": "Nom de dossier invalide"}), 400
+    if target_folder and ('..' in target_folder or '/' in target_folder or '\\' in target_folder):
+        return jsonify({"error": "Nom de dossier invalide"}), 400
 
     if not folder_name or not target_folder or not media_root:
         return jsonify({"error": "Paramètres manquants"}), 400
