@@ -380,6 +380,18 @@ def is_safe_path(path_to_check, config):
     return False
 
 
+def is_safe_name(name):
+    """
+    Checks if a raw file or folder name is safe and does not contain directory
+    separators or parent traversal sequences to prevent lateral access.
+    """
+    if not name or not isinstance(name, str):
+        return False
+    if '/' in name or '\\' in name or '..' in name:
+        return False
+    return True
+
+
 # --- HARDLINK HELPERS ---
 
 def get_env(config, movie="", genres="", studios=""):
@@ -1683,6 +1695,10 @@ def delete_movie():
         append_log("warning", "security", f"Tentative de suppression de chemin non autorisé: {source_path}")
         return jsonify({"error": "Chemin non autorisé"}), 403
 
+    if folder_name and not is_safe_name(folder_name):
+        append_log("warning", "security", f"Tentative de suppression avec un nom de dossier invalide: {folder_name}")
+        return jsonify({"error": "Nom de dossier invalide"}), 400
+
     deleted = []
     errors = []
 
@@ -2084,6 +2100,10 @@ def delete_hardlink_folder():
 
     if not folder_name or not target_folder or not media_root:
         return jsonify({"error": "Paramètres manquants"}), 400
+
+    if not is_safe_name(folder_name) or not is_safe_name(target_folder):
+        append_log("warning", "security", f"Tentative de suppression avec des noms invalides: {folder_name}, {target_folder}")
+        return jsonify({"error": "Noms de dossiers invalides"}), 400
 
     target_path = os.path.join(media_root, target_folder, folder_name)
     if not is_safe_path(target_path, config):
