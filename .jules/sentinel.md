@@ -27,3 +27,7 @@
 **Vulnerability:** Empty parent directory removal (os.rmdir) could inadvertently delete application root folders if an attacker passes <root>/dummy.txt.
 **Learning:** Validating only the leaf file path (is_safe_path(file)) is insufficient for operations that derive and act upon parent directories (os.path.dirname).
 **Prevention:** Explicitly validate derived parent paths using is_safe_path(parent) before deletion.
+## 2025-02-06 - Lateral Directory Traversal Bypass in Path Checking
+**Vulnerability:** The application relied on `is_safe_path(target, config)` which uses `os.path.commonpath` to ensure a target path stays within allowed application roots. However, it accepted raw folder names from API requests (`folderName`) and used them in `os.path.join()`. This allowed lateral traversal (e.g. `../another_folder`) within the safe root bounds, allowing an attacker to manipulate which sibling folders were deleted, fully bypassing the intended scope of the operation.
+**Learning:** `os.path.commonpath` verifies vertical bounds (preventing escape from a root folder), but does absolutely nothing to prevent lateral movement via `../` as long as the final resolved path lands anywhere inside that root.
+**Prevention:** Whenever directly consuming a path segment from a user to construct paths inside a specific directory, explicitly reject path separators (`/`, `\`) and parent directory syntax (`..`) in the input variable itself, rather than relying solely on post-resolution bounds checking.
