@@ -1177,9 +1177,9 @@ function SettingsTab({ lang, addToast }) {
 
   useEffect(() => {
     api('/api/settings').then(d => setSettings(d || {})).catch(() => {});
-    api('/api/genres').then(d => setGenres(d || [])).catch(() => {});
-    api('/api/studios').then(d => setStudios(d || [])).catch(() => {});
-    api('/api/platforms').then(d => setPlatforms(d || [])).catch(() => {});
+    api('/api/genres').then(d => setGenres(Array.isArray(d) ? d : [])).catch(() => {});
+    api('/api/studios').then(d => setStudios(Array.isArray(d) ? d : [])).catch(() => {});
+    api('/api/platforms').then(d => setPlatforms(Array.isArray(d) ? d : [])).catch(() => {});
     api('/api/ignore').then(d => {
       if (d && !Array.isArray(d)) {
         const flat = [];
@@ -1290,17 +1290,17 @@ function SettingsTab({ lang, addToast }) {
         </div>
         {items.map((item, idx) => (
           <div key={idx} style={{display:'flex', gap:8, marginBottom:6, alignItems:'center'}}>
-            <input type="checkbox" checked={!!item.enabled} onChange={e => updateItem(idx, 'enabled', e.target.checked)} style={{width: 16, height: 16, cursor:'pointer'}} />
-            <input value={item.name || ''} onChange={e => updateItem(idx, 'name', e.target.value)} placeholder={nameLabel} style={{flex:1}} />
-            <input value={item.folder || ''} onChange={e => updateItem(idx, 'folder', e.target.value)} placeholder={folderLabel} style={{flex:1}} />
-            <button onClick={() => removeItem(idx)} style={{padding:'6px 10px', background:'rgba(239,68,68,0.15)', border:'1px solid rgba(239,68,68,0.3)', color:'#f87171', borderRadius:6, cursor:'pointer', fontSize:12}}>{t.remove}</button>
+            <input type="checkbox" aria-label={`Activer ${item.name || nameLabel}`} checked={!!item.enabled} onChange={e => updateItem(idx, 'enabled', e.target.checked)} style={{width: 16, height: 16, cursor:'pointer'}} />
+            <input aria-label={nameLabel} value={item.name || ''} onChange={e => updateItem(idx, 'name', e.target.value)} placeholder={nameLabel} style={{flex:1}} />
+            <input aria-label={folderLabel} value={item.folder || ''} onChange={e => updateItem(idx, 'folder', e.target.value)} placeholder={folderLabel} style={{flex:1}} />
+            <button aria-label={`Supprimer ${item.name || nameLabel}`} onClick={() => removeItem(idx)} style={{padding:'6px 10px', background:'rgba(239,68,68,0.15)', border:'1px solid rgba(239,68,68,0.3)', color:'#f87171', borderRadius:6, cursor:'pointer', fontSize:12}}>{t.remove}</button>
           </div>
         ))}
         <div style={{display:'flex', gap:8, marginTop:8}}>
           <div style={{width: 16}}></div> {/* Spacer for checkbox */}
-          <input value={newName} onChange={e => setNewName(e.target.value)} placeholder={nameLabel} style={{flex:1}} />
-          <input value={newFolder} onChange={e => setNewFolder(e.target.value)} placeholder={folderLabel} style={{flex:1}} />
-          <button onClick={addItem} className="grad-btn" style={{padding:'6px 14px', fontSize:13}}>{t.add}</button>
+          <input aria-label={`Nouveau ${nameLabel}`} value={newName} onChange={e => setNewName(e.target.value)} placeholder={nameLabel} style={{flex:1}} />
+          <input aria-label={`Nouveau ${folderLabel}`} value={newFolder} onChange={e => setNewFolder(e.target.value)} placeholder={folderLabel} style={{flex:1}} />
+          <button aria-label={`Ajouter nouveau ${nameLabel}`} onClick={addItem} className="grad-btn" style={{padding:'6px 14px', fontSize:13}}>{t.add}</button>
         </div>
       </div>
     );
@@ -1319,15 +1319,15 @@ function SettingsTab({ lang, addToast }) {
 
   return (
     <div>
-      <div style={{display:'flex', gap:6, marginBottom:20, flexWrap:'wrap'}}>
+      <div role="tablist" style={{display:'flex', gap:6, marginBottom:20, flexWrap:'wrap'}}>
         {settingsTabs.map(tab => (
-          <button key={tab.key} className={`tab-btn ${activeSettingsTab===tab.key?'active':''}`} onClick={() => setActiveSettingsTab(tab.key)} style={{fontSize:12}}>
+          <button key={tab.key} role="tab" aria-selected={activeSettingsTab === tab.key} aria-controls={`settings-panel-${tab.key}`} id={`settings-tab-${tab.key}`} className={`tab-btn ${activeSettingsTab===tab.key?'active':''}`} onClick={() => setActiveSettingsTab(tab.key)} style={{fontSize:12}}>
             {tab.label}
           </button>
         ))}
       </div>
 
-      <div className="glass" style={{padding:24}}>
+      <div role="tabpanel" id={`settings-panel-${activeSettingsTab}`} aria-labelledby={`settings-tab-${activeSettingsTab}`} className="glass" style={{padding:24}}>
         {activeSettingsTab === 'connections' && (
           <div>
             <Field label={t.radarrUrl} field="radarrUrl" placeholder="http://localhost:7878" />
@@ -1512,23 +1512,25 @@ function App() {
         <StatusBar movies={movies} genres={genres} studios={studios} platforms={platforms} lang={lang} />
 
         {/* Tabs */}
-        <div style={{display:'flex', gap:4, marginBottom:20, flexWrap:'wrap', borderBottom:'1px solid var(--border)', paddingBottom:10}}>
+        <div role="tablist" style={{display:'flex', gap:4, marginBottom:20, flexWrap:'wrap', borderBottom:'1px solid var(--border)', paddingBottom:10}}>
           {tabs.map(tab => (
-            <button key={tab.key} className={`tab-btn ${activeTab===tab.key?'active':''}`} onClick={() => setActiveTab(tab.key)}>
+            <button key={tab.key} role="tab" aria-selected={activeTab === tab.key} aria-controls={`main-panel-${tab.key}`} id={`main-tab-${tab.key}`} className={`tab-btn ${activeTab===tab.key?'active':''}`} onClick={() => setActiveTab(tab.key)}>
               {tab.label}
             </button>
           ))}
         </div>
 
         {/* Tab Content */}
-        {activeTab === 'library' && (
-          <LibraryTab movies={movies} genres={genres} studios={studios} platforms={platforms} loading={loadingMovies} onRefresh={fetchMovies} lang={lang} addToast={addToast} />
-        )}
-        {activeTab === 'issues' && <IssuesTab lang={lang} addToast={addToast} />}
-        {activeTab === 'series' && <SeriesTab lang={lang} addToast={addToast} />}
-        {activeTab === 'stats' && <StatsTab lang={lang} addToast={addToast} />}
-        {activeTab === 'logs' && <LogsTab lang={lang} addToast={addToast} />}
-        {activeTab === 'settings' && <SettingsTab lang={lang} addToast={addToast} />}
+        <div role="tabpanel" id={`main-panel-${activeTab}`} aria-labelledby={`main-tab-${activeTab}`}>
+          {activeTab === 'library' && (
+            <LibraryTab movies={movies} genres={genres} studios={studios} platforms={platforms} loading={loadingMovies} onRefresh={fetchMovies} lang={lang} addToast={addToast} />
+          )}
+          {activeTab === 'issues' && <IssuesTab lang={lang} addToast={addToast} />}
+          {activeTab === 'series' && <SeriesTab lang={lang} addToast={addToast} />}
+          {activeTab === 'stats' && <StatsTab lang={lang} addToast={addToast} />}
+          {activeTab === 'logs' && <LogsTab lang={lang} addToast={addToast} />}
+          {activeTab === 'settings' && <SettingsTab lang={lang} addToast={addToast} />}
+        </div>
       </div>
 
       <Toast toasts={toasts} />

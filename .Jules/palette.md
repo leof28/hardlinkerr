@@ -20,3 +20,6 @@
 ## 2024-05-18 - [Add loading spinners to refresh buttons]
 **Learning:** When async buttons replace their entire text with a generic loading string, it causes layout shifts and removes context from what the button is currently doing. Using an inline SVG spinner alongside the original text with a small gap preserves the layout and improves UX.
 **Action:** Use inline SVG spinners and 'display: inline-flex' alongside the original text for loading states to maintain context and prevent layout shifts.
+## 2024-09-07 - Setting ARIA Roles and Graceful Error Handling
+**Learning:** In custom React standalone tabbed interfaces, missing basic array initialization (e.g., when the API fails and returns a JSON error instead of an array) can completely crash the UI (`genres.forEach is not a function`). Furthermore, without `role="tablist"` and `role="tabpanel"`, screen readers do not associate the navigation actions with the dynamic content replacing the view.
+**Action:** Ensure defensive initialization (`Array.isArray(d) ? d : []`) for list data when handling generic API fetch wrappers, and wrap all custom tab sets with explicit WAI-ARIA tab semantics to preserve screen reader context during state transitions.
