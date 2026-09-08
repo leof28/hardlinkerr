@@ -28,11 +28,6 @@ apply_owner() {
     fi
 }
 
-# Fonction pour obtenir l'inode d'un fichier
-inode_of() {
-    stat -c '%i' "$1" 2>/dev/null || echo ""
-}
-
 # Fonction pour vérifier si deux chemins sont sur le même device
 same_device() {
     local dev1=$(stat -c '%d' "$1" 2>/dev/null)
@@ -158,7 +153,7 @@ echo "$movies_json" | jq -r '.[] | select(.hasFile == true) | [.title, .path, (.
             for src_file in "${all_files[@]}"; do
                 [ ! -f "$src_file" ] && continue
 
-                dest_file="$target_dir/$(basename "$src_file")"
+                dest_file="$target_dir/${src_file##*/}"
 
                 # Vérifier si le fichier de destination existe
                 if [ ! -e "$dest_file" ]; then
@@ -166,12 +161,8 @@ echo "$movies_json" | jq -r '.[] | select(.hasFile == true) | [.title, .path, (.
                     continue
                 fi
 
-                # Comparer les inodes (vrai test de hardlink)
-                src_inode=$(inode_of "$src_file")
-                dest_inode=$(inode_of "$dest_file")
-
-                # Si les inodes sont identiques ET non vides, c'est un vrai hardlink
-                if [ -n "$src_inode" ] && [ -n "$dest_inode" ] && [ "$src_inode" = "$dest_inode" ]; then
+                # Comparer les inodes (vrai test de hardlink) en utilisant -ef
+                if [ "$src_file" -ef "$dest_file" ]; then
                     ((found_valid++))
                 fi
             done
@@ -185,12 +176,10 @@ echo "$movies_json" | jq -r '.[] | select(.hasFile == true) | [.title, .path, (.
             for src_file in "${all_files[@]}"; do
                 [ ! -f "$src_file" ] && continue
 
-                dest_file="$target_dir/$(basename "$src_file")"
-                src_inode=$(inode_of "$src_file")
-                dest_inode=$(inode_of "$dest_file")
+                dest_file="$target_dir/${src_file##*/}"
 
                 # Ne créer le lien que si nécessaire
-                if [ "$src_inode" != "$dest_inode" ] || [ ! -e "$dest_file" ]; then
+                if [ ! -e "$dest_file" ] || [ ! "$src_file" -ef "$dest_file" ]; then
                     ((need_creation++))
                 fi
             done
@@ -207,12 +196,10 @@ echo "$movies_json" | jq -r '.[] | select(.hasFile == true) | [.title, .path, (.
                 for src_file in "${all_files[@]}"; do
                     [ ! -f "$src_file" ] && continue
 
-                    dest_file="$target_dir/$(basename "$src_file")"
-                    src_inode=$(inode_of "$src_file")
-                    dest_inode=$(inode_of "$dest_file")
+                    dest_file="$target_dir/${src_file##*/}"
 
                     # Ne créer le lien que si nécessaire
-                    if [ "$src_inode" != "$dest_inode" ] || [ ! -e "$dest_file" ]; then
+                    if [ ! -e "$dest_file" ] || [ ! "$src_file" -ef "$dest_file" ]; then
                         # Vérifier que les deux chemins sont sur le même device
                         if ! same_device "$src_file" "$target_dir" 2>/dev/null; then
                             echo "ERREUR: $src_file et $target_dir ne sont pas sur le même système de fichiers" >&2
