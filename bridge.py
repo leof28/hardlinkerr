@@ -1675,6 +1675,11 @@ def delete_movie():
     data = request.json or {}
     source_path = data.get('sourcePath', '')
     folder_name = data.get('folderName', '') or (os.path.basename(source_path) if source_path else '')
+
+    if '/' in folder_name or '\\' in folder_name or '..' in folder_name:
+        append_log("warning", "security", f"Nom de dossier invalide détecté: {folder_name}")
+        return jsonify({"error": "Nom de dossier invalide"}), 400
+
     title = data.get('title', folder_name)
     config = load_config()
     media_root = config.get('mediaRoot', '')
@@ -2079,6 +2084,15 @@ def delete_hardlink_folder():
     data = request.json or {}
     folder_name = data.get('folderName', '')
     target_folder = data.get('targetFolder', '')
+
+    if '/' in folder_name or '\\' in folder_name or '..' in folder_name:
+        append_log("warning", "security", f"Nom de dossier invalide détecté: {folder_name}")
+        return jsonify({"error": "Nom de dossier invalide"}), 400
+
+    if '/' in target_folder or '\\' in target_folder or '..' in target_folder:
+        append_log("warning", "security", f"Nom de dossier cible invalide détecté: {target_folder}")
+        return jsonify({"error": "Nom de dossier invalide"}), 400
+
     config = load_config()
     media_root = config.get('mediaRoot', '')
 
