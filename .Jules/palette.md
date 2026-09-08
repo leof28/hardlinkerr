@@ -20,3 +20,6 @@
 ## 2024-05-18 - [Add loading spinners to refresh buttons]
 **Learning:** When async buttons replace their entire text with a generic loading string, it causes layout shifts and removes context from what the button is currently doing. Using an inline SVG spinner alongside the original text with a small gap preserves the layout and improves UX.
 **Action:** Use inline SVG spinners and 'display: inline-flex' alongside the original text for loading states to maintain context and prevent layout shifts.
+## 2024-05-18 - Added ARIA Roles to Tab Components
+**Learning:** Custom React-based tab navigation patterns in this codebase were lacking essential ARIA properties, which severely impacted screen reader traversal.
+**Action:** Always ensure custom tab patterns utilize `role="tablist"`, `role="tab"`, and wrap the corresponding views in `role="tabpanel"` linked via `aria-controls` and `aria-labelledby`.
