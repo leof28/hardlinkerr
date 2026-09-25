@@ -692,11 +692,11 @@ function LibraryTab({ movies, genres, studios, platforms, loading, onRefresh, la
 
   async function handleScanDisk() {
     setRunning(true);
-    try {
-      addToast({ message: 'Lancement du scan complet du disque...', type: 'info' });
-      await onRefresh(true);
+    addToast({ message: 'Lancement du scan complet du disque...', type: 'info' });
+    const success = await onRefresh(true);
+    if (success) {
       addToast({ message: 'Scan complet terminé', type: 'success' });
-    } catch(e) { addToast({ message: 'Erreur: ' + e.message, type: 'error' }); }
+    }
     setRunning(false);
   }
 
@@ -1476,12 +1476,13 @@ function App() {
     try {
       const data = await api(`/api/status${force ? '?force=true' : ''}`);
       setMovies(Array.isArray(data) ? data : (data.movies || []));
+      setLoadingMovies(false);
+      return true;
     } catch(e) {
       addToast({ message: 'Erreur chargement films: ' + e.message, type: 'error' });
       setLoadingMovies(false);
-      throw e;
+      return false;
     }
-    setLoadingMovies(false);
   }
 
   async function fetchMeta() {
