@@ -72,7 +72,7 @@ def get_db_connection():
     return conn
 
 
-def sync_database(config=None):
+def sync_database(config=None, throw_on_error=False):
     if not config:
         config = load_config()
 
@@ -91,6 +91,8 @@ def sync_database(config=None):
     except Exception as e:
         print(f"[SYNC] Erreur Radarr: {e}")
         conn.close()
+        if throw_on_error:
+            raise e
         return
 
     hardlink_status = get_hardlink_status(config)
@@ -1409,7 +1411,10 @@ def get_status():
     config = load_config()
 
     if force:
-        sync_database(config)
+        try:
+            sync_database(config, throw_on_error=True)
+        except Exception as e:
+            return jsonify({"error": f"Erreur de synchronisation avec Radarr: {str(e)}"}), 500
 
     conn = get_db_connection()
     cursor = conn.cursor()

@@ -367,7 +367,17 @@ function api(path, options = {}) {
     headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
     ...options,
     body: options.body ? JSON.stringify(options.body) : undefined,
-  }).then(r => r.json());
+  }).then(async r => {
+    if (!r.ok) {
+      let msg = 'Erreur serveur';
+      try {
+        const errJson = await r.json();
+        if (errJson.error) msg = errJson.error;
+      } catch (e) {}
+      throw new Error(msg);
+    }
+    return r.json();
+  });
 }
 
 // ─── Confirm Dialog ───────────────────────────────────────────────────────────
@@ -1177,9 +1187,9 @@ function SettingsTab({ lang, addToast }) {
 
   useEffect(() => {
     api('/api/settings').then(d => setSettings(d || {})).catch(() => {});
-    api('/api/genres').then(d => setGenres(d || [])).catch(() => {});
-    api('/api/studios').then(d => setStudios(d || [])).catch(() => {});
-    api('/api/platforms').then(d => setPlatforms(d || [])).catch(() => {});
+    api('/api/genres').then(d => setGenres(Array.isArray(d) ? d : [])).catch(() => {});
+    api('/api/studios').then(d => setStudios(Array.isArray(d) ? d : [])).catch(() => {});
+    api('/api/platforms').then(d => setPlatforms(Array.isArray(d) ? d : [])).catch(() => {});
     api('/api/ignore').then(d => {
       if (d && !Array.isArray(d)) {
         const flat = [];
@@ -1466,13 +1476,21 @@ function App() {
     try {
       const data = await api(`/api/status${force ? '?force=true' : ''}`);
       setMovies(Array.isArray(data) ? data : (data.movies || []));
-    } catch(e) { addToast({ message: 'Erreur chargement films: ' + e.message, type: 'error' }); }
+    } catch(e) {
+      addToast({ message: 'Erreur chargement films: ' + e.message, type: 'error' });
+      setLoadingMovies(false);
+      throw e;
+    }
     setLoadingMovies(false);
   }
 
   async function fetchMeta() {
     try {
-      const [g, s, p] = await Promise.all([api('/api/genres'), api('/api/studios'), api('/api/platforms')]);
+      const [g, s, p] = await Promise.all([
+        api('/api/genres').catch(() => []),
+        api('/api/studios').catch(() => []),
+        api('/api/platforms').catch(() => [])
+      ]);
       setGenres(Array.isArray(g) ? g : []);
       setStudios(Array.isArray(s) ? s : []);
       setPlatforms(Array.isArray(p) ? p : []);
