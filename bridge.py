@@ -83,7 +83,7 @@ def sync_database(config=None, throw_on_error=False):
     try:
         response = requests.get(
             f"{config['radarrUrl']}/api/v3/movie",
-            headers={"X-Api-Key": config['apiKey']},
+            headers={"X-Api-Key": config['radarrApiKey']},
             timeout=30
         )
         response.raise_for_status()
@@ -224,7 +224,7 @@ def load_config():
     global _config_mem_cache, _config_cache_mtime
     defaults = {
         "radarrUrl": "",
-        "apiKey": "",
+        "radarrApiKey": "",
         "sonarrUrl": "",
         "sonarrApiKey": "",
         "sourceRoot": "/media/movies/A trier",
@@ -402,7 +402,7 @@ def get_env(config, movie="", genres="", studios=""):
     env = os.environ.copy()
     env.update({
         "RADARR_URL": config.get('radarrUrl', ''),
-        "API_KEY": config.get('apiKey', ''),
+        "API_KEY": config.get('radarrApiKey', ''),
         "SOURCE_ROOT": config.get('sourceRoot', ''),
         "MEDIA_ROOT": config.get('mediaRoot', ''),
         "GENRE_MAPPING_STR": mapping_str,
@@ -582,7 +582,7 @@ def get_platform_hardlink_status(config, movies_data=None):
         try:
             resp = requests.get(
                 f"{config['radarrUrl']}/api/v3/movie",
-                headers={"X-Api-Key": config['apiKey']},
+                headers={"X-Api-Key": config['radarrApiKey']},
                 timeout=30
             )
             resp.raise_for_status()
@@ -668,7 +668,7 @@ def create_platform_hardlinks(config, movie_path=''):
     try:
         resp = requests.get(
             f"{config['radarrUrl']}/api/v3/movie",
-            headers={"X-Api-Key": config['apiKey']},
+            headers={"X-Api-Key": config['radarrApiKey']},
             timeout=30
         )
         resp.raise_for_status()
@@ -1065,7 +1065,7 @@ def detect_duplicates(config):
     try:
         response = requests.get(
             f"{config['radarrUrl']}/api/v3/movie",
-            headers={"X-Api-Key": config['apiKey']},
+            headers={"X-Api-Key": config['radarrApiKey']},
             timeout=30
         )
         response.raise_for_status()
@@ -1257,7 +1257,7 @@ def index():
 @app.route('/api/settings', methods=['GET', 'POST'])
 def settings():
     import copy
-    secrets = ['apiKey', 'sonarrApiKey', 'tmdbApiKey', 'webhookSecret', 'jellystatApiKey']
+    secrets = ['radarrApiKey', 'sonarrApiKey', 'tmdbApiKey', 'webhookSecret', 'jellystatApiKey']
 
     if request.method == 'POST':
         new_config = request.json or {}
@@ -1301,7 +1301,7 @@ def get_all_genres():
         if not all_genres:
             response = requests.get(
                 f"{config['radarrUrl']}/api/v3/movie",
-                headers={"X-Api-Key": config['apiKey']},
+                headers={"X-Api-Key": config['radarrApiKey']},
                 timeout=30
             )
             response.raise_for_status()
@@ -1348,7 +1348,7 @@ def get_all_studios():
         if not all_studios:
             response = requests.get(
                 f"{config['radarrUrl']}/api/v3/movie",
-                headers={"X-Api-Key": config['apiKey']},
+                headers={"X-Api-Key": config['radarrApiKey']},
                 timeout=30
             )
             response.raise_for_status()
@@ -1962,7 +1962,7 @@ def get_all_platforms():
         try:
             resp = requests.get(
                 f"{config['radarrUrl']}/api/v3/movie",
-                headers={"X-Api-Key": config['apiKey']},
+                headers={"X-Api-Key": config['radarrApiKey']},
                 timeout=30
             )
             resp.raise_for_status()
